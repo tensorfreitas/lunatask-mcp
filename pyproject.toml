@@ -1,0 +1,25 @@
+[project]
+name = "lunatask-mcp"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Tiago Freitas", email = "freitas.mib@gmail.com" }
+]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastmcp>=2.11.3",
+    "httpx>=0.28.1",
+]
+
+[project.scripts]
+lunatask-mcp = "lunatask_mcp:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "commitizen>=4.8.3",
+]

@@ -10,6 +10,12 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastmcp>=2.11.3",
     "httpx>=0.28.1",
+    "pre-commit>=4.3.0",
+    "pydantic>=2.11.7",
+    "pyright>=1.1.403",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "ruff>=0.12.8",
 ]
 
 [project.scripts]
@@ -23,3 +29,20 @@ build-backend = "hatchling.build"
 dev = [
     "commitizen>=4.8.3",
 ]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+include = ["src/**/*.py", "tests/**/*.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "C", "I", "N", "UP", "ANN", "S", "B", "A", "COM", "C4", "DTZ", "T10", "EXE", "ISC", "ICN", "G", "INP", "PIE", "T20", "PYI", "PT", "Q", "RSE", "RET", "SLF", "SIM", "TID", "ARG", "PTH", "ERA", "PD", "PGH", "PL", "TRY", "NPY", "PERF", "FURB", "LOG", "RUF"]
+
+[tool.pyright]
+include = ["src", "tests"]
+exclude = ["**/__pycache__", ".venv", "build", "dist"]
+reportMissingImports = true
+reportMissingTypeStubs = false
+pythonVersion = "3.12"
+pythonPlatform = "All"
+typeCheckingMode = "strict"

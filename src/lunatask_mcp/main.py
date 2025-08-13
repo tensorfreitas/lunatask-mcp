@@ -4,7 +4,9 @@ This module contains the CoreServer class which serves as the main application r
 for the FastMCP server implementation.
 """
 
+import asyncio
 import logging
+import signal
 import sys
 
 from fastmcp import Context, FastMCP
@@ -22,6 +24,8 @@ class CoreServer:
         self._setup_logging()
         self.app = self._create_fastmcp_instance()
         self._register_tools()
+        self._shutdown_requested = False
+        self._setup_signal_handlers()
 
     def _setup_logging(self) -> None:
         """Configure logging to direct all output to stderr.
@@ -53,6 +57,23 @@ class CoreServer:
         """Register all tools with the FastMCP instance."""
         self.app.tool(self.ping_tool, name="ping")
 
+    def _setup_signal_handlers(self) -> None:
+        """Set up signal handlers for graceful shutdown.
+
+        Handles SIGINT and SIGTERM to ensure clean shutdown without stdout corruption.
+        """
+
+        def signal_handler(signum: int, _frame: object | None) -> None:
+            """Handle shutdown signals by setting shutdown flag."""
+            logger = logging.getLogger(__name__)
+            signal_name = "SIGINT" if signum == signal.SIGINT else f"Signal {signum}"
+            logger.info("Received %s, initiating graceful shutdown", signal_name)
+            self._shutdown_requested = True
+
+        # Set up signal handlers
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+
     async def ping_tool(self, ctx: Context) -> str:
         """Ping health-check tool that returns a static 'pong' response.
 
@@ -64,41 +85,60 @@ class CoreServer:
 
         Returns:
             str: The 'pong' response text.
+
+        Raises:
+            asyncio.CancelledError: If the operation is cancelled during execution.
         """
-        await ctx.info("Ping tool called, returning pong")
-        return "pong"
+        try:
+            await ctx.info("Ping tool called, returning pong")
+        except asyncio.CancelledError:
+            await ctx.info("Ping tool execution cancelled")
+            raise
+        else:
+            return "pong"
 
     def run(self) -> None:
         """Run the MCP server with stdio transport.
 
         This method starts the FastMCP server and handles the main event loop
-        for processing MCP protocol messages over stdio.
+        for processing MCP protocol messages over stdio with proper shutdown handling.
         """
         logger = logging.getLogger(__name__)
         logger.info("Starting LunaTask MCP server with stdio transport")
 
-        # Run the FastMCP server with stdio transport
-        self.app.run(transport="stdio")
+        try:
+            # Run the FastMCP server with stdio transport
+            self.app.run(transport="stdio")
+        except KeyboardInterrupt:
+            logger.info("Server shutdown requested via KeyboardInterrupt")
+            raise
+        except Exception:
+            logger.exception("Unhandled exception in server run method")
+            raise
 
 
 def main() -> None:
     """Main entry point for the LunaTask MCP server.
 
-    Creates a CoreServer instance and runs the server.
-    All logging is directed to stderr to maintain stdout purity for MCP protocol.
+    Creates a CoreServer instance and runs the server with proper exception handling
+    to ensure stdout remains uncorrupted for MCP protocol communication.
+    All logging is directed to stderr to maintain stdout purity.
     """
-    server = CoreServer()
+    logger = logging.getLogger(__name__)
 
-    # Run the server
     try:
+        server = CoreServer()
         server.run()
     except KeyboardInterrupt:
-        logger = logging.getLogger(__name__)
         logger.info("Server shutdown requested via KeyboardInterrupt")
+        # Clean exit for keyboard interrupt - don't call sys.exit()
     except Exception:
-        logger = logging.getLogger(__name__)
         logger.exception("Unhandled exception in server")
+        # Exit with error code for unhandled exceptions
         sys.exit(1)
+    finally:
+        # Ensure any cleanup logging goes to stderr
+        logger.info("Server shutdown complete")
 
 
 if __name__ == "__main__":

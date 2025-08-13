@@ -4,7 +4,6 @@ This module contains the CoreServer class which serves as the main application r
 for the FastMCP server implementation.
 """
 
-import asyncio
 import logging
 import sys
 
@@ -38,34 +37,41 @@ class CoreServer:
     def _create_fastmcp_instance(self) -> FastMCP:
         """Create and configure the FastMCP application instance.
 
+        FastMCP automatically handles MCP protocol version negotiation,
+        using the latest supported version (2025-06-18) by default.
+
         Returns:
             FastMCP: Configured FastMCP instance ready for stdio transport.
         """
-        return FastMCP(name="lunatask-mcp", version="0.1.0")
+        return FastMCP(
+            name="lunatask-mcp",
+            version="0.1.0",
+        )
 
-    async def run(self) -> None:
+    def run(self) -> None:
         """Run the MCP server with stdio transport.
 
         This method starts the FastMCP server and handles the main event loop
         for processing MCP protocol messages over stdio.
         """
-        # TODO: Implement actual server startup with stdio transport
-        # This will be implemented in subsequent tasks
         logger = logging.getLogger(__name__)
-        logger.info("CoreServer.run() called - server startup logic pending")
+        logger.info("Starting LunaTask MCP server with stdio transport")
+
+        # Run the FastMCP server with stdio transport
+        self.app.run(transport="stdio")
 
 
 def main() -> None:
     """Main entry point for the LunaTask MCP server.
 
-    Creates a CoreServer instance and runs the async server loop.
+    Creates a CoreServer instance and runs the server.
     All logging is directed to stderr to maintain stdout purity for MCP protocol.
     """
     server = CoreServer()
 
-    # Run the async server
+    # Run the server
     try:
-        asyncio.run(server.run())
+        server.run()
     except KeyboardInterrupt:
         logger = logging.getLogger(__name__)
         logger.info("Server shutdown requested via KeyboardInterrupt")

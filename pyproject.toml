@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.scripts]
-lunatask-mcp = "lunatask_mcp:main"
+lunatask-mcp = "lunatask_mcp.main:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -38,6 +38,9 @@ include = ["src/**/*.py", "tests/**/*.py"]
 [tool.ruff.lint]
 select = ["E", "F", "W", "C", "I", "N", "UP", "ANN", "S", "B", "A", "COM", "C4", "DTZ", "T10", "EXE", "ISC", "ICN", "G", "INP", "PIE", "T20", "PYI", "PT", "Q", "RSE", "RET", "SLF", "SIM", "TID", "ARG", "PTH", "ERA", "PD", "PGH", "PL", "TRY", "NPY", "PERF", "FURB", "LOG", "RUF"]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]  # Allow assert statements in tests
+
 [tool.pyright]
 include = ["src", "tests"]
 exclude = ["**/__pycache__", ".venv", "build", "dist"]
@@ -46,3 +49,5 @@ reportMissingTypeStubs = false
 pythonVersion = "3.12"
 pythonPlatform = "All"
 typeCheckingMode = "strict"
+venvPath = "."
+venv = ".venv"

@@ -7,7 +7,7 @@ for the FastMCP server implementation.
 import logging
 import sys
 
-from fastmcp import FastMCP
+from fastmcp import Context, FastMCP
 
 
 class CoreServer:
@@ -21,6 +21,7 @@ class CoreServer:
         """Initialize the CoreServer instance."""
         self._setup_logging()
         self.app = self._create_fastmcp_instance()
+        self._register_tools()
 
     def _setup_logging(self) -> None:
         """Configure logging to direct all output to stderr.
@@ -47,6 +48,25 @@ class CoreServer:
             name="lunatask-mcp",
             version="0.1.0",
         )
+
+    def _register_tools(self) -> None:
+        """Register all tools with the FastMCP instance."""
+        self.app.tool(self.ping_tool, name="ping")
+
+    async def ping_tool(self, ctx: Context) -> str:
+        """Ping health-check tool that returns a static 'pong' response.
+
+        This tool serves as a basic health-check endpoint to verify that
+        the MCP server is functioning correctly.
+
+        Args:
+            ctx: The execution context providing access to logging and other MCP capabilities.
+
+        Returns:
+            str: The 'pong' response text.
+        """
+        await ctx.info("Ping tool called, returning pong")
+        return "pong"
 
     def run(self) -> None:
         """Run the MCP server with stdio transport.

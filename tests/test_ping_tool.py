@@ -1,9 +1,8 @@
 """Unit tests for the ping tool in the LunaTask MCP server."""
 
-from unittest.mock import AsyncMock, Mock
-
 import pytest
 from fastmcp import Context
+from pytest_mock import MockerFixture
 
 from lunatask_mcp.main import CoreServer
 
@@ -22,13 +21,13 @@ class TestPingTool:
         assert "ping" in tool_names
 
     @pytest.mark.asyncio
-    async def test_ping_tool_returns_pong(self) -> None:
+    async def test_ping_tool_returns_pong(self, mocker: MockerFixture) -> None:
         """Test that the ping tool returns 'pong' response."""
         server = CoreServer()
 
         # Create a mock context
-        mock_context = Mock(spec=Context)
-        mock_context.info = AsyncMock()
+        mock_context = mocker.Mock(spec=Context)
+        mock_context.info = mocker.AsyncMock()
 
         # Call the ping tool directly
         result = await server.ping_tool(mock_context)
@@ -37,13 +36,13 @@ class TestPingTool:
         assert result == "pong"
 
     @pytest.mark.asyncio
-    async def test_ping_tool_uses_context_logger(self) -> None:
+    async def test_ping_tool_uses_context_logger(self, mocker: MockerFixture) -> None:
         """Test that the ping tool uses the execution context's scoped logger."""
         server = CoreServer()
 
         # Create a mock context with logger
-        mock_context = Mock(spec=Context)
-        mock_context.info = AsyncMock()
+        mock_context = mocker.Mock(spec=Context)
+        mock_context.info = mocker.AsyncMock()
 
         # Call the ping tool
         await server.ping_tool(mock_context)

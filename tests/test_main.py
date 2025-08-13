@@ -1,8 +1,7 @@
 """Tests for the main entry point module."""
 
-from unittest.mock import patch
-
 import pytest
+from pytest_mock import MockerFixture
 
 from lunatask_mcp.main import CoreServer, main
 
@@ -26,9 +25,9 @@ async def test_core_server_initialization() -> None:
     assert server is not None
 
 
-@patch("sys.stderr")
-def test_main_configures_logging_to_stderr(mock_stderr: object) -> None:
+def test_main_configures_logging_to_stderr(mocker: MockerFixture) -> None:
     """Test that main function configures logging to stderr."""
+    mocker.patch("sys.stderr")
     # This test will be implemented after we create the main module
 
 

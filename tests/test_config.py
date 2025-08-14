@@ -5,10 +5,16 @@ This module contains comprehensive tests for the ServerConfig Pydantic model
 and configuration loading functionality following TDD methodology.
 """
 
+import argparse
+import tempfile
+from pathlib import Path
+from unittest.mock import Mock, patch
+
 import pytest
 from pydantic import HttpUrl, ValidationError
 
 from lunatask_mcp.config import ServerConfig
+from lunatask_mcp.main import load_configuration
 
 
 class TestServerConfigModel:
@@ -145,3 +151,220 @@ class TestServerConfigModel:
 
         assert redacted["lunatask_bearer_token"] == "***redacted***"
         assert redacted["config_file"] is None
+
+
+class TestConfigurationLoading:
+    """Test suite for configuration file loading functionality (Task 3)."""
+
+    def test_load_configuration_defaults_only(self) -> None:
+        """Test loading configuration with defaults only (no file, no CLI args)."""
+        # When no config file and no CLI args, should fail due to missing bearer token
+        args = argparse.Namespace(config_file=None, port=None, log_level=None)
+
+        with (
+            patch("pathlib.Path.exists", return_value=False),
+            pytest.raises(SystemExit) as exc_info,
+        ):
+            load_configuration(args)
+
+        assert exc_info.value.code == 1
+
+    def test_load_configuration_missing_file_explicit_path(self) -> None:
+        """Test that explicitly specified missing config file causes exit."""
+
+        args = argparse.Namespace(config_file="./nonexistent.toml", port=None, log_level=None)
+
+        with (
+            patch("pathlib.Path.exists", return_value=False),
+            pytest.raises(SystemExit) as exc_info,
+        ):
+            load_configuration(args)
+
+        assert exc_info.value.code == 1
+
+    def test_load_configuration_valid_toml_file(self) -> None:
+        """Test loading configuration from valid TOML file."""
+
+        # Create temporary TOML file
+        toml_content = """
+lunatask_bearer_token = "file_token"
+port = 9000
+log_level = "DEBUG"
+"""
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+            f.write(toml_content)
+            temp_path = f.name
+
+        try:
+            args = argparse.Namespace(config_file=temp_path, port=None, log_level=None)
+
+            config = load_configuration(args)
+
+            # Should include file values and config_file path
+            assert config.lunatask_bearer_token == "file_token"
+            assert config.port == 9000
+            assert config.log_level == "DEBUG"
+            assert config.config_file == temp_path
+        finally:
+            Path(temp_path).unlink()
+
+    def test_load_configuration_cli_overrides_file(self) -> None:
+        """Test that CLI arguments override file values (precedence)."""
+
+        # Create temporary TOML file with different values
+        toml_content = """
+lunatask_bearer_token = "file_token"
+port = 9000
+log_level = "DEBUG"
+"""
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+            f.write(toml_content)
+            temp_path = f.name
+
+        try:
+            # CLI args override file values
+            args = argparse.Namespace(config_file=temp_path, port=8080, log_level="INFO")
+
+            config = load_configuration(args)
+
+            # CLI should override file: port=8080, log_level="INFO"
+            assert config.lunatask_bearer_token == "file_token"  # from file
+            assert config.port == 8080  # CLI override
+            assert config.log_level == "INFO"  # CLI override
+            assert config.config_file == temp_path
+        finally:
+            Path(temp_path).unlink()
+
+    def test_load_configuration_unknown_keys_rejection(self) -> None:
+        """Test that unknown keys in TOML file cause exit with error."""
+
+        # Create TOML file with unknown key
+        toml_content = """
+lunatask_bearer_token = "token"
+unknown_key = "value"
+another_unknown = 123
+"""
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+            f.write(toml_content)
+            temp_path = f.name
+
+        try:
+            args = argparse.Namespace(config_file=temp_path, port=None, log_level=None)
+
+            with pytest.raises(SystemExit) as exc_info:
+                load_configuration(args)
+
+            assert exc_info.value.code == 1
+        finally:
+            Path(temp_path).unlink()
+
+    def test_load_configuration_invalid_toml_format(self) -> None:
+        """Test that invalid TOML format causes exit with error."""
+
+        # Create invalid TOML file
+        invalid_toml = """
+        lunatask_bearer_token = "token"
+        port = [invalid toml syntax
+        """
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+            f.write(invalid_toml)
+            temp_path = f.name
+
+        try:
+            args = argparse.Namespace(config_file=temp_path, port=None, log_level=None)
+
+            with pytest.raises(SystemExit) as exc_info:
+                load_configuration(args)
+
+            assert exc_info.value.code == 1
+        finally:
+            Path(temp_path).unlink()
+
+    def test_load_configuration_default_toml_discovery(self) -> None:
+        """Test that ./config.toml is discovered when --config-file not provided."""
+        # Create actual temporary TOML file for this test
+        toml_content = """
+lunatask_bearer_token = "default_token"
+port = 9000
+"""
+
+        args = argparse.Namespace(config_file=None, port=None, log_level=None)
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+            f.write(toml_content)
+            temp_path = f.name
+
+        # Rename to ./config.toml for discovery test
+        config_toml_path = Path("./config.toml")
+        try:
+            Path(temp_path).rename(config_toml_path)
+
+            config = load_configuration(args)
+
+            # Should discover and load ./config.toml
+            assert config.lunatask_bearer_token == "default_token"
+            assert config.port == 9000
+            assert config.config_file == "./config.toml"
+        finally:
+            if config_toml_path.exists():
+                config_toml_path.unlink()
+
+    def test_load_configuration_validation_failure_exit(self) -> None:
+        """Test that ServerConfig validation errors cause exit."""
+        # Create TOML with invalid port to trigger validation error
+        toml_content = """
+lunatask_bearer_token = "token"
+port = 99999  # Invalid port > 65535
+"""
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+            f.write(toml_content)
+            temp_path = f.name
+
+        try:
+            args = argparse.Namespace(config_file=temp_path, port=None, log_level=None)
+
+            with pytest.raises(SystemExit) as exc_info:
+                load_configuration(args)
+
+            assert exc_info.value.code == 1
+        finally:
+            Path(temp_path).unlink()
+
+    def test_load_configuration_effective_config_logging(self) -> None:
+        """Test that effective configuration is logged with redaction."""
+        # Create valid TOML file to test logging
+        toml_content = """
+lunatask_bearer_token = "secret_token_123"
+port = 9000
+log_level = "DEBUG"
+"""
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+            f.write(toml_content)
+            temp_path = f.name
+
+        try:
+            args = argparse.Namespace(config_file=temp_path, port=None, log_level=None)
+
+            with patch("logging.getLogger") as mock_get_logger:
+                mock_logger = Mock()
+                mock_get_logger.return_value = mock_logger
+
+                config = load_configuration(args)
+
+                # Should log effective configuration with redaction
+                mock_logger.info.assert_called_with(
+                    "Effective configuration: %s",
+                    config.to_redacted_dict(),
+                )
+                # Verify redaction worked
+                redacted = config.to_redacted_dict()
+                assert redacted["lunatask_bearer_token"] == "***redacted***"
+                assert redacted["port"] == 9000
+        finally:
+            Path(temp_path).unlink()

@@ -4,12 +4,18 @@ This module contains the CoreServer class which serves as the main application r
 for the FastMCP server implementation.
 """
 
+import argparse
 import asyncio
 import logging
 import signal
 import sys
+import tomllib
+from pathlib import Path
+from typing import Any
 
 from fastmcp import Context, FastMCP
+
+from lunatask_mcp.config import ServerConfig
 
 
 class CoreServer:
@@ -117,6 +123,120 @@ class CoreServer:
             raise
 
 
+def load_configuration(args: argparse.Namespace) -> ServerConfig:
+    """Load configuration from defaults, file, and CLI arguments with proper precedence.
+
+    Precedence order (CLI > file > defaults):
+    1. Command-line arguments (highest priority)
+    2. Configuration file values
+    3. Default values (lowest priority)
+
+    Args:
+        args: Parsed command-line arguments.
+
+    Returns:
+        ServerConfig: Loaded and validated configuration.
+
+    Raises:
+        SystemExit: On configuration validation errors or file parsing errors.
+    """
+    config_data: dict[str, Any] = {}
+    logger = logging.getLogger(__name__)
+
+    # Determine config file path
+    config_file = args.config_file or "./config.toml"
+    config_path = Path(config_file)
+
+    # Load from configuration file if it exists
+    if config_path.exists():
+        try:
+            with config_path.open("rb") as f:
+                file_config = tomllib.load(f)
+
+            # Validate that all keys in the TOML file are known configuration fields
+            known_fields = {
+                "lunatask_bearer_token",
+                "lunatask_base_url",
+                "port",
+                "log_level",
+                "config_file",
+            }
+            unknown_keys = set(file_config.keys()) - known_fields
+            if unknown_keys:
+                logger.error(
+                    "Unknown configuration keys in %s: %s",
+                    config_path,
+                    ", ".join(sorted(unknown_keys)),
+                )
+                sys.exit(1)
+
+            config_data.update(file_config)
+            logger.info("Loaded configuration from %s", config_path)
+        except tomllib.TOMLDecodeError:
+            logger.exception("Failed to parse TOML configuration file %s", config_path)
+            sys.exit(1)
+        except OSError:
+            logger.exception("Failed to read configuration file %s", config_path)
+            sys.exit(1)
+    elif args.config_file:
+        # Only error if config file was explicitly specified but doesn't exist
+        logger.error("Configuration file not found: %s", config_file)
+        sys.exit(1)
+
+    # Override with CLI arguments (CLI takes precedence)
+    if args.port is not None:
+        config_data["port"] = args.port
+    if args.log_level is not None:
+        config_data["log_level"] = args.log_level
+
+    # Add config_file to the data for the model
+    config_data["config_file"] = config_file
+
+    try:
+        # Create and validate the configuration
+        config = ServerConfig(**config_data)
+    except Exception:
+        logger.exception("Configuration validation failed")
+        sys.exit(1)
+    else:
+        # Log effective configuration with secrets redacted
+        logger.info("Effective configuration: %s", config.to_redacted_dict())
+        return config
+
+
+def parse_cli_args() -> argparse.Namespace:
+    """Parse command-line arguments for server configuration.
+
+    Returns:
+        argparse.Namespace: Parsed command-line arguments.
+    """
+    parser = argparse.ArgumentParser(
+        description="LunaTask MCP Server",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    parser.add_argument(
+        "--config-file",
+        type=str,
+        help="Path to configuration file (default: ./config.toml)",
+    )
+
+    parser.add_argument(
+        "--port",
+        type=int,
+        help="Port number for future HTTP transport (1-65535)",
+    )
+
+    parser.add_argument(
+        "--log-level",
+        type=str,
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Logging level",
+    )
+
+    return parser.parse_args()
+
+
 def main() -> None:
     """Main entry point for the LunaTask MCP server.
 
@@ -127,6 +247,12 @@ def main() -> None:
     logger = logging.getLogger(__name__)
 
     try:
+        # Parse command-line arguments before server construction
+        args = parse_cli_args()
+
+        # Load and validate configuration
+        _config = load_configuration(args)
+
         server = CoreServer()
         server.run()
     except KeyboardInterrupt:

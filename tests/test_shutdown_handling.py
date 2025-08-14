@@ -156,7 +156,7 @@ class TestShutdownHandling:
                 exception_captured.set()
 
         # Mock CoreServer.run to simulate concurrent operations
-        def mock_run_with_concurrent_exception(_self: object) -> Never:
+        def mock_run_with_concurrent_exception(_: object) -> Never:
             # Start a background task that will fail
             thread = threading.Thread(target=failing_operation)
             thread.start()

@@ -40,6 +40,120 @@ The server provides:
 - **MCP Protocol Version**: Supports MCP protocol version `2025-06-18`
 - **Stdio Transport**: Communicates over standard input/output streams
 
+## Configuration
+
+The LunaTask MCP server supports flexible configuration through TOML files and command-line arguments. A bearer token is required to authenticate with the LunaTask API.
+
+### Quick Start
+
+1. Copy the example configuration file:
+```bash
+cp config.example.toml config.toml
+```
+
+2. Edit `config.toml` and add your LunaTask API bearer token:
+```toml
+lunatask_bearer_token = "your_lunatask_bearer_token_here"
+```
+
+3. Run the server:
+```bash
+uv run lunatask-mcp
+```
+
+### Configuration Methods
+
+The server supports three configuration methods with the following precedence (highest to lowest):
+
+1. **Command-line arguments** (highest priority)
+2. **Configuration file** (TOML format)
+3. **Default values** (lowest priority)
+
+### Command-Line Usage
+
+```bash
+# Basic usage with default config file (./config.toml)
+uv run lunatask-mcp
+
+# Specify a custom config file
+uv run lunatask-mcp --config-file /path/to/your/config.toml
+
+# Override specific settings
+uv run lunatask-mcp --log-level DEBUG --port 9000
+
+# Get help on available options
+uv run lunatask-mcp --help
+```
+
+### Configuration File Format
+
+Create a `config.toml` file with your settings:
+
+```toml
+# Required: Your LunaTask API bearer token
+lunatask_bearer_token = "your_lunatask_bearer_token_here"
+
+# Optional: API base URL (default: https://api.lunatask.app/v1/)
+lunatask_base_url = "https://api.lunatask.app/v1/"
+
+# Optional: Port for future HTTP transport (default: 8080, range: 1-65535)
+# Note: Currently unused as server only supports stdio transport
+port = 8080
+
+# Optional: Logging level (default: INFO)
+# Valid values: DEBUG, INFO, WARNING, ERROR, CRITICAL
+log_level = "INFO"
+```
+
+### Configuration Discovery
+
+- If `--config-file` is not specified, the server looks for `./config.toml`
+- Missing configuration files are only an error if explicitly specified
+- Default values are used when no configuration file exists
+
+### Configuration Validation
+
+The server validates all configuration on startup and fails fast with clear error messages:
+
+- **Invalid TOML syntax**: Clear parsing error with file location
+- **Unknown configuration keys**: Rejected with list of unknown keys
+- **Invalid values**: Port must be 1-65535, URL must be HTTPS, log level must be valid
+- **Missing bearer token**: Required field, server will not start without it
+
+### Security Features
+
+- **Bearer tokens are never logged**: Automatically redacted in all log output and error messages
+- **Effective configuration logging**: Server logs the final configuration with secrets redacted
+- **Unknown keys rejection**: Prevents typos and ensures clean configuration
+- **Input validation**: All configuration values are validated before server startup
+
+### Error Handling
+
+Configuration errors result in:
+- Clear error messages to stderr
+- Non-zero exit codes (exit code 1 for all configuration failures)
+- No server startup on configuration validation failures
+
+### Example Configurations
+
+**Minimal setup:**
+```toml
+lunatask_bearer_token = "your_token_here"
+```
+
+**Development setup with debug logging:**
+```toml
+lunatask_bearer_token = "your_token_here"
+log_level = "DEBUG"
+```
+
+**Custom API endpoint (if needed):**
+```toml
+lunatask_bearer_token = "your_token_here"
+lunatask_base_url = "https://custom.lunatask.endpoint.com/v1/"
+log_level = "WARNING"
+```
+
 ## Client Testing
 
 ### Running Client Integration Tests
@@ -63,6 +177,7 @@ from fastmcp.client.transports import StdioTransport
 
 async def test_server():
     # Create stdio transport to launch the server
+    # Note: Ensure you have a config.toml file with your bearer token
     transport = StdioTransport(command="uv", args=["run", "python", "-m", "lunatask_mcp.main"])
     client = Client(transport)
     
@@ -88,7 +203,7 @@ Here's how to connect to the LunaTask MCP server from another application:
 from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
 
-# Connect to the server
+# Connect to the server (ensure config.toml exists with bearer token)
 transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
 client = Client(transport)
 

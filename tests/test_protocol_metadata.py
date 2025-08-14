@@ -9,11 +9,12 @@ from typing import TYPE_CHECKING
 
 import pytest
 from fastmcp import Client
+from mcp.types import TextContent
 
 from lunatask_mcp.main import CoreServer
 
 if TYPE_CHECKING:
-    from mcp.types import TextContent
+    pass
 
 
 class TestProtocolMetadata:
@@ -103,12 +104,10 @@ class TestProtocolMetadata:
             assert len(response.content) > 0, "Response should have content"
             # Check that first content item is a TextContent with "pong"
             first_content = response.content[0]
-            assert hasattr(first_content, "text"), (
-                f"First content should have text attribute: {type(first_content)}"
+            assert isinstance(first_content, TextContent), (
+                f"First content should be TextContent: {type(first_content)}"
             )
-            # Type narrowing: we know it has text attribute, so it's TextContent
-            text_content: TextContent = first_content  # type: ignore[assignment]
-            assert text_content.text == "pong", f"Expected 'pong', got '{text_content.text}'"
+            assert first_content.text == "pong", f"Expected 'pong', got '{first_content.text}'"
 
 
 if __name__ == "__main__":

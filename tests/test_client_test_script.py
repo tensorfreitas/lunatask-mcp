@@ -1,5 +1,6 @@
 """Test suite for client test script functionality."""
 
+from typing import Any, cast
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -13,7 +14,7 @@ class TestClientTestScript:
     def test_stdio_integration_module_exists(self) -> None:
         """Test that the stdio integration test module exists and is importable."""
         try:
-            import tests.test_stdio_client_integration  # noqa: F401,PLC0415  # type: ignore[reportUnusedImport]
+            import tests.test_stdio_client_integration  # noqa: F401,PLC0415  # pyright: ignore[reportUnusedImport]
         except ImportError:
             pytest.fail("tests.test_stdio_client_integration module should be importable")
 
@@ -39,15 +40,15 @@ class TestClientTestScript:
     async def test_ping_tool_invocation_mock(self) -> None:
         """Test ping tool invocation with mocked client."""
         # Mock the client and its methods
-        mock_client = AsyncMock(spec=Client)
+        mock_client: AsyncMock = AsyncMock(spec=Client)
 
         # Mock context manager behavior
-        mock_context = AsyncMock()
+        mock_context: AsyncMock = AsyncMock()
         mock_context.ping.return_value = True
         mock_context.call_tool.return_value = Mock(text="pong")
 
         # Create a proper mock tool object
-        mock_tool = Mock()
+        mock_tool: Mock = Mock()
         mock_tool.name = "ping"
         mock_tool.description = "Ping health-check tool"
         mock_context.list_tools.return_value = [mock_tool]
@@ -55,16 +56,19 @@ class TestClientTestScript:
         mock_client.__aenter__.return_value = mock_context
 
         # Simulate the workflow
-        async with mock_client as client:  # type: ignore[reportUnknownVariableType]
+        async with cast(Any, mock_client) as client:
+            # Use client directly since it's already cast through context manager
+            client_any = client
+
             # Test capabilities check
-            tools = await client.list_tools()  # type: ignore[reportUnknownMemberType,reportUnknownVariableType]
-            assert len(tools) == 1  # type: ignore[reportUnknownArgumentType]
-            assert tools[0].name == "ping"  # type: ignore[reportUnknownMemberType]
+            tools: list[Any] = await client_any.list_tools()
+            assert len(tools) == 1
+            assert tools[0].name == "ping"
 
             # Test ping functionality
-            ping_result = await client.ping()  # type: ignore[reportUnknownMemberType,reportUnknownVariableType]
+            ping_result: bool = await client_any.ping()
             assert ping_result is True
 
             # Test tool call
-            result = await client.call_tool("ping", {})  # type: ignore[reportUnknownMemberType,reportUnknownVariableType]
-            assert result.text == "pong"  # type: ignore[reportUnknownMemberType]
+            result: Mock = await client_any.call_tool("ping", {})
+            assert result.text == "pong"

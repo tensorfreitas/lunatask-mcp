@@ -9,7 +9,6 @@ import logging
 import signal
 import sys
 import threading
-import time
 from typing import Never
 from unittest.mock import MagicMock, patch
 
@@ -121,15 +120,27 @@ class TestShutdownHandling:
         """Test that exceptions in concurrent operations don't corrupt stdout."""
 
         # Simulate concurrent operations that might fail
-        def failing_operation() -> Never:
-            raise RuntimeError
+        exception_captured = threading.Event()
+
+        def failing_operation() -> None:
+            def _do_fail() -> None:
+                raise RuntimeError
+
+            try:
+                _do_fail()
+            except RuntimeError:
+                # Capture the exception to prevent it from being unhandled
+                exception_captured.set()
 
         # Mock CoreServer.run to simulate concurrent operations
         def mock_run_with_concurrent_exception(_self: object) -> Never:
             # Start a background task that will fail
             thread = threading.Thread(target=failing_operation)
             thread.start()
-            time.sleep(0.1)  # Allow thread to fail
+            # Wait for the thread to handle its exception
+            thread.join(timeout=1.0)
+            # Verify the exception was captured
+            assert exception_captured.is_set()
             raise KeyboardInterrupt  # Then simulate shutdown
 
         with (

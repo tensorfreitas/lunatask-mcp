@@ -14,6 +14,7 @@ from fastmcp.client.client import CallToolResult
 from fastmcp.exceptions import ToolError
 from mcp.types import TextContent
 
+from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.main import CoreServer
 
 if TYPE_CHECKING:
@@ -24,14 +25,14 @@ class TestJSONRPCErrorHandling:
     """Test class for JSON-RPC error handling and compliance."""
 
     @pytest.mark.asyncio
-    async def test_invalid_json_request(self) -> None:
+    async def test_invalid_json_request(self, default_config: ServerConfig) -> None:
         """Test server response to invalid JSON requests.
 
         Verifies AC: 17 - All server responses comply with JSON-RPC 2.0 specification
         including proper id correlation and error format.
         """
         # Create CoreServer for testing
-        core_server = CoreServer()
+        core_server = CoreServer(default_config)
 
         # Use in-memory transport to test JSON-RPC error handling
         async with Client(core_server.app) as client:
@@ -48,13 +49,13 @@ class TestJSONRPCErrorHandling:
             # FastMCP handles JSON parsing internally, so we test through valid client
 
     @pytest.mark.asyncio
-    async def test_invalid_method_request(self) -> None:
+    async def test_invalid_method_request(self, default_config: ServerConfig) -> None:
         """Test server response to requests with invalid methods.
 
         Verifies AC: 17 - Proper JSON-RPC error responses for invalid methods.
         """
         # Create CoreServer for testing
-        core_server = CoreServer()
+        core_server = CoreServer(default_config)
 
         async with Client(core_server.app) as client:
             # Test calling non-existent method - should raise appropriate error
@@ -63,13 +64,13 @@ class TestJSONRPCErrorHandling:
                 await client.call_tool("nonexistent_tool", {})
 
     @pytest.mark.asyncio
-    async def test_missing_required_parameters(self) -> None:
+    async def test_missing_required_parameters(self, default_config: ServerConfig) -> None:
         """Test server response to requests missing required parameters.
 
         Verifies AC: 17 - Proper error format for malformed requests.
         """
         # Create CoreServer for testing
-        core_server = CoreServer()
+        core_server = CoreServer(default_config)
 
         async with Client(core_server.app) as client:
             # Test that normal ping works
@@ -86,13 +87,13 @@ class TestProtocolVersionNegotiation:
     """Test class for protocol version negotiation failures."""
 
     @pytest.mark.asyncio
-    async def test_successful_version_negotiation(self) -> None:
+    async def test_successful_version_negotiation(self, default_config: ServerConfig) -> None:
         """Test successful protocol version negotiation with 2025-06-18.
 
         Verifies AC: 14 - Protocol version negotiation targets MCP version 2025-06-18.
         """
         # Create CoreServer for testing
-        core_server = CoreServer()
+        core_server = CoreServer(default_config)
 
         async with Client(core_server.app) as client:
             # Successful connection implies version negotiation worked
@@ -105,13 +106,13 @@ class TestProtocolVersionNegotiation:
             assert first_content.text == "pong"
 
     @pytest.mark.asyncio
-    async def test_version_negotiation_compatibility(self) -> None:
+    async def test_version_negotiation_compatibility(self, default_config: ServerConfig) -> None:
         """Test protocol version negotiation with compatible versions.
 
         Verifies AC: 14 - Server handles version negotiation gracefully.
         """
         # Create CoreServer for testing
-        core_server = CoreServer()
+        core_server = CoreServer(default_config)
 
         # FastMCP handles version negotiation automatically
         # Test that client can connect and perform operations
@@ -129,14 +130,14 @@ class TestToolInvocationErrors:
     """Test class for tool invocation error handling."""
 
     @pytest.mark.asyncio
-    async def test_nonexistent_tool_invocation(self) -> None:
+    async def test_nonexistent_tool_invocation(self, default_config: ServerConfig) -> None:
         """Test invocation of non-existent tools.
 
         Verifies AC: 18 - Client test verifies server capabilities before invoking tools
         and handles capability mismatches gracefully.
         """
         # Create CoreServer for testing
-        core_server = CoreServer()
+        core_server = CoreServer(default_config)
 
         async with Client(core_server.app) as client:
             # First verify available tools
@@ -151,13 +152,13 @@ class TestToolInvocationErrors:
                 await client.call_tool("nonexistent_tool", {})
 
     @pytest.mark.asyncio
-    async def test_tool_with_invalid_parameters(self) -> None:
+    async def test_tool_with_invalid_parameters(self, default_config: ServerConfig) -> None:
         """Test tool invocation with invalid parameters.
 
         Verifies AC: 17 - Proper error handling for invalid tool parameters.
         """
         # Create CoreServer for testing
-        core_server = CoreServer()
+        core_server = CoreServer(default_config)
 
         async with Client(core_server.app) as client:
             # Test ping tool with valid parameters (empty dict)
@@ -173,13 +174,16 @@ class TestToolInvocationErrors:
                 await client.call_tool("ping", {"invalid": "parameter"})
 
     @pytest.mark.asyncio
-    async def test_capability_verification_before_invocation(self) -> None:
+    async def test_capability_verification_before_invocation(
+        self,
+        default_config: ServerConfig,
+    ) -> None:
         """Test that capabilities are verified before tool invocation.
 
         Verifies AC: 18 - Client verifies server capabilities before invoking tools.
         """
         # Create CoreServer for testing
-        core_server = CoreServer()
+        core_server = CoreServer(default_config)
 
         async with Client(core_server.app) as client:
             # Step 1: Verify capabilities first
@@ -204,14 +208,14 @@ class TestRequestCancellation:
     """Test class for request cancellation handling."""
 
     @pytest.mark.asyncio
-    async def test_tool_cancellation_handling(self) -> None:
+    async def test_tool_cancellation_handling(self, default_config: ServerConfig) -> None:
         """Test that tools handle cancellation properly.
 
         Verifies AC: 16 - Server properly handles request cancellation and
         propagates context cancellation to tool implementations.
         """
         # Create CoreServer for testing
-        core_server = CoreServer()
+        core_server = CoreServer(default_config)
 
         async with Client(core_server.app) as client:
             # Test normal operation first
@@ -238,13 +242,13 @@ class TestRequestCancellation:
                 # If the task completes before cancellation, that's also valid behavior
 
     @pytest.mark.asyncio
-    async def test_context_cancellation_propagation(self) -> None:
+    async def test_context_cancellation_propagation(self, default_config: ServerConfig) -> None:
         """Test that context cancellation propagates to tool implementations.
 
         Verifies AC: 16 - Context cancellation propagation to tools.
         """
         # Create CoreServer for testing
-        core_server = CoreServer()
+        core_server = CoreServer(default_config)
 
         async with Client(core_server.app) as client:
             # Test with timeout to simulate cancellation
@@ -264,14 +268,14 @@ class TestConcurrentRequests:
     """Test class for concurrent request handling."""
 
     @pytest.mark.asyncio
-    async def test_concurrent_tool_invocations(self) -> None:
+    async def test_concurrent_tool_invocations(self, default_config: ServerConfig) -> None:
         """Test concurrent request handling and response correlation.
 
         Verifies AC: 17 - All server responses comply with JSON-RPC 2.0 specification
         including proper id correlation.
         """
         # Create CoreServer for testing
-        core_server = CoreServer()
+        core_server = CoreServer(default_config)
 
         async with Client(core_server.app) as client:
             # Create multiple concurrent ping requests
@@ -293,13 +297,13 @@ class TestConcurrentRequests:
                 assert first_content.text == "pong"
 
     @pytest.mark.asyncio
-    async def test_response_correlation(self) -> None:
+    async def test_response_correlation(self, default_config: ServerConfig) -> None:
         """Test that responses are properly correlated with requests.
 
         Verifies AC: 17 - Proper id correlation in JSON-RPC responses.
         """
         # Create CoreServer for testing
-        core_server = CoreServer()
+        core_server = CoreServer(default_config)
 
         async with Client(core_server.app) as client:
             # Send multiple requests with different patterns
@@ -316,13 +320,13 @@ class TestConcurrentRequests:
                 assert first_content.text == "pong"
 
     @pytest.mark.asyncio
-    async def test_mixed_concurrent_operations(self) -> None:
+    async def test_mixed_concurrent_operations(self, default_config: ServerConfig) -> None:
         """Test mixing different types of concurrent operations.
 
         Verifies server handles multiple operation types concurrently.
         """
         # Create CoreServer for testing
-        core_server = CoreServer()
+        core_server = CoreServer(default_config)
 
         async with Client(core_server.app) as client:
             # Mix tool calls and capability queries
@@ -344,7 +348,3 @@ class TestConcurrentRequests:
             assert isinstance(third_result_content, TextContent), "Content should be TextContent"
             assert third_result_content.text == "pong"  # Second ping tool call
             # results[3] is ping() which returns None on success
-
-
-if __name__ == "__main__":
-    asyncio.run(TestJSONRPCErrorHandling().test_invalid_json_request())

@@ -4,13 +4,13 @@ This module tests that the server correctly exposes metadata (name and version)
 and declares capabilities including the ping tool during MCP initialize.
 """
 
-import asyncio
 from typing import TYPE_CHECKING
 
 import pytest
 from fastmcp import Client
 from mcp.types import TextContent
 
+from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.main import CoreServer
 
 if TYPE_CHECKING:
@@ -21,13 +21,13 @@ class TestProtocolMetadata:
     """Test class for verifying MCP protocol metadata and capabilities."""
 
     @pytest.mark.asyncio
-    async def test_server_metadata_exposed(self) -> None:
+    async def test_server_metadata_exposed(self, default_config: ServerConfig) -> None:
         """Test that server metadata (name and version) is correctly exposed during initialize.
 
         Verifies AC: 8 - The server exposes MCP metadata (name, version) during initialize.
         """
         # Create CoreServer and get its FastMCP instance for in-memory testing
-        core_server = CoreServer()
+        core_server = CoreServer(default_config)
 
         # Use in-memory transport by passing FastMCP instance directly
         async with Client(core_server.app) as client:
@@ -43,13 +43,16 @@ class TestProtocolMetadata:
             # The fact that we can connect and list tools confirms metadata is working
 
     @pytest.mark.asyncio
-    async def test_server_capabilities_include_ping_tool(self) -> None:
+    async def test_server_capabilities_include_ping_tool(
+        self,
+        default_config: ServerConfig,
+    ) -> None:
         """Test that declared capabilities include the ping tool.
 
         Verifies AC: 8 - Server declares capabilities including the ping tool during initialize.
         """
         # Create CoreServer and get its FastMCP instance for in-memory testing
-        core_server = CoreServer()
+        core_server = CoreServer(default_config)
 
         # Use in-memory transport by passing FastMCP instance directly
         async with Client(core_server.app) as client:
@@ -60,13 +63,13 @@ class TestProtocolMetadata:
             assert "ping" in tool_names, f"Ping tool should be declared, found tools: {tool_names}"
 
     @pytest.mark.asyncio
-    async def test_protocol_version_negotiation(self) -> None:
+    async def test_protocol_version_negotiation(self, default_config: ServerConfig) -> None:
         """Test that protocol version negotiation targets MCP version 2025-06-18.
 
         Verifies AC: 14 - Protocol version negotiation targets MCP version 2025-06-18.
         """
         # Create CoreServer and get its FastMCP instance for in-memory testing
-        core_server = CoreServer()
+        core_server = CoreServer(default_config)
 
         # Use in-memory transport by passing FastMCP instance directly
         async with Client(core_server.app) as client:
@@ -77,13 +80,13 @@ class TestProtocolMetadata:
             # Successful connection confirms 2025-06-18 compatibility
 
     @pytest.mark.asyncio
-    async def test_complete_initialize_handshake(self) -> None:
+    async def test_complete_initialize_handshake(self, default_config: ServerConfig) -> None:
         """Test complete initialize handshake with metadata and capabilities verification.
 
         Comprehensive test combining all Task 8 requirements.
         """
         # Create CoreServer and get its FastMCP instance for in-memory testing
-        core_server = CoreServer()
+        core_server = CoreServer(default_config)
 
         # Use in-memory transport by passing FastMCP instance directly
         async with Client(core_server.app) as client:
@@ -108,7 +111,3 @@ class TestProtocolMetadata:
                 f"First content should be TextContent: {type(first_content)}"
             )
             assert first_content.text == "pong", f"Expected 'pong', got '{first_content.text}'"
-
-
-if __name__ == "__main__":
-    asyncio.run(TestProtocolMetadata().test_complete_initialize_handshake())

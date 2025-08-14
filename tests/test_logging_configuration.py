@@ -13,13 +13,18 @@ from io import StringIO
 from pytest_mock import MockerFixture
 
 import lunatask_mcp.main
+from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.main import CoreServer
 
 
 class TestLoggingConfiguration:
     """Test cases for logging configuration."""
 
-    def test_logging_configured_to_stderr(self, mocker: MockerFixture) -> None:
+    def test_logging_configured_to_stderr(
+        self,
+        default_config: ServerConfig,
+        mocker: MockerFixture,
+    ) -> None:
         """Test that logging is configured to output to stderr."""
         # Clear any existing handlers to ensure clean test
         root_logger = logging.getLogger()
@@ -32,7 +37,7 @@ class TestLoggingConfiguration:
 
             mocker.patch.object(sys, "stderr", captured_stderr)
             # Create CoreServer instance which should configure logging
-            CoreServer()
+            CoreServer(default_config)
 
             # Get a logger and test it outputs to stderr
             logger = logging.getLogger("test_logger")
@@ -46,7 +51,11 @@ class TestLoggingConfiguration:
             root_logger.handlers.clear()
             root_logger.handlers.extend(original_handlers)
 
-    def test_logging_format_includes_timestamp_and_level(self, mocker: MockerFixture) -> None:
+    def test_logging_format_includes_timestamp_and_level(
+        self,
+        default_config: ServerConfig,
+        mocker: MockerFixture,
+    ) -> None:
         """Test that logging format includes timestamp and level."""
         # Clear any existing handlers to ensure clean test
         root_logger = logging.getLogger()
@@ -58,7 +67,7 @@ class TestLoggingConfiguration:
 
             mocker.patch.object(sys, "stderr", captured_stderr)
             # Create CoreServer instance
-            CoreServer()
+            CoreServer(default_config)
 
             # Log a test message
             logger = logging.getLogger("test_format")
@@ -86,7 +95,11 @@ class TestLoggingConfiguration:
         assert "print(" not in source
         assert "print (" not in source
 
-    def test_logging_level_set_to_info(self, mocker: MockerFixture) -> None:
+    def test_logging_level_set_to_info(
+        self,
+        default_config: ServerConfig,
+        mocker: MockerFixture,
+    ) -> None:
         """Test that logging level is set to INFO."""
         # Clear any existing handlers to ensure clean test
         root_logger = logging.getLogger()
@@ -98,7 +111,7 @@ class TestLoggingConfiguration:
 
             mocker.patch.object(sys, "stderr", captured_stderr)
             # Create CoreServer instance
-            CoreServer()
+            CoreServer(default_config)
 
             # Test that INFO level messages are captured
             logger = logging.getLogger("test_level")
@@ -119,7 +132,7 @@ class TestLoggingConfiguration:
             root_logger.handlers.clear()
             root_logger.handlers.extend(original_handlers)
 
-    def test_context_scoped_logging_uses_stderr(self) -> None:
+    def test_context_scoped_logging_uses_stderr(self, default_config: ServerConfig) -> None:
         """Test that context-scoped logging is configured to use stderr."""
         # Clear any existing handlers to ensure clean test
         root_logger = logging.getLogger()
@@ -128,7 +141,7 @@ class TestLoggingConfiguration:
 
         try:
             # Create CoreServer instance
-            CoreServer()
+            CoreServer(default_config)
 
             # Verify that when we configure logging, it affects the root logger
             # which will be used by FastMCP's context logging
@@ -150,7 +163,11 @@ class TestLoggingConfiguration:
             root_logger.handlers.clear()
             root_logger.handlers.extend(original_handlers)
 
-    def test_logging_preserves_stdout_purity(self, mocker: MockerFixture) -> None:
+    def test_logging_preserves_stdout_purity(
+        self,
+        default_config: ServerConfig,
+        mocker: MockerFixture,
+    ) -> None:
         """Test that logging configuration preserves stdout purity."""
         # Clear any existing handlers to ensure clean test
         root_logger = logging.getLogger()
@@ -164,7 +181,7 @@ class TestLoggingConfiguration:
             mocker.patch.object(sys, "stdout", captured_stdout)
             mocker.patch.object(sys, "stderr", captured_stderr)
             # Create CoreServer instance
-            CoreServer()
+            CoreServer(default_config)
 
             # Log various messages
             logger = logging.getLogger("stdout_test")

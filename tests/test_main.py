@@ -3,6 +3,7 @@
 import pytest
 from pytest_mock import MockerFixture
 
+from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.main import CoreServer, main
 
 
@@ -19,9 +20,9 @@ def test_main_function_exists() -> None:
 
 
 @pytest.mark.asyncio
-async def test_core_server_initialization() -> None:
+async def test_core_server_initialization(default_config: ServerConfig) -> None:
     """Test CoreServer can be instantiated."""
-    server = CoreServer()
+    server = CoreServer(default_config)
     assert server is not None
 
 

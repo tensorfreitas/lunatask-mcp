@@ -25,8 +25,13 @@ class CoreServer:
     and server startup with stdio transport according to the MCP specification.
     """
 
-    def __init__(self) -> None:
-        """Initialize the CoreServer instance."""
+    def __init__(self, config: ServerConfig) -> None:
+        """Initialize the CoreServer instance.
+
+        Args:
+            config: Server configuration instance containing all settings.
+        """
+        self.config = config
         self._setup_logging()
         self.app = self._create_fastmcp_instance()
         self._register_tools()
@@ -39,8 +44,9 @@ class CoreServer:
         This ensures that stdout remains clean for MCP JSON-RPC protocol communication
         while all logging output goes to stderr with proper formatting.
         """
+        log_level = getattr(logging, self.config.log_level)
         logging.basicConfig(
-            level=logging.INFO,
+            level=log_level,
             format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
             stream=sys.stderr,
         )
@@ -79,6 +85,25 @@ class CoreServer:
         # Set up signal handlers
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
+
+    def get_lunatask_config(self) -> dict[str, str]:
+        """Get LunaTask API configuration for client initialization.
+
+        Returns:
+            dict[str, str]: Dictionary containing bearer_token and base_url for LunaTask API client.
+        """
+        return {
+            "bearer_token": self.config.lunatask_bearer_token,
+            "base_url": str(self.config.lunatask_base_url),
+        }
+
+    def get_config(self) -> ServerConfig:
+        """Get the server configuration instance for dependency injection.
+
+        Returns:
+            ServerConfig: The server configuration instance.
+        """
+        return self.config
 
     async def ping_tool(self, ctx: Context) -> str:
         """Ping health-check tool that returns a static 'pong' response.
@@ -251,9 +276,9 @@ def main() -> None:
         args = parse_cli_args()
 
         # Load and validate configuration
-        _config = load_configuration(args)
+        config = load_configuration(args)
 
-        server = CoreServer()
+        server = CoreServer(config)
         server.run()
     except KeyboardInterrupt:
         logger.info("Server shutdown requested via KeyboardInterrupt")

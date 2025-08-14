@@ -4,6 +4,7 @@ import pytest
 from fastmcp import Context
 from pytest_mock import MockerFixture
 
+from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.main import CoreServer
 
 
@@ -11,9 +12,9 @@ class TestPingTool:
     """Test cases for the ping health-check tool."""
 
     @pytest.mark.asyncio
-    async def test_core_server_has_ping_tool_registered(self) -> None:
+    async def test_core_server_has_ping_tool_registered(self, default_config: ServerConfig) -> None:
         """Test that the ping tool is registered with the FastMCP instance."""
-        server = CoreServer()
+        server = CoreServer(default_config)
 
         # Check that the ping tool is registered in the FastMCP app
         tools = await server.app.get_tools()
@@ -21,9 +22,13 @@ class TestPingTool:
         assert "ping" in tool_names
 
     @pytest.mark.asyncio
-    async def test_ping_tool_returns_pong(self, mocker: MockerFixture) -> None:
+    async def test_ping_tool_returns_pong(
+        self,
+        default_config: ServerConfig,
+        mocker: MockerFixture,
+    ) -> None:
         """Test that the ping tool returns 'pong' response."""
-        server = CoreServer()
+        server = CoreServer(default_config)
 
         # Create a mock context
         mock_context = mocker.Mock(spec=Context)
@@ -36,9 +41,13 @@ class TestPingTool:
         assert result == "pong"
 
     @pytest.mark.asyncio
-    async def test_ping_tool_uses_context_logger(self, mocker: MockerFixture) -> None:
+    async def test_ping_tool_uses_context_logger(
+        self,
+        default_config: ServerConfig,
+        mocker: MockerFixture,
+    ) -> None:
         """Test that the ping tool uses the execution context's scoped logger."""
-        server = CoreServer()
+        server = CoreServer(default_config)
 
         # Create a mock context with logger
         mock_context = mocker.Mock(spec=Context)
@@ -51,9 +60,9 @@ class TestPingTool:
         mock_context.info.assert_called_once_with("Ping tool called, returning pong")
 
     @pytest.mark.asyncio
-    async def test_ping_tool_metadata(self) -> None:
+    async def test_ping_tool_metadata(self, default_config: ServerConfig) -> None:
         """Test that the ping tool has correct metadata."""
-        server = CoreServer()
+        server = CoreServer(default_config)
 
         # Get tool metadata
         tools = await server.app.get_tools()

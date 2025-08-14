@@ -16,6 +16,7 @@ import pytest
 from _pytest.capture import CaptureFixture
 from _pytest.logging import LogCaptureFixture
 
+from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.main import CoreServer, main
 
 
@@ -67,11 +68,11 @@ class TestShutdownHandling:
         error_records = [record for record in caplog.records if record.levelname == "ERROR"]
         assert len(error_records) > 0
 
-    def test_signal_handling_sigterm(self) -> None:
+    def test_signal_handling_sigterm(self, default_config: ServerConfig) -> None:
         """Test that SIGTERM signal is handled gracefully."""
         # This test verifies that the server sets up SIGTERM signal handlers
         with patch("signal.signal") as mock_signal:
-            server = CoreServer()
+            server = CoreServer(default_config)
             # Verify that signal handlers were set up
             assert server is not None
             # Should call signal.signal twice: once for SIGINT, once for SIGTERM
@@ -153,11 +154,11 @@ class TestShutdownHandling:
         captured = capfd.readouterr()
         assert captured.out == ""
 
-    def test_logging_configuration_during_shutdown(self) -> None:
+    def test_logging_configuration_during_shutdown(self, default_config: ServerConfig) -> None:
         """Test that logging configuration is set up correctly."""
         # Test that basicConfig is called with correct parameters
         with patch("logging.basicConfig") as mock_basic_config:
-            CoreServer()
+            CoreServer(default_config)
 
             # Verify basicConfig was called with stderr stream
             mock_basic_config.assert_called_once()
@@ -174,9 +175,9 @@ class TestAsyncShutdownHandling:
     """Test cases for async shutdown handling scenarios."""
 
     @pytest.mark.asyncio
-    async def test_async_cancellation_propagation(self) -> None:
+    async def test_async_cancellation_propagation(self, default_config: ServerConfig) -> None:
         """Test that asyncio cancellation is properly propagated to tool implementations."""
-        server = CoreServer()
+        server = CoreServer(default_config)
 
         # Create a mock context
         mock_ctx = MagicMock()
@@ -193,9 +194,9 @@ class TestAsyncShutdownHandling:
             await task
 
     @pytest.mark.asyncio
-    async def test_context_cancellation_handling(self) -> None:
+    async def test_context_cancellation_handling(self, default_config: ServerConfig) -> None:
         """Test that context cancellation is handled properly in tools."""
-        server = CoreServer()
+        server = CoreServer(default_config)
 
         # Create a cancelled context
         mock_ctx = MagicMock()

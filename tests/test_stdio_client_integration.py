@@ -8,6 +8,9 @@ the acceptance criteria for client-server communication over stdio.
 import asyncio
 import logging
 import sys
+import tempfile
+from collections.abc import Generator
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -16,11 +19,27 @@ from fastmcp.client.transports import StdioTransport
 from fastmcp.exceptions import ToolError
 
 
+@pytest.fixture
+def temp_config_file() -> Generator[str, None, None]:
+    """Create a temporary config file for integration tests."""
+    config_content = """
+lunatask_bearer_token = "test_integration_token"
+port = 8080
+log_level = "INFO"
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        f.write(config_content)
+        temp_path = f.name
+
+    yield temp_path
+    Path(temp_path).unlink()
+
+
 class TestStdioClientIntegration:
     """Integration test cases for stdio client functionality."""
 
     @pytest.mark.asyncio
-    async def test_ping_functionality(self) -> None:
+    async def test_ping_functionality(self, temp_config_file: str) -> None:
         """Test the ping tool functionality with the MCP server (AC: 5, 10).
 
         This test verifies:
@@ -31,8 +50,11 @@ class TestStdioClientIntegration:
         """
         logger = logging.getLogger(__name__)
 
-        # Create stdio transport to launch the server
-        transport = StdioTransport(command="python", args=["-m", "lunatask_mcp.main"])
+        # Create stdio transport to launch the server with config file
+        transport = StdioTransport(
+            command="python",
+            args=["-m", "lunatask_mcp.main", "--config-file", temp_config_file],
+        )
         client = Client(transport)
 
         async with client:
@@ -86,11 +108,14 @@ class TestStdioClientIntegration:
             logger.info("✓ Ping tool responded with: %s", response_text)
 
     @pytest.mark.asyncio
-    async def test_protocol_version_handling(self) -> None:
+    async def test_protocol_version_handling(self, temp_config_file: str) -> None:
         """Test client behavior with protocol version negotiation (AC: 14)."""
         logger = logging.getLogger(__name__)
 
-        transport = StdioTransport(command="python", args=["-m", "lunatask_mcp.main"])
+        transport = StdioTransport(
+            command="python",
+            args=["-m", "lunatask_mcp.main", "--config-file", temp_config_file],
+        )
         client = Client(transport)
 
         async with client:
@@ -110,11 +135,14 @@ class TestStdioClientIntegration:
             logger.info("✓ Protocol version negotiation successful")
 
     @pytest.mark.asyncio
-    async def test_graceful_capability_handling(self) -> None:
+    async def test_graceful_capability_handling(self, temp_config_file: str) -> None:
         """Test that the client handles capability mismatches gracefully (AC: 18)."""
         logger = logging.getLogger(__name__)
 
-        transport = StdioTransport(command="python", args=["-m", "lunatask_mcp.main"])
+        transport = StdioTransport(
+            command="python",
+            args=["-m", "lunatask_mcp.main", "--config-file", temp_config_file],
+        )
         client = Client(transport)
 
         async with client:
@@ -160,22 +188,32 @@ async def run_integration_tests() -> None:
 
     logger.info("Starting LunaTask MCP stdio client integration tests...")
 
+    # Create a temporary config file for standalone testing
+    config_content = """
+lunatask_bearer_token = "test_integration_token"
+port = 8080
+log_level = "INFO"
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        f.write(config_content)
+        temp_config_path = f.name
+
     test_instance = TestStdioClientIntegration()
 
     try:
         # Run ping functionality test
         logger.info("Running ping functionality test...")
-        await test_instance.test_ping_functionality()
+        await test_instance.test_ping_functionality(temp_config_path)
         logger.info("✓ Ping functionality test passed")
 
         # Run protocol version test
         logger.info("Running protocol version test...")
-        await test_instance.test_protocol_version_handling()
+        await test_instance.test_protocol_version_handling(temp_config_path)
         logger.info("✓ Protocol version test passed")
 
         # Run capability handling test
         logger.info("Running capability handling test...")
-        await test_instance.test_graceful_capability_handling()
+        await test_instance.test_graceful_capability_handling(temp_config_path)
         logger.info("✓ Capability handling test passed")
 
         logger.info("🎉 All integration tests passed!")
@@ -183,6 +221,9 @@ async def run_integration_tests() -> None:
     except Exception:
         logger.exception("❌ Integration tests failed!")
         sys.exit(1)
+    finally:
+        # Clean up temp config file
+        Path(temp_config_path).unlink()
 
 
 if __name__ == "__main__":

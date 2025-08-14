@@ -4,6 +4,7 @@ These tests verify that the server handles cancellation, shutdown, and unhandled
 exceptions properly without corrupting the stdout MCP protocol channel.
 """
 
+import argparse
 import asyncio
 import logging
 import signal
@@ -29,8 +30,16 @@ class TestShutdownHandling:
         caplog.set_level(logging.INFO, logger="lunatask_mcp.main")
 
         # Mock the CoreServer.run method to raise KeyboardInterrupt
+        # Also mock load_configuration to provide valid config
+        valid_config = ServerConfig(lunatask_bearer_token="test_token")  # noqa: S106 - test token
+
         with (
             patch.object(CoreServer, "run", side_effect=KeyboardInterrupt),
+            patch("lunatask_mcp.main.load_configuration", return_value=valid_config),
+            patch(
+                "lunatask_mcp.main.parse_cli_args",
+                return_value=argparse.Namespace(config_file=None, port=None, log_level=None),
+            ),
             patch("sys.exit") as mock_exit,
         ):
             main()
@@ -48,10 +57,16 @@ class TestShutdownHandling:
         caplog.set_level(logging.INFO, logger="lunatask_mcp.main")
 
         test_exception = RuntimeError("Test exception")
+        valid_config = ServerConfig(lunatask_bearer_token="test_token")  # noqa: S106 - test token
 
         # Mock the CoreServer.run method to raise an unhandled exception
         with (
             patch.object(CoreServer, "run", side_effect=test_exception),
+            patch("lunatask_mcp.main.load_configuration", return_value=valid_config),
+            patch(
+                "lunatask_mcp.main.parse_cli_args",
+                return_value=argparse.Namespace(config_file=None, port=None, log_level=None),
+            ),
             patch("sys.exit") as mock_exit,
         ):
             main()
@@ -89,8 +104,15 @@ class TestShutdownHandling:
         """Test that SIGINT signal is handled gracefully."""
         # This test verifies that the server can handle SIGINT signals
         # SIGINT is typically handled by Python as KeyboardInterrupt
+        valid_config = ServerConfig(lunatask_bearer_token="test_token")  # noqa: S106 - test token
+
         with (
             patch.object(CoreServer, "run", side_effect=KeyboardInterrupt),
+            patch("lunatask_mcp.main.load_configuration", return_value=valid_config),
+            patch(
+                "lunatask_mcp.main.parse_cli_args",
+                return_value=argparse.Namespace(config_file=None, port=None, log_level=None),
+            ),
             patch("sys.exit") as mock_exit,
         ):
             main()

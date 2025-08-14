@@ -2,6 +2,18 @@
 
 This module contains the CoreServer class which serves as the main application runner
 for the FastMCP server implementation.
+
+Exit Codes:
+    0: Normal successful termination
+    1: Configuration-related failures (TOML parse errors, validation failures,
+       missing required files, unknown configuration keys, or unhandled exceptions)
+
+Configuration failures that result in exit code 1:
+    - Invalid TOML syntax in configuration files
+    - Missing configuration file when explicitly specified with --config-file
+    - Unknown keys in TOML configuration files
+    - Configuration validation failures (invalid port, non-HTTPS URL, invalid log level)
+    - File I/O errors when reading configuration files
 """
 
 import argparse
@@ -75,7 +87,7 @@ class CoreServer:
         Handles SIGINT and SIGTERM to ensure clean shutdown without stdout corruption.
         """
 
-        def signal_handler(signum: int, _frame: object | None) -> None:
+        def signal_handler(signum: int, _: object | None) -> None:
             """Handle shutdown signals by setting shutdown flag."""
             logger = logging.getLogger(__name__)
             signal_name = "SIGINT" if signum == signal.SIGINT else f"Signal {signum}"

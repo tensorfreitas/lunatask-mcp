@@ -5,11 +5,10 @@ following TDD methodology and ensuring secure token handling.
 """
 # pyright: reportPrivateUsage=false
 
-from unittest.mock import AsyncMock, Mock, patch
-
 import httpx
 import pytest
 from pydantic import HttpUrl
+from pytest_mock import MockerFixture
 
 from lunatask_mcp.api.client import LunaTaskClient
 from lunatask_mcp.api.exceptions import (
@@ -202,7 +201,7 @@ class TestLunaTaskClientAuthenticatedRequests:
     """Test authenticated request methods."""
 
     @pytest.mark.asyncio
-    async def test_make_request_success(self) -> None:
+    async def test_make_request_success(self, mocker: MockerFixture) -> None:
         """Test successful authenticated request."""
         config = ServerConfig(
             lunatask_bearer_token=VALID_TOKEN,
@@ -211,23 +210,27 @@ class TestLunaTaskClientAuthenticatedRequests:
         client = LunaTaskClient(config)
 
         # Mock successful response
-        mock_response = Mock()
+        mock_response = mocker.Mock()
         mock_response.status_code = HTTP_OK
         mock_response.json.return_value = {"message": "pong"}
         mock_response.raise_for_status.return_value = None
 
-        with patch.object(client, "_get_http_client") as mock_get_client:
-            mock_http_client = AsyncMock()
-            mock_http_client.request.return_value = mock_response
-            mock_get_client.return_value = mock_http_client
+        mock_http_client = mocker.AsyncMock()
+        mock_http_client.request.return_value = mock_response
 
-            result = await client.make_request("GET", "ping")
+        mocker.patch.object(
+            client,
+            "_get_http_client",
+            return_value=mock_http_client,
+        )
 
-            assert result == {"message": "pong"}
-            mock_http_client.request.assert_called_once()
+        result = await client.make_request("GET", "ping")
+
+        assert result == {"message": "pong"}
+        mock_http_client.request.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_make_request_authentication_error(self) -> None:
+    async def test_make_request_authentication_error(self, mocker: MockerFixture) -> None:
         """Test handling of 401 authentication error."""
         config = ServerConfig(
             lunatask_bearer_token=INVALID_TOKEN,
@@ -236,27 +239,30 @@ class TestLunaTaskClientAuthenticatedRequests:
         client = LunaTaskClient(config)
 
         # Mock 401 response
-        mock_response = Mock()
+        mock_response = mocker.Mock()
         mock_response.status_code = HTTP_UNAUTHORIZED
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
             "401 Unauthorized",
-            request=Mock(),
+            request=mocker.Mock(),
             response=mock_response,
         )
 
-        with patch.object(client, "_get_http_client") as mock_get_client:
-            mock_http_client = AsyncMock()
-            mock_http_client.request.return_value = mock_response
-            mock_get_client.return_value = mock_http_client
+        mock_http_client = mocker.AsyncMock()
+        mock_http_client.request.return_value = mock_response
+        mocker.patch.object(
+            client,
+            "_get_http_client",
+            return_value=mock_http_client,
+        )
 
-            with pytest.raises(LunaTaskAuthenticationError) as exc_info:
-                await client.make_request("GET", "ping")
+        with pytest.raises(LunaTaskAuthenticationError) as exc_info:
+            await client.make_request("GET", "ping")
 
-            assert exc_info.value.status_code == HTTP_UNAUTHORIZED
-            assert "Authentication failed" in str(exc_info.value)
+        assert exc_info.value.status_code == HTTP_UNAUTHORIZED
+        assert "Authentication failed" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_make_request_not_found_error(self) -> None:
+    async def test_make_request_not_found_error(self, mocker: MockerFixture) -> None:
         """Test handling of 404 not found error."""
         config = ServerConfig(
             lunatask_bearer_token=VALID_TOKEN,
@@ -265,26 +271,29 @@ class TestLunaTaskClientAuthenticatedRequests:
         client = LunaTaskClient(config)
 
         # Mock 404 response
-        mock_response = Mock()
+        mock_response = mocker.Mock()
         mock_response.status_code = HTTP_NOT_FOUND
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
             "404 Not Found",
-            request=Mock(),
+            request=mocker.Mock(),
             response=mock_response,
         )
 
-        with patch.object(client, "_get_http_client") as mock_get_client:
-            mock_http_client = AsyncMock()
-            mock_http_client.request.return_value = mock_response
-            mock_get_client.return_value = mock_http_client
+        mock_http_client = mocker.AsyncMock()
+        mock_http_client.request.return_value = mock_response
+        mocker.patch.object(
+            client,
+            "_get_http_client",
+            return_value=mock_http_client,
+        )
 
-            with pytest.raises(LunaTaskNotFoundError) as exc_info:
-                await client.make_request("GET", "nonexistent")
+        with pytest.raises(LunaTaskNotFoundError) as exc_info:
+            await client.make_request("GET", "nonexistent")
 
-            assert exc_info.value.status_code == HTTP_NOT_FOUND
+        assert exc_info.value.status_code == HTTP_NOT_FOUND
 
     @pytest.mark.asyncio
-    async def test_make_request_rate_limit_error(self) -> None:
+    async def test_make_request_rate_limit_error(self, mocker: MockerFixture) -> None:
         """Test handling of 429 rate limit error."""
         config = ServerConfig(
             lunatask_bearer_token=VALID_TOKEN,
@@ -293,26 +302,29 @@ class TestLunaTaskClientAuthenticatedRequests:
         client = LunaTaskClient(config)
 
         # Mock 429 response
-        mock_response = Mock()
+        mock_response = mocker.Mock()
         mock_response.status_code = HTTP_TOO_MANY_REQUESTS
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
             "429 Too Many Requests",
-            request=Mock(),
+            request=mocker.Mock(),
             response=mock_response,
         )
 
-        with patch.object(client, "_get_http_client") as mock_get_client:
-            mock_http_client = AsyncMock()
-            mock_http_client.request.return_value = mock_response
-            mock_get_client.return_value = mock_http_client
+        mock_http_client = mocker.AsyncMock()
+        mock_http_client.request.return_value = mock_response
+        mocker.patch.object(
+            client,
+            "_get_http_client",
+            return_value=mock_http_client,
+        )
 
-            with pytest.raises(LunaTaskRateLimitError) as exc_info:
-                await client.make_request("GET", "ping")
+        with pytest.raises(LunaTaskRateLimitError) as exc_info:
+            await client.make_request("GET", "ping")
 
-            assert exc_info.value.status_code == HTTP_TOO_MANY_REQUESTS
+        assert exc_info.value.status_code == HTTP_TOO_MANY_REQUESTS
 
     @pytest.mark.asyncio
-    async def test_make_request_server_error(self) -> None:
+    async def test_make_request_server_error(self, mocker: MockerFixture) -> None:
         """Test handling of 500 server error."""
         config = ServerConfig(
             lunatask_bearer_token=VALID_TOKEN,
@@ -321,26 +333,29 @@ class TestLunaTaskClientAuthenticatedRequests:
         client = LunaTaskClient(config)
 
         # Mock 500 response
-        mock_response = Mock()
+        mock_response = mocker.Mock()
         mock_response.status_code = HTTP_INTERNAL_SERVER_ERROR
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
             "500 Internal Server Error",
-            request=Mock(),
+            request=mocker.Mock(),
             response=mock_response,
         )
 
-        with patch.object(client, "_get_http_client") as mock_get_client:
-            mock_http_client = AsyncMock()
-            mock_http_client.request.return_value = mock_response
-            mock_get_client.return_value = mock_http_client
+        mock_http_client = mocker.AsyncMock()
+        mock_http_client.request.return_value = mock_response
+        mocker.patch.object(
+            client,
+            "_get_http_client",
+            return_value=mock_http_client,
+        )
 
-            with pytest.raises(LunaTaskServerError) as exc_info:
-                await client.make_request("GET", "ping")
+        with pytest.raises(LunaTaskServerError) as exc_info:
+            await client.make_request("GET", "ping")
 
-            assert exc_info.value.status_code == HTTP_INTERNAL_SERVER_ERROR
+        assert exc_info.value.status_code == HTTP_INTERNAL_SERVER_ERROR
 
     @pytest.mark.asyncio
-    async def test_make_request_network_error(self) -> None:
+    async def test_make_request_network_error(self, mocker: MockerFixture) -> None:
         """Test handling of network connectivity errors."""
         config = ServerConfig(
             lunatask_bearer_token=VALID_TOKEN,
@@ -348,18 +363,21 @@ class TestLunaTaskClientAuthenticatedRequests:
         )
         client = LunaTaskClient(config)
 
-        with patch.object(client, "_get_http_client") as mock_get_client:
-            mock_http_client = AsyncMock()
-            mock_http_client.request.side_effect = httpx.NetworkError("Connection failed")
-            mock_get_client.return_value = mock_http_client
+        mock_http_client = mocker.AsyncMock()
+        mock_http_client.request.side_effect = httpx.NetworkError("Connection failed")
+        mocker.patch.object(
+            client,
+            "_get_http_client",
+            return_value=mock_http_client,
+        )
 
-            with pytest.raises(LunaTaskNetworkError) as exc_info:
-                await client.make_request("GET", "ping")
+        with pytest.raises(LunaTaskNetworkError) as exc_info:
+            await client.make_request("GET", "ping")
 
-            assert "network error" in str(exc_info.value).lower()
+        assert "network error" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
-    async def test_make_request_timeout_error(self) -> None:
+    async def test_make_request_timeout_error(self, mocker: MockerFixture) -> None:
         """Test handling of request timeout errors."""
         config = ServerConfig(
             lunatask_bearer_token=VALID_TOKEN,
@@ -367,22 +385,25 @@ class TestLunaTaskClientAuthenticatedRequests:
         )
         client = LunaTaskClient(config)
 
-        with patch.object(client, "_get_http_client") as mock_get_client:
-            mock_http_client = AsyncMock()
-            mock_http_client.request.side_effect = httpx.TimeoutException("Request timeout")
-            mock_get_client.return_value = mock_http_client
+        mock_http_client = mocker.AsyncMock()
+        mock_http_client.request.side_effect = httpx.TimeoutException("Request timeout")
+        mocker.patch.object(
+            client,
+            "_get_http_client",
+            return_value=mock_http_client,
+        )
 
-            with pytest.raises(LunaTaskTimeoutError) as exc_info:
-                await client.make_request("GET", "ping")
+        with pytest.raises(LunaTaskTimeoutError) as exc_info:
+            await client.make_request("GET", "ping")
 
-            assert "timeout" in str(exc_info.value).lower()
+        assert "timeout" in str(exc_info.value).lower()
 
 
 class TestLunaTaskClientConnectivityTest:
     """Test connectivity testing functionality."""
 
     @pytest.mark.asyncio
-    async def test_test_connectivity_success(self) -> None:
+    async def test_test_connectivity_success(self, mocker: MockerFixture) -> None:
         """Test successful connectivity test."""
         config = ServerConfig(
             lunatask_bearer_token=VALID_TOKEN,
@@ -390,16 +411,19 @@ class TestLunaTaskClientConnectivityTest:
         )
         client = LunaTaskClient(config)
 
-        with patch.object(client, "make_request") as mock_request:
-            mock_request.return_value = {"message": "pong"}
+        mock_request = mocker.patch.object(
+            client,
+            "make_request",
+            return_value={"message": "pong"},
+        )
 
-            result = await client.test_connectivity()
+        result = await client.test_connectivity()
 
-            assert result is True
-            mock_request.assert_called_once_with("GET", "ping")
+        assert result is True
+        mock_request.assert_called_once_with("GET", "ping")
 
     @pytest.mark.asyncio
-    async def test_test_connectivity_authentication_failure(self) -> None:
+    async def test_test_connectivity_authentication_failure(self, mocker: MockerFixture) -> None:
         """Test connectivity test with authentication failure."""
         config = ServerConfig(
             lunatask_bearer_token=INVALID_TOKEN,
@@ -407,15 +431,18 @@ class TestLunaTaskClientConnectivityTest:
         )
         client = LunaTaskClient(config)
 
-        with patch.object(client, "make_request") as mock_request:
-            mock_request.side_effect = LunaTaskAuthenticationError()
+        mocker.patch.object(
+            client,
+            "make_request",
+            side_effect=LunaTaskAuthenticationError(),
+        )
 
-            result = await client.test_connectivity()
+        result = await client.test_connectivity()
 
-            assert result is False
+        assert result is False
 
     @pytest.mark.asyncio
-    async def test_test_connectivity_network_failure(self) -> None:
+    async def test_test_connectivity_network_failure(self, mocker: MockerFixture) -> None:
         """Test connectivity test with network failure."""
         config = ServerConfig(
             lunatask_bearer_token=VALID_TOKEN,
@@ -423,12 +450,15 @@ class TestLunaTaskClientConnectivityTest:
         )
         client = LunaTaskClient(config)
 
-        with patch.object(client, "make_request") as mock_request:
-            mock_request.side_effect = LunaTaskNetworkError()
+        mocker.patch.object(
+            client,
+            "make_request",
+            side_effect=LunaTaskNetworkError(),
+        )
 
-            result = await client.test_connectivity()
+        result = await client.test_connectivity()
 
-            assert result is False
+        assert result is False
 
 
 class TestLunaTaskClientSecurityFeatures:
@@ -457,7 +487,7 @@ class TestLunaTaskClientSecurityFeatures:
         assert SUPER_SECRET_TOKEN_456 not in client_repr
 
     @pytest.mark.asyncio
-    async def test_error_messages_do_not_contain_token(self) -> None:
+    async def test_error_messages_do_not_contain_token(self, mocker: MockerFixture) -> None:
         """Test that error messages never contain bearer token."""
         config = ServerConfig(
             lunatask_bearer_token=SECRET_TOKEN_HIDDEN,
@@ -465,16 +495,19 @@ class TestLunaTaskClientSecurityFeatures:
         )
         client = LunaTaskClient(config)
 
-        with patch.object(client, "_get_http_client") as mock_get_client:
-            mock_http_client = AsyncMock()
-            mock_http_client.request.side_effect = httpx.NetworkError("Connection failed")
-            mock_get_client.return_value = mock_http_client
+        mock_http_client = mocker.AsyncMock()
+        mock_http_client.request.side_effect = httpx.NetworkError("Connection failed")
+        mocker.patch.object(
+            client,
+            "_get_http_client",
+            return_value=mock_http_client,
+        )
 
-            try:
-                await client.make_request("GET", "ping")
-            except LunaTaskNetworkError as e:
-                error_message = str(e)
-                assert SECRET_TOKEN_HIDDEN not in error_message
+        try:
+            await client.make_request("GET", "ping")
+        except LunaTaskNetworkError as e:
+            error_message = str(e)
+            assert SECRET_TOKEN_HIDDEN not in error_message
 
     @pytest.mark.asyncio
     async def test_cleanup_on_context_exit(self) -> None:

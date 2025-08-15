@@ -1,11 +1,11 @@
 """Test suite for client test script functionality."""
 
 from typing import Any, cast
-from unittest.mock import AsyncMock, Mock
 
 import pytest
 from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
+from pytest_mock import MockerFixture
 
 
 class TestClientTestScript:
@@ -37,18 +37,18 @@ class TestClientTestScript:
         assert client is not None
 
     @pytest.mark.asyncio
-    async def test_ping_tool_invocation_mock(self) -> None:
+    async def test_ping_tool_invocation_mock(self, mocker: MockerFixture) -> None:
         """Test ping tool invocation with mocked client."""
         # Mock the client and its methods
-        mock_client: AsyncMock = AsyncMock(spec=Client)
+        mock_client = mocker.AsyncMock(spec=Client)
 
         # Mock context manager behavior
-        mock_context: AsyncMock = AsyncMock()
+        mock_context = mocker.AsyncMock()
         mock_context.ping.return_value = True
-        mock_context.call_tool.return_value = Mock(text="pong")
+        mock_context.call_tool.return_value = mocker.Mock(text="pong")
 
         # Create a proper mock tool object
-        mock_tool: Mock = Mock()
+        mock_tool = mocker.Mock()
         mock_tool.name = "ping"
         mock_tool.description = "Ping health-check tool"
         mock_context.list_tools.return_value = [mock_tool]
@@ -70,5 +70,5 @@ class TestClientTestScript:
             assert ping_result is True
 
             # Test tool call
-            result: Mock = await client_any.call_tool("ping", {})
+            result = await client_any.call_tool("ping", {})
             assert result.text == "pong"

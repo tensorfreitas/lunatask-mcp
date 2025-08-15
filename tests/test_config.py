@@ -8,10 +8,10 @@ and configuration loading functionality following TDD methodology.
 import argparse
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
 
 import pytest
 from pydantic import HttpUrl, ValidationError
+from pytest_mock import MockerFixture
 
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.main import load_configuration
@@ -156,28 +156,26 @@ class TestServerConfigModel:
 class TestConfigurationLoading:
     """Test suite for configuration file loading functionality (Task 3)."""
 
-    def test_load_configuration_defaults_only(self) -> None:
+    def test_load_configuration_defaults_only(self, mocker: MockerFixture) -> None:
         """Test loading configuration with defaults only (no file, no CLI args)."""
         # When no config file and no CLI args, should fail due to missing bearer token
         args = argparse.Namespace(config_file=None, port=None, log_level=None)
 
-        with (
-            patch("pathlib.Path.exists", return_value=False),
-            pytest.raises(SystemExit) as exc_info,
-        ):
+        mocker.patch("pathlib.Path.exists", return_value=False)
+
+        with pytest.raises(SystemExit) as exc_info:
             load_configuration(args)
 
         assert exc_info.value.code == 1
 
-    def test_load_configuration_missing_file_explicit_path(self) -> None:
+    def test_load_configuration_missing_file_explicit_path(self, mocker: MockerFixture) -> None:
         """Test that explicitly specified missing config file causes exit."""
 
         args = argparse.Namespace(config_file="./nonexistent.toml", port=None, log_level=None)
 
-        with (
-            patch("pathlib.Path.exists", return_value=False),
-            pytest.raises(SystemExit) as exc_info,
-        ):
+        mocker.patch("pathlib.Path.exists", return_value=False)
+
+        with pytest.raises(SystemExit) as exc_info:
             load_configuration(args)
 
         assert exc_info.value.code == 1
@@ -335,7 +333,7 @@ port = 99999  # Invalid port > 65535
         finally:
             Path(temp_path).unlink()
 
-    def test_load_configuration_effective_config_logging(self) -> None:
+    def test_load_configuration_effective_config_logging(self, mocker: MockerFixture) -> None:
         """Test that effective configuration is logged with redaction."""
         # Create valid TOML file to test logging
         toml_content = """
@@ -351,20 +349,19 @@ log_level = "DEBUG"
         try:
             args = argparse.Namespace(config_file=temp_path, port=None, log_level=None)
 
-            with patch("logging.getLogger") as mock_get_logger:
-                mock_logger = Mock()
-                mock_get_logger.return_value = mock_logger
+            mock_logger = mocker.Mock()
+            mocker.patch("logging.getLogger", return_value=mock_logger)
 
-                config = load_configuration(args)
+            config = load_configuration(args)
 
-                # Should log effective configuration with redaction
-                mock_logger.info.assert_called_with(
-                    "Effective configuration: %s",
-                    config.to_redacted_dict(),
-                )
-                # Verify redaction worked
-                redacted = config.to_redacted_dict()
-                assert redacted["lunatask_bearer_token"] == "***redacted***"
-                assert redacted["port"] == 9000
+            # Should log effective configuration with redaction
+            mock_logger.info.assert_called_with(
+                "Effective configuration: %s",
+                config.to_redacted_dict(),
+            )
+            # Verify redaction worked
+            redacted = config.to_redacted_dict()
+            assert redacted["lunatask_bearer_token"] == "***redacted***"
+            assert redacted["port"] == 9000
         finally:
             Path(temp_path).unlink()

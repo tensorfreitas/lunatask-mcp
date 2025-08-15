@@ -5,10 +5,10 @@ and verifies that configuration is properly used by the server components.
 """
 
 import logging
-from unittest.mock import patch
 
 import pytest
 from pydantic import HttpUrl
+from pytest_mock import MockerFixture
 
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.main import CoreServer
@@ -22,7 +22,7 @@ class TestConfigurationIntegration:
         server = CoreServer(default_config)
         assert server.config is default_config
 
-    def test_core_server_uses_log_level_from_config(self) -> None:
+    def test_core_server_uses_log_level_from_config(self, mocker: MockerFixture) -> None:
         """Test that CoreServer uses log level from configuration."""
         # Create config with DEBUG log level
         config = ServerConfig(
@@ -32,15 +32,16 @@ class TestConfigurationIntegration:
             port=9090,
         )
 
-        with patch("logging.basicConfig") as mock_basic_config:
-            CoreServer(config)
+        mock_basic_config = mocker.patch("logging.basicConfig")
 
-            # Verify that logging was configured with DEBUG level
-            mock_basic_config.assert_called_once()
-            call_args = mock_basic_config.call_args
-            assert call_args[1]["level"] == logging.DEBUG
+        CoreServer(config)
 
-    def test_core_server_uses_log_level_from_config_warning(self) -> None:
+        # Verify that logging was configured with DEBUG level
+        mock_basic_config.assert_called_once()
+        call_args = mock_basic_config.call_args
+        assert call_args[1]["level"] == logging.DEBUG
+
+    def test_core_server_uses_log_level_from_config_warning(self, mocker: MockerFixture) -> None:
         """Test that CoreServer uses WARNING log level from configuration."""
         config = ServerConfig(
             lunatask_bearer_token="test_token",  # noqa: S106 - test token
@@ -49,13 +50,14 @@ class TestConfigurationIntegration:
             port=8081,
         )
 
-        with patch("logging.basicConfig") as mock_basic_config:
-            CoreServer(config)
+        mock_basic_config = mocker.patch("logging.basicConfig")
 
-            # Verify that logging was configured with WARNING level
-            mock_basic_config.assert_called_once()
-            call_args = mock_basic_config.call_args
-            assert call_args[1]["level"] == logging.WARNING
+        CoreServer(config)
+
+        # Verify that logging was configured with WARNING level
+        mock_basic_config.assert_called_once()
+        call_args = mock_basic_config.call_args
+        assert call_args[1]["level"] == logging.WARNING
 
     def test_get_lunatask_config_returns_api_settings(self, default_config: ServerConfig) -> None:
         """Test that get_lunatask_config returns correct API settings."""

@@ -7,16 +7,7 @@ authors = [
     { name = "Tiago Freitas", email = "freitas.mib@gmail.com" }
 ]
 requires-python = ">=3.12,<3.13"
-dependencies = [
-    "fastmcp==2.11.3",
-    "httpx>=0.28.1",
-    "pre-commit>=4.3.0",
-    "pydantic>=2.11.7",
-    "pyright>=1.1.403",
-    "pytest>=8.4.1",
-    "pytest-asyncio>=1.1.0",
-    "ruff>=0.12.8",
-]
+dependencies = ["fastmcp==2.11.3", "httpx>=0.28.1", "pydantic>=2.11.7"]
 
 [project.scripts]
 lunatask-mcp = "lunatask_mcp.main:main"
@@ -25,8 +16,14 @@ lunatask-mcp = "lunatask_mcp.main:main"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[dependency-groups]
-dev = [
+[tool.rye]
+managed = true
+dev-dependencies = [
+    "ruff>=0.12.8",
+    "pre-commit>=4.3.0",
+    "pyright>=1.1.403",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
     "commitizen>=4.8.3",
     "pytest-mock>=3.14.1",
 ]
@@ -38,6 +35,9 @@ include = ["src/**/*.py", "tests/**/*.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "C", "I", "N", "UP", "ANN", "S", "B", "A", "COM", "C4", "DTZ", "T10", "EXE", "ISC", "ICN", "G", "INP", "PIE", "T20", "PYI", "PT", "Q", "RSE", "RET", "SLF", "SIM", "TID", "ARG", "PTH", "ERA", "PD", "PGH", "PL", "TRY", "NPY", "PERF", "FURB", "LOG", "RUF"]
+# Disable COM812 to avoid conflicts with the Ruff formatter's handling of trailing commas.
+# The formatter is authoritative for this rule.
+ignore = ["COM812"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]  # Allow assert statements in tests

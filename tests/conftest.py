@@ -14,7 +14,7 @@ def default_config() -> ServerConfig:
         ServerConfig: A configured ServerConfig instance with test values.
     """
     return ServerConfig(
-        lunatask_bearer_token="test_token_123",  # noqa: S106 - test token
+        lunatask_bearer_token="test_token_123",
         lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
         port=8080,
         log_level="INFO",

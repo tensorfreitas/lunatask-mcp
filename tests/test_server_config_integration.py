@@ -26,7 +26,7 @@ class TestConfigurationIntegration:
         """Test that CoreServer uses log level from configuration."""
         # Create config with DEBUG log level
         config = ServerConfig(
-            lunatask_bearer_token="test_token",  # noqa: S106 - test token
+            lunatask_bearer_token="test_token",
             lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
             log_level="DEBUG",
             port=9090,
@@ -44,7 +44,7 @@ class TestConfigurationIntegration:
     def test_core_server_uses_log_level_from_config_warning(self, mocker: MockerFixture) -> None:
         """Test that CoreServer uses WARNING log level from configuration."""
         config = ServerConfig(
-            lunatask_bearer_token="test_token",  # noqa: S106 - test token
+            lunatask_bearer_token="test_token",
             lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
             log_level="WARNING",
             port=8081,
@@ -95,7 +95,7 @@ class TestConfigurationIntegration:
         """Test that base URL is accessible for LunaTask API integration."""
         test_url = "https://custom.lunatask.app/v2/"
         config = ServerConfig(
-            lunatask_bearer_token="test_token",  # noqa: S106 - test token
+            lunatask_bearer_token="test_token",
             lunatask_base_url=HttpUrl(test_url),
         )
 
@@ -108,7 +108,7 @@ class TestConfigurationIntegration:
     async def test_server_initializes_with_custom_port_config(self) -> None:
         """Test that server initializes with custom port configuration."""
         config = ServerConfig(
-            lunatask_bearer_token="test_token",  # noqa: S106 - test token
+            lunatask_bearer_token="test_token",
             lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
             port=9999,
         )

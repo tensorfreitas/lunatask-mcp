@@ -43,6 +43,11 @@ class ServerConfig(BaseModel):
         description="Path to configuration file",
     )
 
+    test_connectivity_on_startup: bool = Field(
+        default=False,
+        description="Test LunaTask API connectivity during server startup",
+    )
+
     @field_validator("lunatask_base_url")
     @classmethod
     def validate_https_url(cls, v: HttpUrl) -> HttpUrl:

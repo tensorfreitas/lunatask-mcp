@@ -40,7 +40,24 @@ select = ["E", "F", "W", "C", "I", "N", "UP", "ANN", "S", "B", "A", "COM", "C4",
 ignore = ["COM812"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101"]  # Allow assert statements in tests
+"tests/*" = [
+    "S101",  # Allow assert statements in tests
+    "S106",  # Allow hardcoded passwords in tests (test tokens)
+    "SLF001"  # Allow private member access in tests (testing internal state)
+]
+
+[tool.pytest.ini_options]
+# Enable automatic asyncio mode for better async test handling
+# This provides automatic event loop management and reduces boilerplate
+asyncio_mode = "auto"
+filterwarnings = [
+    # Convert RuntimeWarnings to test failures to catch unawaited coroutines
+    # and other async resource leaks early in development
+    "error::RuntimeWarning",
+    # Suppress pytest-asyncio internal warnings that can occur during garbage collection
+    # when properly managing async resources with mocks
+    "ignore::pytest.PytestUnraisableExceptionWarning"
+]
 
 [tool.pyright]
 include = ["src", "tests"]

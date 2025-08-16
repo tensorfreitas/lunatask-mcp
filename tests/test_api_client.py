@@ -52,22 +52,22 @@ HTTP_INTERNAL_SERVER_ERROR = 500
 
 def get_client_config(client: LunaTaskClient) -> ServerConfig:
     """Helper to access client config for testing."""
-    return client._config  # noqa: SLF001 - Testing internal state
+    return client._config
 
 
 def get_client_base_url(client: LunaTaskClient) -> str:
     """Helper to access client base URL for testing."""
-    return client._base_url  # noqa: SLF001 - Testing internal state
+    return client._base_url
 
 
 def get_client_bearer_token(client: LunaTaskClient) -> str:
     """Helper to access client bearer token for testing."""
-    return client._bearer_token  # noqa: SLF001 - Testing internal state
+    return client._bearer_token
 
 
 def get_client_http_client(client: LunaTaskClient) -> httpx.AsyncClient | None:
     """Helper to access client HTTP client for testing."""
-    return client._http_client  # noqa: SLF001 - Testing internal state
+    return client._http_client
 
 
 class TestLunaTaskClientInitialization:
@@ -118,17 +118,17 @@ class TestLunaTaskClientInitialization:
 
 def get_http_client(client: LunaTaskClient) -> httpx.AsyncClient:
     """Helper to access HTTP client method for testing."""
-    return client._get_http_client()  # noqa: SLF001 - Testing internal method
+    return client._get_http_client()
 
 
 def get_auth_headers(client: LunaTaskClient) -> dict[str, str]:
     """Helper to access auth headers method for testing."""
-    return client._get_auth_headers()  # noqa: SLF001 - Testing internal method
+    return client._get_auth_headers()
 
 
 def get_redacted_headers(client: LunaTaskClient) -> dict[str, str]:
     """Helper to access redacted headers method for testing."""
-    return client._get_redacted_headers()  # noqa: SLF001 - Testing internal method
+    return client._get_redacted_headers()
 
 
 class TestLunaTaskClientHTTPSetup:

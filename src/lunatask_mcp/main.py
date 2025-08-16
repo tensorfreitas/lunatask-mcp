@@ -27,6 +27,7 @@ from typing import Any
 
 from fastmcp import Context, FastMCP
 
+from lunatask_mcp.api.client import LunaTaskClient
 from lunatask_mcp.config import ServerConfig
 
 
@@ -46,6 +47,7 @@ class CoreServer:
         self.config = config
         self._setup_logging()
         self.app = self._create_fastmcp_instance()
+        self._lunatask_client: LunaTaskClient | None = None
         self._register_tools()
         self._shutdown_requested = False
         self._setup_signal_handlers()
@@ -117,6 +119,16 @@ class CoreServer:
         """
         return self.config
 
+    def get_lunatask_client(self) -> LunaTaskClient:
+        """Get or create the LunaTask API client instance for dependency injection.
+
+        Returns:
+            LunaTaskClient: The LunaTask API client instance.
+        """
+        if self._lunatask_client is None:
+            self._lunatask_client = LunaTaskClient(self.config)
+        return self._lunatask_client
+
     async def ping_tool(self, ctx: Context) -> str:
         """Ping health-check tool that returns a static 'pong' response.
 
@@ -140,6 +152,25 @@ class CoreServer:
         else:
             return "pong"
 
+    async def _test_connectivity_if_enabled(self) -> None:
+        """Test LunaTask API connectivity if enabled in configuration."""
+        if not self.config.test_connectivity_on_startup:
+            return
+
+        logger = logging.getLogger(__name__)
+        logger.info("Testing LunaTask API connectivity...")
+
+        try:
+            lunatask_client = self.get_lunatask_client()
+            async with lunatask_client:
+                success = await lunatask_client.test_connectivity()
+                if success:
+                    logger.info("LunaTask API connectivity test successful")
+                else:
+                    logger.warning("LunaTask API connectivity test failed")
+        except Exception:
+            logger.exception("LunaTask API connectivity test failed with exception")
+
     def run(self) -> None:
         """Run the MCP server with stdio transport.
 
@@ -148,6 +179,14 @@ class CoreServer:
         """
         logger = logging.getLogger(__name__)
         logger.info("Starting LunaTask MCP server with stdio transport")
+
+        # Run connectivity test if enabled before starting server
+        if self.config.test_connectivity_on_startup:
+            try:
+                asyncio.run(self._test_connectivity_if_enabled())
+            except Exception:
+                logger.exception("Connectivity test failed during startup")
+                # Don't exit - allow server to continue running
 
         try:
             # Run the FastMCP server with stdio transport
@@ -197,6 +236,7 @@ def load_configuration(args: argparse.Namespace) -> ServerConfig:
                 "port",
                 "log_level",
                 "config_file",
+                "test_connectivity_on_startup",
             }
             unknown_keys = set(file_config.keys()) - known_fields
             if unknown_keys:

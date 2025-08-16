@@ -1,4 +1,4 @@
-# ruff: noqa: S106, S105, PLR2004
+# ruff: noqa: S105, PLR2004
 """Tests for the configuration module.
 
 This module contains comprehensive tests for the ServerConfig Pydantic model

@@ -35,7 +35,7 @@ class TestShutdownHandling:
 
         # Mock the CoreServer.run method to raise KeyboardInterrupt
         # Also mock load_configuration to provide valid config
-        valid_config = ServerConfig(lunatask_bearer_token="test_token")  # noqa: S106 - test token
+        valid_config = ServerConfig(lunatask_bearer_token="test_token")
 
         mocker.patch.object(CoreServer, "run", side_effect=KeyboardInterrupt)
         mocker.patch("lunatask_mcp.main.load_configuration", return_value=valid_config)
@@ -64,7 +64,7 @@ class TestShutdownHandling:
         caplog.set_level(logging.INFO, logger="lunatask_mcp.main")
 
         test_exception = RuntimeError("Test exception")
-        valid_config = ServerConfig(lunatask_bearer_token="test_token")  # noqa: S106 - test token
+        valid_config = ServerConfig(lunatask_bearer_token="test_token")
 
         # Mock the CoreServer.run method to raise an unhandled exception
         mocker.patch.object(CoreServer, "run", side_effect=test_exception)
@@ -115,7 +115,7 @@ class TestShutdownHandling:
         """Test that SIGINT signal is handled gracefully."""
         # This test verifies that the server can handle SIGINT signals
         # SIGINT is typically handled by Python as KeyboardInterrupt
-        valid_config = ServerConfig(lunatask_bearer_token="test_token")  # noqa: S106 - test token
+        valid_config = ServerConfig(lunatask_bearer_token="test_token")
 
         mocker.patch.object(CoreServer, "run", side_effect=KeyboardInterrupt)
         mocker.patch("lunatask_mcp.main.load_configuration", return_value=valid_config)

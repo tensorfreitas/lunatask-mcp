@@ -13,11 +13,15 @@ from pytest_mock import MockerFixture
 from lunatask_mcp.api.client import LunaTaskClient
 from lunatask_mcp.api.exceptions import (
     LunaTaskAuthenticationError,
+    LunaTaskBadRequestError,
     LunaTaskNetworkError,
     LunaTaskNotFoundError,
     LunaTaskRateLimitError,
     LunaTaskServerError,
+    LunaTaskServiceUnavailableError,
+    LunaTaskSubscriptionRequiredError,
     LunaTaskTimeoutError,
+    LunaTaskValidationError,
 )
 from lunatask_mcp.config import ServerConfig
 
@@ -44,10 +48,15 @@ POOL_TIMEOUT = 10.0
 
 # HTTP status code constants for tests
 HTTP_OK = 200
+HTTP_BAD_REQUEST = 400
 HTTP_UNAUTHORIZED = 401
+HTTP_PAYMENT_REQUIRED = 402
 HTTP_NOT_FOUND = 404
+HTTP_UNPROCESSABLE_ENTITY = 422
 HTTP_TOO_MANY_REQUESTS = 429
 HTTP_INTERNAL_SERVER_ERROR = 500
+HTTP_SERVICE_UNAVAILABLE = 503
+HTTP_TIMEOUT = 524
 
 
 def get_client_config(client: LunaTaskClient) -> ServerConfig:
@@ -397,6 +406,161 @@ class TestLunaTaskClientAuthenticatedRequests:
             await client.make_request("GET", "ping")
 
         assert "timeout" in str(exc_info.value).lower()
+
+    @pytest.mark.asyncio
+    async def test_make_request_bad_request_error(self, mocker: MockerFixture) -> None:
+        """Test handling of 400 bad request error."""
+        config = ServerConfig(
+            lunatask_bearer_token=VALID_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+        )
+        client = LunaTaskClient(config)
+
+        # Mock 400 response
+        mock_response = mocker.Mock()
+        mock_response.status_code = HTTP_BAD_REQUEST
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "400 Bad Request",
+            request=mocker.Mock(),
+            response=mock_response,
+        )
+
+        mock_http_client = mocker.AsyncMock()
+        mock_http_client.request.return_value = mock_response
+        mocker.patch.object(
+            client,
+            "_get_http_client",
+            return_value=mock_http_client,
+        )
+
+        with pytest.raises(LunaTaskBadRequestError) as exc_info:
+            await client.make_request("GET", "ping")
+
+        assert exc_info.value.status_code == HTTP_BAD_REQUEST
+
+    @pytest.mark.asyncio
+    async def test_make_request_subscription_required_error(self, mocker: MockerFixture) -> None:
+        """Test handling of 402 subscription required error."""
+        config = ServerConfig(
+            lunatask_bearer_token=VALID_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+        )
+        client = LunaTaskClient(config)
+
+        # Mock 402 response
+        mock_response = mocker.Mock()
+        mock_response.status_code = HTTP_PAYMENT_REQUIRED
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "402 Payment Required",
+            request=mocker.Mock(),
+            response=mock_response,
+        )
+
+        mock_http_client = mocker.AsyncMock()
+        mock_http_client.request.return_value = mock_response
+        mocker.patch.object(
+            client,
+            "_get_http_client",
+            return_value=mock_http_client,
+        )
+
+        with pytest.raises(LunaTaskSubscriptionRequiredError) as exc_info:
+            await client.make_request("GET", "ping")
+
+        assert exc_info.value.status_code == HTTP_PAYMENT_REQUIRED
+
+    @pytest.mark.asyncio
+    async def test_make_request_validation_error(self, mocker: MockerFixture) -> None:
+        """Test handling of 422 validation error."""
+        config = ServerConfig(
+            lunatask_bearer_token=VALID_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+        )
+        client = LunaTaskClient(config)
+
+        # Mock 422 response
+        mock_response = mocker.Mock()
+        mock_response.status_code = HTTP_UNPROCESSABLE_ENTITY
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "422 Unprocessable Entity",
+            request=mocker.Mock(),
+            response=mock_response,
+        )
+
+        mock_http_client = mocker.AsyncMock()
+        mock_http_client.request.return_value = mock_response
+        mocker.patch.object(
+            client,
+            "_get_http_client",
+            return_value=mock_http_client,
+        )
+
+        with pytest.raises(LunaTaskValidationError) as exc_info:
+            await client.make_request("GET", "ping")
+
+        assert exc_info.value.status_code == HTTP_UNPROCESSABLE_ENTITY
+
+    @pytest.mark.asyncio
+    async def test_make_request_service_unavailable_error(self, mocker: MockerFixture) -> None:
+        """Test handling of 503 service unavailable error."""
+        config = ServerConfig(
+            lunatask_bearer_token=VALID_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+        )
+        client = LunaTaskClient(config)
+
+        # Mock 503 response
+        mock_response = mocker.Mock()
+        mock_response.status_code = HTTP_SERVICE_UNAVAILABLE
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "503 Service Unavailable",
+            request=mocker.Mock(),
+            response=mock_response,
+        )
+
+        mock_http_client = mocker.AsyncMock()
+        mock_http_client.request.return_value = mock_response
+        mocker.patch.object(
+            client,
+            "_get_http_client",
+            return_value=mock_http_client,
+        )
+
+        with pytest.raises(LunaTaskServiceUnavailableError) as exc_info:
+            await client.make_request("GET", "ping")
+
+        assert exc_info.value.status_code == HTTP_SERVICE_UNAVAILABLE
+
+    @pytest.mark.asyncio
+    async def test_make_request_timeout_524_error(self, mocker: MockerFixture) -> None:
+        """Test handling of 524 timeout error."""
+        config = ServerConfig(
+            lunatask_bearer_token=VALID_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+        )
+        client = LunaTaskClient(config)
+
+        # Mock 524 response
+        mock_response = mocker.Mock()
+        mock_response.status_code = HTTP_TIMEOUT
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "524 Request Timeout",
+            request=mocker.Mock(),
+            response=mock_response,
+        )
+
+        mock_http_client = mocker.AsyncMock()
+        mock_http_client.request.return_value = mock_response
+        mocker.patch.object(
+            client,
+            "_get_http_client",
+            return_value=mock_http_client,
+        )
+
+        with pytest.raises(LunaTaskTimeoutError) as exc_info:
+            await client.make_request("GET", "ping")
+
+        assert exc_info.value.status_code == HTTP_TIMEOUT
 
 
 class TestLunaTaskClientConnectivityTest:

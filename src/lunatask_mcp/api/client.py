@@ -13,19 +13,28 @@ import httpx
 from lunatask_mcp.api.exceptions import (
     LunaTaskAPIError,
     LunaTaskAuthenticationError,
+    LunaTaskBadRequestError,
     LunaTaskNetworkError,
     LunaTaskNotFoundError,
     LunaTaskRateLimitError,
     LunaTaskServerError,
+    LunaTaskServiceUnavailableError,
+    LunaTaskSubscriptionRequiredError,
     LunaTaskTimeoutError,
+    LunaTaskValidationError,
 )
 from lunatask_mcp.config import ServerConfig
 
 # HTTP status code constants
+_HTTP_BAD_REQUEST = 400
 _HTTP_UNAUTHORIZED = 401
+_HTTP_PAYMENT_REQUIRED = 402
 _HTTP_NOT_FOUND = 404
+_HTTP_UNPROCESSABLE_ENTITY = 422
 _HTTP_TOO_MANY_REQUESTS = 429
 _HTTP_INTERNAL_SERVER_ERROR = 500
+_HTTP_SERVICE_UNAVAILABLE = 503
+_HTTP_TIMEOUT = 524
 _HTTP_BAD_GATEWAY = 600
 
 # Configure logger to write to stderr
@@ -130,28 +139,48 @@ class LunaTaskClient:
             error: HTTP status error from httpx
 
         Raises:
+            LunaTaskBadRequestError: For 400 Bad Request
             LunaTaskAuthenticationError: For 401 Unauthorized
+            LunaTaskSubscriptionRequiredError: For 402 Payment Required
             LunaTaskNotFoundError: For 404 Not Found
+            LunaTaskValidationError: For 422 Unprocessable Entity
             LunaTaskRateLimitError: For 429 Too Many Requests
             LunaTaskServerError: For 5xx server errors
+            LunaTaskServiceUnavailableError: For 503 Service Unavailable
+            LunaTaskTimeoutError: For 524 Request Timed Out
             LunaTaskAPIError: For other HTTP errors
         """
         status_code = error.response.status_code
 
+        if status_code == _HTTP_BAD_REQUEST:
+            logger.error("Bad request to LunaTask API - invalid parameters")
+            raise LunaTaskBadRequestError from error
         if status_code == _HTTP_UNAUTHORIZED:
             logger.error("Authentication failed with LunaTask API")
             raise LunaTaskAuthenticationError from error
+        if status_code == _HTTP_PAYMENT_REQUIRED:
+            logger.error("LunaTask subscription required - free plan limit reached")
+            raise LunaTaskSubscriptionRequiredError from error
         if status_code == _HTTP_NOT_FOUND:
             logger.error("Resource not found: %s", error.request.url)
             raise LunaTaskNotFoundError from error
+        if status_code == _HTTP_UNPROCESSABLE_ENTITY:
+            logger.error("LunaTask API validation error - entity not valid")
+            raise LunaTaskValidationError from error
         if status_code == _HTTP_TOO_MANY_REQUESTS:
             logger.error("Rate limit exceeded for LunaTask API")
             raise LunaTaskRateLimitError from error
+        if status_code == _HTTP_SERVICE_UNAVAILABLE:
+            logger.error("LunaTask API temporarily unavailable for maintenance")
+            raise LunaTaskServiceUnavailableError from error
+        if status_code == _HTTP_TIMEOUT:
+            logger.error("LunaTask API request timed out")
+            raise LunaTaskTimeoutError(status_code=status_code) from error
         if _HTTP_INTERNAL_SERVER_ERROR <= status_code < _HTTP_BAD_GATEWAY:
             logger.error("LunaTask API server error: %s", status_code)
-            raise LunaTaskServerError("Error", status_code) from error
+            raise LunaTaskServerError("", status_code) from error
         logger.error("LunaTask API error: %s", status_code)
-        raise LunaTaskAPIError("Error", status_code) from error
+        raise LunaTaskAPIError("", status_code) from error
 
     async def make_request(
         self,
@@ -172,10 +201,14 @@ class LunaTaskClient:
             Dict[str, Any]: Parsed JSON response
 
         Raises:
+            LunaTaskBadRequestError: Invalid request parameters
             LunaTaskAuthenticationError: Authentication failed
+            LunaTaskSubscriptionRequiredError: Subscription required
             LunaTaskNotFoundError: Resource not found
+            LunaTaskValidationError: Entity validation failed
             LunaTaskRateLimitError: Rate limit exceeded
             LunaTaskServerError: Server error
+            LunaTaskServiceUnavailableError: Service unavailable
             LunaTaskNetworkError: Network connectivity error
             LunaTaskTimeoutError: Request timeout
             LunaTaskAPIError: Other API errors

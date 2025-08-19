@@ -3,6 +3,16 @@
     "context7": {
       "type": "streamable-http",
       "url": "https://mcp.context7.com/mcp"
+    },
+    "archon": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "http://localhost:8051/mcp"
+      ],
+      "alwaysAllow": [
+        "perform_rag_query"
+      ]
     }
   }
 }

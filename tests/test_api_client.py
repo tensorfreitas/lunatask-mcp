@@ -5,6 +5,8 @@ following TDD methodology and ensuring secure token handling.
 """
 # pyright: reportPrivateUsage=false
 
+from typing import Any
+
 import httpx
 import pytest
 from pydantic import HttpUrl
@@ -23,6 +25,7 @@ from lunatask_mcp.api.exceptions import (
     LunaTaskTimeoutError,
     LunaTaskValidationError,
 )
+from lunatask_mcp.api.models import TaskResponse
 from lunatask_mcp.config import ServerConfig
 
 # Test constants
@@ -688,3 +691,176 @@ class TestLunaTaskClientSecurityFeatures:
 
         # After context exit, client should be closed
         # This would be tested by checking if the client's close method was called
+
+
+class TestLunaTaskClientGetTasks:
+    """Test get_tasks method for retrieving all tasks."""
+
+    @pytest.mark.asyncio
+    async def test_get_tasks_success_with_data(self, mocker: MockerFixture) -> None:
+        """Test successful get_tasks request with task data."""
+        config = ServerConfig(
+            lunatask_bearer_token=VALID_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+        )
+        client = LunaTaskClient(config)
+
+        # Mock successful response with tasks
+        mock_response_data: list[dict[str, Any]] = [
+            {
+                "id": "task-1",
+                "area_id": "area-1",
+                "status": "open",
+                "priority": 1,
+                "due_date": "2025-08-20T10:00:00Z",
+                "created_at": "2025-08-19T10:00:00Z",
+                "updated_at": "2025-08-19T10:00:00Z",
+                "source": {"type": "manual", "value": "user_created"},
+                "tags": ["work", "urgent"],
+            },
+            {
+                "id": "task-2",
+                "area_id": None,
+                "status": "completed",
+                "priority": None,
+                "due_date": None,
+                "created_at": "2025-08-18T10:00:00Z",
+                "updated_at": "2025-08-19T09:00:00Z",
+                "source": None,
+                "tags": [],
+            },
+        ]
+
+        mock_request = mocker.patch.object(
+            client,
+            "make_request",
+            return_value=mock_response_data,
+        )
+
+        result = await client.get_tasks()
+
+        expected_task_count = 2
+        assert len(result) == expected_task_count
+        assert all(isinstance(task, TaskResponse) for task in result)
+        assert result[0].id == "task-1"
+        assert result[0].status == "open"
+        assert result[0].priority == 1
+        assert result[0].tags == ["work", "urgent"]
+        assert result[1].id == "task-2"
+        assert result[1].status == "completed"
+        assert result[1].priority is None
+        mock_request.assert_called_once_with("GET", "tasks")
+
+    @pytest.mark.asyncio
+    async def test_get_tasks_success_empty_list(self, mocker: MockerFixture) -> None:
+        """Test successful get_tasks request with empty task list."""
+        config = ServerConfig(
+            lunatask_bearer_token=VALID_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+        )
+        client = LunaTaskClient(config)
+
+        mock_request = mocker.patch.object(
+            client,
+            "make_request",
+            return_value=[],
+        )
+
+        result = await client.get_tasks()
+
+        assert result == []
+        mock_request.assert_called_once_with("GET", "tasks")
+
+    @pytest.mark.asyncio
+    async def test_get_tasks_handles_missing_encrypted_fields(self, mocker: MockerFixture) -> None:
+        """Test get_tasks gracefully handles absence of encrypted fields (name, notes)."""
+        config = ServerConfig(
+            lunatask_bearer_token=VALID_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+        )
+        client = LunaTaskClient(config)
+
+        # Response without encrypted fields (name, notes) as expected from E2E encryption
+        mock_response_data: list[dict[str, Any]] = [
+            {
+                "id": "task-1",
+                "status": "open",
+                "created_at": "2025-08-19T10:00:00Z",
+                "updated_at": "2025-08-19T10:00:00Z",
+                # Note: 'name' and 'notes' fields intentionally missing
+            }
+        ]
+
+        mock_request = mocker.patch.object(
+            client,
+            "make_request",
+            return_value=mock_response_data,
+        )
+
+        result = await client.get_tasks()
+
+        assert len(result) == 1
+        assert result[0].id == "task-1"
+        assert result[0].status == "open"
+        # Encrypted fields should not be present in the model
+        assert not hasattr(result[0], "name")
+        assert not hasattr(result[0], "notes")
+        mock_request.assert_called_once_with("GET", "tasks")
+
+    @pytest.mark.asyncio
+    async def test_get_tasks_authentication_error(self, mocker: MockerFixture) -> None:
+        """Test get_tasks handles authentication error."""
+        config = ServerConfig(
+            lunatask_bearer_token=INVALID_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+        )
+        client = LunaTaskClient(config)
+
+        mocker.patch.object(
+            client,
+            "make_request",
+            side_effect=LunaTaskAuthenticationError(),
+        )
+
+        with pytest.raises(LunaTaskAuthenticationError):
+            await client.get_tasks()
+
+    @pytest.mark.asyncio
+    async def test_get_tasks_rate_limit_error(self, mocker: MockerFixture) -> None:
+        """Test get_tasks handles rate limit error."""
+        config = ServerConfig(
+            lunatask_bearer_token=VALID_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+        )
+        client = LunaTaskClient(config)
+
+        mocker.patch.object(
+            client,
+            "make_request",
+            side_effect=LunaTaskRateLimitError(),
+        )
+
+        with pytest.raises(LunaTaskRateLimitError):
+            await client.get_tasks()
+
+    @pytest.mark.asyncio
+    async def test_get_tasks_with_pagination_params(self, mocker: MockerFixture) -> None:
+        """Test get_tasks accepts and forwards pagination/filter parameters."""
+        config = ServerConfig(
+            lunatask_bearer_token=VALID_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+        )
+        client = LunaTaskClient(config)
+
+        mock_request = mocker.patch.object(
+            client,
+            "make_request",
+            return_value=[],
+        )
+
+        # Test with optional pagination/filter parameters
+        await client.get_tasks(limit=10, offset=20, status="open")
+
+        mock_request.assert_called_once_with(
+            "GET", "tasks", params={"limit": 10, "offset": 20, "status": "open"}
+        )

@@ -23,6 +23,7 @@ from lunatask_mcp.api.exceptions import (
     LunaTaskTimeoutError,
     LunaTaskValidationError,
 )
+from lunatask_mcp.api.models import TaskResponse
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.rate_limiter import TokenBucketLimiter
 
@@ -266,6 +267,46 @@ class LunaTaskClient:
             raise LunaTaskAPIError("Error") from e
         else:
             return result
+
+    async def get_tasks(self, **params: str | int | None) -> list[TaskResponse]:
+        """Retrieve all tasks from the LunaTask API.
+
+        Args:
+            **params: Optional query parameters for pagination/filtering
+                     (e.g., limit, offset, status)
+
+        Returns:
+            List[TaskResponse]: List of task objects from the API
+
+        Raises:
+            LunaTaskAuthenticationError: Invalid bearer token
+            LunaTaskRateLimitError: Rate limit exceeded
+            LunaTaskServerError: Server error occurred
+            LunaTaskNetworkError: Network connectivity error
+            LunaTaskAPIError: Other API errors
+        """
+        # Prepare params dict, filtering out None values
+        query_params = {k: v for k, v in params.items() if v is not None} if params else None
+
+        # Make authenticated request to /v1/tasks endpoint
+        if query_params:
+            response_data = await self.make_request("GET", "tasks", params=query_params)
+        else:
+            response_data = await self.make_request("GET", "tasks")
+
+        # Parse response JSON into TaskResponse model list
+        # The tasks API returns a list of task dictionaries, but make_request() is typed
+        # to return dict[str, Any] for general use. We know from the API spec that GET /v1/tasks
+        # specifically returns a JSON array of task objects, so this assignment is safe.
+        task_list: list[dict[str, Any]] = response_data  # type: ignore[assignment]
+        try:
+            tasks = [TaskResponse(**task_data) for task_data in task_list]
+        except Exception as e:
+            logger.exception("Failed to parse task response data")
+            raise LunaTaskAPIError("") from e
+        else:
+            logger.debug("Successfully retrieved %d tasks", len(tasks))
+            return tasks
 
     async def test_connectivity(self) -> bool:
         """Test connectivity to the LunaTask API.

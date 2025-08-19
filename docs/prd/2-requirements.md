@@ -2,7 +2,7 @@
 
 ## Functional
 
-1.  **FR1**: The server shall be capable of operating in two communication modes: via standard input/output (stdio) for subprocess control, and via Server-Sent Events (SSE) for HTTP-based clients.
+1.  **FR1**: The server shall be capable of operating in two communication modes: via standard input/output (stdio) for subprocess control (MVP), and via Server-Sent Events (SSE) for HTTP-based clients (post-MVP).
 2.  **FR2**: The server shall correctly parse and handle valid Model Context Protocol (MCP) requests for discovering and calling `tool` functions.
 3.  **FR3**: The server shall authenticate with the LunaTask REST API by including a user-provided bearer token in its outgoing requests.
 4.  **FR4**: The server shall provide MCP tools to create and update tasks by making the appropriate calls to the LunaTask Tasks API.

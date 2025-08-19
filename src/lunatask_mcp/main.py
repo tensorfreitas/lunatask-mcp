@@ -237,6 +237,13 @@ def load_configuration(args: argparse.Namespace) -> ServerConfig:
                 "log_level",
                 "config_file",
                 "test_connectivity_on_startup",
+                "rate_limit_rpm",
+                "rate_limit_burst",
+                "http_retries",
+                "http_backoff_start_seconds",
+                "http_user_agent",
+                "timeout_connect",
+                "timeout_read",
             }
             unknown_keys = set(file_config.keys()) - known_fields
             if unknown_keys:

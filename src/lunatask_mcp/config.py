@@ -62,6 +62,39 @@ class ServerConfig(BaseModel):
         description="Rate limit: burst capacity",
     )
 
+    http_retries: int = Field(
+        default=2,
+        ge=0,
+        le=5,
+        description="HTTP client retry count for failed requests",
+    )
+
+    http_backoff_start_seconds: float = Field(
+        default=0.25,
+        ge=0.1,
+        le=10.0,
+        description="HTTP client backoff start time in seconds",
+    )
+
+    http_user_agent: str = Field(
+        default="lunatask-mcp/0.1.0",
+        description="HTTP client User-Agent header",
+    )
+
+    timeout_connect: float = Field(
+        default=5.0,
+        ge=1.0,
+        le=30.0,
+        description="HTTP connection timeout in seconds",
+    )
+
+    timeout_read: float = Field(
+        default=30.0,
+        ge=5.0,
+        le=120.0,
+        description="HTTP read timeout in seconds",
+    )
+
     @field_validator("lunatask_base_url")
     @classmethod
     def validate_https_url(cls, v: HttpUrl) -> HttpUrl:

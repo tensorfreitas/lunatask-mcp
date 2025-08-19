@@ -48,6 +48,20 @@ class ServerConfig(BaseModel):
         description="Test LunaTask API connectivity during server startup",
     )
 
+    rate_limit_rpm: int = Field(
+        default=60,
+        ge=1,
+        le=10000,
+        description="Rate limit: requests per minute",
+    )
+
+    rate_limit_burst: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        description="Rate limit: burst capacity",
+    )
+
     @field_validator("lunatask_base_url")
     @classmethod
     def validate_https_url(cls, v: HttpUrl) -> HttpUrl:

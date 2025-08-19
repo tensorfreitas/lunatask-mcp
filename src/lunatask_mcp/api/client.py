@@ -24,6 +24,7 @@ from lunatask_mcp.api.exceptions import (
     LunaTaskValidationError,
 )
 from lunatask_mcp.config import ServerConfig
+from lunatask_mcp.rate_limiter import TokenBucketLimiter
 
 # HTTP status code constants
 _HTTP_BAD_REQUEST = 400
@@ -55,10 +56,16 @@ class LunaTaskClient:
         Args:
             config: Server configuration containing bearer token and base URL
         """
+
         self._config = config
         self._base_url = str(config.lunatask_base_url).rstrip("/")
         self._bearer_token = config.lunatask_bearer_token
         self._http_client: httpx.AsyncClient | None = None
+
+        # Initialize rate limiter with configuration
+        self._rate_limiter = TokenBucketLimiter(
+            rpm=config.rate_limit_rpm, burst=config.rate_limit_burst
+        )
 
     def __str__(self) -> str:
         """Return string representation without exposing bearer token."""
@@ -213,6 +220,9 @@ class LunaTaskClient:
             LunaTaskTimeoutError: Request timeout
             LunaTaskAPIError: Other API errors
         """
+        # Acquire rate limiting token before making request
+        await self._rate_limiter.acquire()
+
         url = f"{self._base_url}/{endpoint.lstrip('/')}"
         headers = self._get_auth_headers()
 

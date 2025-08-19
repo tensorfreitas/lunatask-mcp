@@ -199,52 +199,52 @@ class CoreServer:
             raise
 
 
-def load_configuration(args: argparse.Namespace) -> ServerConfig:
-    """Load configuration from defaults, file, and CLI arguments with proper precedence.
-
-    Precedence order (CLI > file > defaults):
-    1. Command-line arguments (highest priority)
-    2. Configuration file values
-    3. Default values (lowest priority)
-
-    Args:
-        args: Parsed command-line arguments.
+def _get_known_config_fields() -> set[str]:
+    """Get the set of known configuration field names.
 
     Returns:
-        ServerConfig: Loaded and validated configuration.
+        set[str]: Set of valid configuration field names for TOML validation.
+    """
+    return {
+        "lunatask_bearer_token",
+        "lunatask_base_url",
+        "port",
+        "log_level",
+        "config_file",
+        "test_connectivity_on_startup",
+        "rate_limit_rpm",
+        "rate_limit_burst",
+        "http_retries",
+        "http_backoff_start_seconds",
+        "http_user_agent",
+        "timeout_connect",
+        "timeout_read",
+    }
+
+
+def _load_config_from_file(config_file: str) -> dict[str, Any]:
+    """Load configuration from TOML file with validation.
+
+    Args:
+        config_file: Path to the configuration file.
+
+    Returns:
+        dict[str, Any]: Configuration data loaded from file.
 
     Raises:
-        SystemExit: On configuration validation errors or file parsing errors.
+        SystemExit: On file parsing errors or unknown configuration keys.
     """
     config_data: dict[str, Any] = {}
     logger = logging.getLogger(__name__)
-
-    # Determine config file path
-    config_file = args.config_file or "./config.toml"
     config_path = Path(config_file)
 
-    # Load from configuration file if it exists
     if config_path.exists():
         try:
             with config_path.open("rb") as f:
                 file_config = tomllib.load(f)
 
             # Validate that all keys in the TOML file are known configuration fields
-            known_fields = {
-                "lunatask_bearer_token",
-                "lunatask_base_url",
-                "port",
-                "log_level",
-                "config_file",
-                "test_connectivity_on_startup",
-                "rate_limit_rpm",
-                "rate_limit_burst",
-                "http_retries",
-                "http_backoff_start_seconds",
-                "http_user_agent",
-                "timeout_connect",
-                "timeout_read",
-            }
+            known_fields = _get_known_config_fields()
             unknown_keys = set(file_config.keys()) - known_fields
             if unknown_keys:
                 logger.error(
@@ -262,19 +262,45 @@ def load_configuration(args: argparse.Namespace) -> ServerConfig:
         except OSError:
             logger.exception("Failed to read configuration file %s", config_path)
             sys.exit(1)
-    elif args.config_file:
-        # Only error if config file was explicitly specified but doesn't exist
-        logger.error("Configuration file not found: %s", config_file)
-        sys.exit(1)
 
+    return config_data
+
+
+def _apply_cli_overrides(config_data: dict[str, Any], args: argparse.Namespace) -> None:
+    """Apply CLI argument overrides to configuration data.
+
+    Args:
+        config_data: Configuration data dictionary to modify.
+        args: Parsed command-line arguments.
+    """
     # Override with CLI arguments (CLI takes precedence)
     if args.port is not None:
         config_data["port"] = args.port
     if args.log_level is not None:
         config_data["log_level"] = args.log_level
+    if getattr(args, "base_url", None) is not None:
+        config_data["lunatask_base_url"] = args.base_url
+    if getattr(args, "token", None) is not None:
+        config_data["lunatask_bearer_token"] = args.token
+    if getattr(args, "rate_limit_rpm", None) is not None:
+        config_data["rate_limit_rpm"] = args.rate_limit_rpm
+    if getattr(args, "rate_limit_burst", None) is not None:
+        config_data["rate_limit_burst"] = args.rate_limit_burst
 
-    # Add config_file to the data for the model
-    config_data["config_file"] = config_file
+
+def _create_validated_config(config_data: dict[str, Any]) -> ServerConfig:
+    """Create and validate ServerConfig from configuration data.
+
+    Args:
+        config_data: Configuration data dictionary.
+
+    Returns:
+        ServerConfig: Validated configuration instance.
+
+    Raises:
+        SystemExit: On configuration validation errors.
+    """
+    logger = logging.getLogger(__name__)
 
     try:
         # Create and validate the configuration
@@ -286,6 +312,46 @@ def load_configuration(args: argparse.Namespace) -> ServerConfig:
         # Log effective configuration with secrets redacted
         logger.info("Effective configuration: %s", config.to_redacted_dict())
         return config
+
+
+def load_configuration(args: argparse.Namespace) -> ServerConfig:
+    """Load configuration from defaults, file, and CLI arguments with proper precedence.
+
+    Precedence order (CLI > file > defaults):
+    1. Command-line arguments (highest priority)
+    2. Configuration file values
+    3. Default values (lowest priority)
+
+    Args:
+        args: Parsed command-line arguments.
+
+    Returns:
+        ServerConfig: Loaded and validated configuration.
+
+    Raises:
+        SystemExit: On configuration validation errors or file parsing errors.
+    """
+    logger = logging.getLogger(__name__)
+
+    # Determine config file path
+    config_file = args.config_file or "./config.toml"
+
+    # Check if explicitly specified config file exists
+    if args.config_file and not Path(config_file).exists():
+        logger.error("Configuration file not found: %s", config_file)
+        sys.exit(1)
+
+    # Load configuration from file
+    config_data = _load_config_from_file(config_file)
+
+    # Apply CLI argument overrides
+    _apply_cli_overrides(config_data, args)
+
+    # Add config_file to the data for the model
+    config_data["config_file"] = config_file
+
+    # Create and validate final configuration
+    return _create_validated_config(config_data)
 
 
 def parse_cli_args() -> argparse.Namespace:
@@ -316,6 +382,30 @@ def parse_cli_args() -> argparse.Namespace:
         type=str,
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Logging level",
+    )
+
+    parser.add_argument(
+        "--base-url",
+        type=str,
+        help="Override LunaTask API base URL (e.g., https://api.lunatask.app/v1/)",
+    )
+
+    parser.add_argument(
+        "--token",
+        type=str,
+        help="Override bearer token for LunaTask API authentication",
+    )
+
+    parser.add_argument(
+        "--rate-limit-rpm",
+        type=int,
+        help="Override rate limit: requests per minute (1-10000)",
+    )
+
+    parser.add_argument(
+        "--rate-limit-burst",
+        type=int,
+        help="Override rate limit: burst capacity (1-100)",
     )
 
     return parser.parse_args()

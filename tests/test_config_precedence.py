@@ -230,3 +230,122 @@ timeout_connect = 12.0
                 lunatask_bearer_token="test_token",
                 timeout_read=150.0,  # Above maximum
             )
+
+    def test_cli_base_url_override(self) -> None:
+        """Test that CLI --base-url flag overrides config file."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+            config_content = """
+lunatask_bearer_token = "test_token"
+lunatask_base_url = "https://file.example.com/v1/"
+"""
+            f.write(config_content)
+            config_file_path = f.name
+
+        try:
+            args = argparse.Namespace(
+                config_file=config_file_path,
+                port=None,
+                log_level=None,
+                base_url="https://cli.example.com/v2/",
+                token=None,
+                rate_limit_rpm=None,
+                rate_limit_burst=None,
+            )
+
+            config = load_configuration(args)
+            assert str(config.lunatask_base_url) == "https://cli.example.com/v2/"
+
+        finally:
+            Path(config_file_path).unlink()
+
+    def test_cli_token_override(self) -> None:
+        """Test that CLI --token flag overrides config file."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+            config_content = """
+lunatask_bearer_token = "file_token"
+"""
+            f.write(config_content)
+            config_file_path = f.name
+
+        try:
+            args = argparse.Namespace(
+                config_file=config_file_path,
+                port=None,
+                log_level=None,
+                base_url=None,
+                token="cli_token",
+                rate_limit_rpm=None,
+                rate_limit_burst=None,
+            )
+
+            config = load_configuration(args)
+            assert config.lunatask_bearer_token == "cli_token"
+
+        finally:
+            Path(config_file_path).unlink()
+
+    def test_cli_rate_limit_overrides(self) -> None:
+        """Test that CLI rate limit flags override config file."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+            config_content = """
+lunatask_bearer_token = "test_token"
+rate_limit_rpm = 100
+rate_limit_burst = 20
+"""
+            f.write(config_content)
+            config_file_path = f.name
+
+        try:
+            args = argparse.Namespace(
+                config_file=config_file_path,
+                port=None,
+                log_level=None,
+                base_url=None,
+                token=None,
+                rate_limit_rpm=300,
+                rate_limit_burst=50,
+            )
+
+            config = load_configuration(args)
+            assert config.rate_limit_rpm == 300
+            assert config.rate_limit_burst == 50
+
+        finally:
+            Path(config_file_path).unlink()
+
+    def test_all_cli_flags_together(self) -> None:
+        """Test all new CLI flags working together."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+            config_content = """
+lunatask_bearer_token = "file_token"
+lunatask_base_url = "https://file.example.com/v1/"
+port = 8888
+rate_limit_rpm = 100
+rate_limit_burst = 20
+"""
+            f.write(config_content)
+            config_file_path = f.name
+
+        try:
+            args = argparse.Namespace(
+                config_file=config_file_path,
+                port=9999,  # CLI override
+                log_level="DEBUG",  # CLI override
+                base_url="https://cli.example.com/v2/",  # CLI override
+                token="cli_token",  # CLI override
+                rate_limit_rpm=500,  # CLI override
+                rate_limit_burst=75,  # CLI override
+            )
+
+            config = load_configuration(args)
+
+            # All CLI values should override file values
+            assert config.port == 9999
+            assert config.log_level == "DEBUG"
+            assert str(config.lunatask_base_url) == "https://cli.example.com/v2/"
+            assert config.lunatask_bearer_token == "cli_token"
+            assert config.rate_limit_rpm == 500
+            assert config.rate_limit_burst == 75
+
+        finally:
+            Path(config_file_path).unlink()

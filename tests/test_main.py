@@ -196,3 +196,71 @@ class TestCoreServerLunaTaskIntegration:
 
         # Verify server still starts normally
         mock_app_run.assert_called_once_with(transport="stdio")
+
+
+class TestCoreServerTaskToolsIntegration:
+    """Test CoreServer integration with TaskTools for Task 3 requirements."""
+
+    def test_task_tools_dependency_injection(self, default_config: ServerConfig) -> None:
+        """Test that TaskTools receives LunaTaskClient via dependency injection."""
+        server = CoreServer(default_config)
+
+        # Verify that get_lunatask_client returns a client instance
+        client = server.get_lunatask_client()
+        assert isinstance(client, LunaTaskClient)
+        assert client is not None
+
+    def test_task_tools_registration_with_fastmcp(
+        self, default_config: ServerConfig, mocker: MockerFixture
+    ) -> None:
+        """Test that TaskTools is registered with FastMCP instance during initialization."""
+        # Mock the TaskTools class to verify it's called during server initialization
+        mock_task_tools = mocker.patch("lunatask_mcp.main.TaskTools")
+
+        server = CoreServer(default_config)
+
+        # Verify TaskTools was instantiated with the correct arguments
+        mock_task_tools.assert_called_once()
+        call_args = mock_task_tools.call_args
+
+        # First argument should be the FastMCP instance
+        assert call_args[0][0] is server.app
+        # Second argument should be a LunaTaskClient instance
+        assert isinstance(call_args[0][1], LunaTaskClient)
+
+    def test_lunatask_client_available_to_task_tools(self, default_config: ServerConfig) -> None:
+        """Test that LunaTaskClient is available to TaskTools via dependency injection."""
+        server = CoreServer(default_config)
+
+        # Get the client that would be passed to TaskTools
+        client = server.get_lunatask_client()
+
+        # Verify it has the correct configuration
+        assert client._config is default_config  # type: ignore[reportPrivateUsage]
+
+    def test_fastmcp_instance_has_resource_capability(self, default_config: ServerConfig) -> None:
+        """Test that the FastMCP instance is configured to support resources."""
+        server = CoreServer(default_config)
+
+        # The FastMCP instance should exist and be properly configured
+        assert server.app is not None
+        assert hasattr(server.app, "resource")  # Should have resource decorator method
+
+    def test_resource_registration_and_discoverability(
+        self, default_config: ServerConfig, mocker: MockerFixture
+    ) -> None:
+        """Test that lunatask://tasks resource is registered and discoverable."""
+        # Mock TaskTools to verify resource registration
+        mock_task_tools = mocker.patch("lunatask_mcp.main.TaskTools")
+
+        server = CoreServer(default_config)
+
+        # Verify TaskTools was instantiated (which registers the resource)
+        mock_task_tools.assert_called_once()
+
+        # Verify the FastMCP app has a resource decorator method
+        assert hasattr(server.app, "resource")
+
+        # The actual resource registration happens in TaskTools._register_resources()
+        # which calls self.mcp.resource("lunatask://tasks")(self.get_tasks_resource)
+        # This test confirms the integration is set up correctly

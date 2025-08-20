@@ -29,6 +29,7 @@ from fastmcp import Context, FastMCP
 
 from lunatask_mcp.api.client import LunaTaskClient
 from lunatask_mcp.config import ServerConfig
+from lunatask_mcp.tools.tasks import TaskTools
 
 
 class CoreServer:
@@ -80,8 +81,12 @@ class CoreServer:
         )
 
     def _register_tools(self) -> None:
-        """Register all tools with the FastMCP instance."""
+        """Register all tools and resources with the FastMCP instance."""
         self.app.tool(self.ping_tool, name="ping")
+
+        # Initialize TaskTools to register MCP resources
+        lunatask_client = self.get_lunatask_client()
+        TaskTools(self.app, lunatask_client)
 
     def _setup_signal_handlers(self) -> None:
         """Set up signal handlers for graceful shutdown.

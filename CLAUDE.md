@@ -120,11 +120,6 @@ archon:perform_rag_query(query="[technology] architecture patterns", match_count
 archon:search_code_examples(query="[specific feature] implementation", match_count=3)
 ```
 
-**Create atomic, prioritized tasks:**
-- Each task = 1-4 hours of focused work
-- Higher `task_order` = higher priority
-- Include meaningful descriptions and feature assignments
-
 ## Development Iteration Workflow
 ### Task-Specific Research
 **For each task, conduct focused research:**

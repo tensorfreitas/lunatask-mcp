@@ -308,6 +308,36 @@ class LunaTaskClient:
             logger.debug("Successfully retrieved %d tasks", len(tasks))
             return tasks
 
+    async def get_task(self, task_id: str) -> TaskResponse:
+        """Retrieve a single task from the LunaTask API by ID.
+
+        Args:
+            task_id: The unique identifier for the task to retrieve
+
+        Returns:
+            TaskResponse: Task object from the API
+
+        Raises:
+            LunaTaskNotFoundError: Task not found
+            LunaTaskAuthenticationError: Invalid bearer token
+            LunaTaskRateLimitError: Rate limit exceeded
+            LunaTaskServerError: Server error occurred
+            LunaTaskNetworkError: Network connectivity error
+            LunaTaskAPIError: Other API errors
+        """
+        # Make authenticated request to /v1/tasks/{task_id} endpoint
+        response_data = await self.make_request("GET", f"tasks/{task_id}")
+
+        # Parse response JSON into TaskResponse model instance
+        try:
+            task = TaskResponse(**response_data)
+        except Exception as e:
+            logger.exception("Failed to parse single task response data")
+            raise LunaTaskAPIError("") from e
+        else:
+            logger.debug("Successfully retrieved task: %s", task.id)
+            return task
+
     async def test_connectivity(self) -> bool:
         """Test connectivity to the LunaTask API.
 

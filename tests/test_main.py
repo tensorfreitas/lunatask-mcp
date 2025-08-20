@@ -264,3 +264,27 @@ class TestCoreServerTaskToolsIntegration:
         # The actual resource registration happens in TaskTools._register_resources()
         # which calls self.mcp.resource("lunatask://tasks")(self.get_tasks_resource)
         # This test confirms the integration is set up correctly
+
+    def test_resource_registration_setup_for_discoverability(
+        self, default_config: ServerConfig, mocker: MockerFixture
+    ) -> None:
+        """Test that the setup enables resource discoverability through MCP protocol."""
+        # Mock TaskTools to verify resource registration pattern
+        mock_task_tools = mocker.patch("lunatask_mcp.main.TaskTools")
+
+        server = CoreServer(default_config)
+
+        # Verify TaskTools was instantiated with FastMCP instance
+        mock_task_tools.assert_called_once()
+        call_args = mock_task_tools.call_args
+
+        # The FastMCP instance passed to TaskTools
+        mcp_instance = call_args[0][0]
+        assert mcp_instance is server.app
+
+        # Verify the FastMCP instance has resource decorator capability
+        assert hasattr(mcp_instance, "resource")
+
+        # The resource registration happens in TaskTools._register_resources()
+        # which follows the pattern: self.mcp.resource("lunatask://tasks")(self.get_tasks_resource)
+        # This test verifies the integration setup that enables MCP list_resources capability

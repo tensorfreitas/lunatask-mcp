@@ -10,7 +10,9 @@ from typing import Any
 from fastmcp import Context, FastMCP
 
 from lunatask_mcp.api.client import LunaTaskClient
-from lunatask_mcp.api.exceptions import LunaTaskAPIError
+from lunatask_mcp.api.exceptions import (
+    LunaTaskAPIError,
+)
 
 # Configure logger to write to stderr
 logger = logging.getLogger(__name__)
@@ -95,9 +97,32 @@ class TaskTools:
             }
 
         except LunaTaskAPIError as e:
-            error_msg = f"Failed to retrieve tasks from LunaTask API: {e}"
-            logger.exception(error_msg)
-            await ctx.error(error_msg)
+            # Handle specific LunaTask API errors with structured MCP responses
+            if e.__class__.__name__ == "LunaTaskAuthenticationError":
+                error_msg = "Failed to retrieve tasks: Invalid or expired LunaTask API credentials"
+                await ctx.error(error_msg)
+                logger.exception("Authentication error accessing LunaTask API")
+            elif e.__class__.__name__ == "LunaTaskRateLimitError":
+                error_msg = "Failed to retrieve tasks: LunaTask API rate limit exceeded - "
+                "please try again later"
+                await ctx.error(error_msg)
+                logger.warning("Rate limit exceeded for LunaTask API")
+            elif e.__class__.__name__ == "LunaTaskServerError":
+                error_msg = f"Failed to retrieve tasks: LunaTask server error ({e.status_code}) "
+                "- please try again"
+                await ctx.error(error_msg)
+                logger.exception("LunaTask server error: %s", e.status_code)
+            elif e.__class__.__name__ == "LunaTaskTimeoutError":
+                error_msg = (
+                    "Failed to retrieve tasks: Request to LunaTask API timed out - please try again"
+                )
+                await ctx.error(error_msg)
+                logger.warning("LunaTask API request timeout")
+            else:
+                # Generic LunaTask API error
+                error_msg = f"Failed to retrieve tasks from LunaTask API: {e}"
+                await ctx.error(error_msg)
+                logger.exception("LunaTask API error")
             raise
         except Exception as e:
             error_msg = f"Unexpected error retrieving tasks: {e}"

@@ -12,7 +12,13 @@ from pydantic import HttpUrl
 from pytest_mock import MockerFixture
 
 from lunatask_mcp.api.client import LunaTaskClient
-from lunatask_mcp.api.exceptions import LunaTaskAPIError
+from lunatask_mcp.api.exceptions import (
+    LunaTaskAPIError,
+    LunaTaskAuthenticationError,
+    LunaTaskRateLimitError,
+    LunaTaskServerError,
+    LunaTaskTimeoutError,
+)
 from lunatask_mcp.api.models import Source, TaskResponse
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.tools.tasks import TaskTools
@@ -246,3 +252,169 @@ class TestTaskResourceRetrieval:
         assert task_data["area_id"] is None
         assert task_data["source"] is None
         assert task_data["tags"] == []
+
+
+class TestTaskResourceErrorHandling:
+    """Test comprehensive error handling in TaskTools resource methods."""
+
+    @pytest.mark.asyncio
+    async def test_authentication_error_handling(self, mocker: MockerFixture) -> None:
+        """Test proper handling and propagation of authentication errors (401)."""
+
+        mcp = FastMCP("test-server")
+        config = ServerConfig(
+            lunatask_bearer_token="invalid_token",
+            lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
+        )
+        client = LunaTaskClient(config)
+        task_tools = TaskTools(mcp, client)
+
+        # Mock context
+        mock_ctx = mocker.AsyncMock()
+
+        # Mock authentication error
+        auth_error = LunaTaskAuthenticationError("Authentication failed")
+        mocker.patch.object(client, "get_tasks", side_effect=auth_error)
+        mocker.patch.object(client, "__aenter__", return_value=client)
+        mocker.patch.object(client, "__aexit__", return_value=None)
+
+        # Should re-raise the authentication error
+        with pytest.raises(LunaTaskAuthenticationError) as exc_info:
+            await task_tools.get_tasks_resource(mock_ctx)
+
+        assert exc_info.value is auth_error
+        mock_ctx.error.assert_called_once()
+        error_call_msg = mock_ctx.error.call_args[0][0]
+        assert (
+            error_call_msg
+            == "Failed to retrieve tasks: Invalid or expired LunaTask API credentials"
+        )
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_error_handling(self, mocker: MockerFixture) -> None:
+        """Test proper handling and propagation of rate limit errors (429)."""
+
+        mcp = FastMCP("test-server")
+        config = ServerConfig(
+            lunatask_bearer_token="test_token",
+            lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
+        )
+        client = LunaTaskClient(config)
+        task_tools = TaskTools(mcp, client)
+
+        # Mock context
+        mock_ctx = mocker.AsyncMock()
+
+        # Mock rate limit error
+        rate_limit_error = LunaTaskRateLimitError("Rate limit exceeded")
+        mocker.patch.object(client, "get_tasks", side_effect=rate_limit_error)
+        mocker.patch.object(client, "__aenter__", return_value=client)
+        mocker.patch.object(client, "__aexit__", return_value=None)
+
+        # Should re-raise the rate limit error
+        with pytest.raises(LunaTaskRateLimitError) as exc_info:
+            await task_tools.get_tasks_resource(mock_ctx)
+
+        assert exc_info.value is rate_limit_error
+        mock_ctx.error.assert_called_once()
+        error_call_msg = mock_ctx.error.call_args[0][0]
+        assert (
+            error_call_msg
+            == "Failed to retrieve tasks: LunaTask API rate limit exceeded - please try again later"
+        )
+
+    @pytest.mark.asyncio
+    async def test_server_error_handling(self, mocker: MockerFixture) -> None:
+        """Test proper handling and propagation of server errors (5xx)."""
+
+        mcp = FastMCP("test-server")
+        config = ServerConfig(
+            lunatask_bearer_token="test_token",
+            lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
+        )
+        client = LunaTaskClient(config)
+        task_tools = TaskTools(mcp, client)
+
+        # Mock context
+        mock_ctx = mocker.AsyncMock()
+
+        # Mock server error
+        server_error = LunaTaskServerError("Internal server error", status_code=500)
+        mocker.patch.object(client, "get_tasks", side_effect=server_error)
+        mocker.patch.object(client, "__aenter__", return_value=client)
+        mocker.patch.object(client, "__aexit__", return_value=None)
+
+        # Should re-raise the server error
+        with pytest.raises(LunaTaskServerError) as exc_info:
+            await task_tools.get_tasks_resource(mock_ctx)
+
+        assert exc_info.value is server_error
+        mock_ctx.error.assert_called_once()
+        error_call_msg = mock_ctx.error.call_args[0][0]
+        assert (
+            error_call_msg
+            == "Failed to retrieve tasks: LunaTask server error (500) - please try again"
+        )
+
+    @pytest.mark.asyncio
+    async def test_timeout_error_handling(self, mocker: MockerFixture) -> None:
+        """Test proper handling and propagation of timeout errors."""
+
+        mcp = FastMCP("test-server")
+        config = ServerConfig(
+            lunatask_bearer_token="test_token",
+            lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
+        )
+        client = LunaTaskClient(config)
+        task_tools = TaskTools(mcp, client)
+
+        # Mock context
+        mock_ctx = mocker.AsyncMock()
+
+        # Mock timeout error
+        timeout_error = LunaTaskTimeoutError("Request timeout", status_code=524)
+        mocker.patch.object(client, "get_tasks", side_effect=timeout_error)
+        mocker.patch.object(client, "__aenter__", return_value=client)
+        mocker.patch.object(client, "__aexit__", return_value=None)
+
+        # Should re-raise the timeout error
+        with pytest.raises(LunaTaskTimeoutError) as exc_info:
+            await task_tools.get_tasks_resource(mock_ctx)
+
+        assert exc_info.value is timeout_error
+        mock_ctx.error.assert_called_once()
+        error_call_msg = mock_ctx.error.call_args[0][0]
+        assert (
+            error_call_msg
+            == "Failed to retrieve tasks: Request to LunaTask API timed out - please try again"
+        )
+
+    @pytest.mark.asyncio
+    async def test_error_logging_uses_ctx_error_method(self, mocker: MockerFixture) -> None:
+        """Test that all error scenarios properly use ctx.error for MCP logging."""
+        mcp = FastMCP("test-server")
+        config = ServerConfig(
+            lunatask_bearer_token="test_token",
+            lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
+        )
+        client = LunaTaskClient(config)
+        task_tools = TaskTools(mcp, client)
+
+        # Mock context
+        mock_ctx = mocker.AsyncMock()
+
+        # Mock a generic API error
+        api_error = LunaTaskAPIError("Generic API error", status_code=400)
+        mocker.patch.object(client, "get_tasks", side_effect=api_error)
+        mocker.patch.object(client, "__aenter__", return_value=client)
+        mocker.patch.object(client, "__aexit__", return_value=None)
+
+        # Should re-raise the error
+        with pytest.raises(LunaTaskAPIError):
+            await task_tools.get_tasks_resource(mock_ctx)
+
+        # Verify ctx.error was called with appropriate message format
+        mock_ctx.error.assert_called_once()
+        error_call_msg = mock_ctx.error.call_args[0][0]
+        assert "Failed to retrieve tasks from LunaTask API:" in error_call_msg
+        assert "Generic API error" in error_call_msg

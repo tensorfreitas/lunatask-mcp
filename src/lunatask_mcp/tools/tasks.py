@@ -12,6 +12,11 @@ from fastmcp import Context, FastMCP
 from lunatask_mcp.api.client import LunaTaskClient
 from lunatask_mcp.api.exceptions import (
     LunaTaskAPIError,
+    LunaTaskAuthenticationError,
+    LunaTaskNotFoundError,
+    LunaTaskRateLimitError,
+    LunaTaskServerError,
+    LunaTaskTimeoutError,
 )
 
 # Configure logger to write to stderr
@@ -40,6 +45,7 @@ class TaskTools:
     def _register_resources(self) -> None:
         """Register all task-related MCP resources with the FastMCP instance."""
         self.mcp.resource("lunatask://tasks")(self.get_tasks_resource)
+        self.mcp.resource("lunatask://tasks/{task_id}")(self.get_task_resource)
 
     async def get_tasks_resource(self, ctx: Context) -> dict[str, Any]:
         """MCP resource providing access to all LunaTask tasks.
@@ -135,4 +141,115 @@ class TaskTools:
             raise LunaTaskAPIError(error_msg) from e
         else:
             await ctx.info(f"Successfully retrieved {len(tasks)} tasks from LunaTask")
+            return resource_data
+
+    async def get_task_resource(self, ctx: Context, task_id: str) -> dict[str, Any]:
+        """MCP resource providing access to a single LunaTask task by ID.
+
+        This resource retrieves a specific task from the LunaTask API and presents it
+        as a structured JSON resource accessible via the URI 'lunatask://tasks/{task_id}'.
+
+        Args:
+            ctx: MCP context providing logging and execution context
+            task_id: The unique identifier for the task to retrieve
+
+        Returns:
+            dict[str, Any]: JSON structure containing single task data with metadata
+
+        Raises:
+            LunaTaskNotFoundError: If the task with the specified ID is not found
+            LunaTaskAPIError: If the LunaTask API request fails
+        """
+        try:
+            await ctx.info(f"Retrieving task {task_id} from LunaTask API")
+
+            # Use the LunaTaskClient to fetch the specific task
+            async with self.lunatask_client:
+                task = await self.lunatask_client.get_task(task_id)
+
+            # Convert TaskResponse object to dictionary for JSON serialization
+            task_data = {
+                "id": task.id,
+                "area_id": task.area_id,
+                "status": task.status,
+                "priority": task.priority,
+                "due_date": task.due_date.isoformat() if task.due_date else None,
+                "created_at": task.created_at.isoformat(),
+                "updated_at": task.updated_at.isoformat(),
+                "source": {
+                    "type": task.source.type,
+                    "value": task.source.value,
+                }
+                if task.source
+                else None,
+                "tags": task.tags,
+            }
+
+            resource_data = {
+                "resource_type": "lunatask_task",
+                "task_id": task_id,
+                "task": task_data,
+                "metadata": {
+                    "retrieved_at": ctx.session_id if hasattr(ctx, "session_id") else "unknown",
+                    "encrypted_fields_note": (
+                        "Task names and notes are not included due to E2E encryption"
+                    ),
+                },
+            }
+
+        except LunaTaskNotFoundError:
+            # Handle specific task not found error with structured MCP response
+            error_msg = f"Task {task_id} not found in LunaTask"
+            await ctx.error(error_msg)
+            logger.warning("Task not found: %s", task_id)
+            raise
+        except LunaTaskAuthenticationError:
+            # Handle authentication errors
+            error_msg = (
+                f"Failed to retrieve task {task_id}: Invalid or expired LunaTask API credentials"
+            )
+            await ctx.error(error_msg)
+            logger.exception("Authentication error accessing LunaTask API for task %s", task_id)
+            raise
+        except LunaTaskRateLimitError:
+            # Handle rate limit errors
+            error_msg = (
+                f"Failed to retrieve task {task_id}: LunaTask API rate limit exceeded - "
+                "please try again later"
+            )
+            await ctx.error(error_msg)
+            logger.warning("Rate limit exceeded for LunaTask API task %s", task_id)
+            raise
+        except LunaTaskServerError as e:
+            # Handle server errors
+            error_msg = (
+                f"Failed to retrieve task {task_id}: LunaTask server error ({e.status_code}) "
+                "- please try again"
+            )
+            await ctx.error(error_msg)
+            logger.exception("LunaTask server error for task %s: %s", task_id, e.status_code)
+            raise
+        except LunaTaskTimeoutError:
+            # Handle timeout errors
+            error_msg = (
+                f"Failed to retrieve task {task_id}: Request to LunaTask API timed out - "
+                "please try again"
+            )
+            await ctx.error(error_msg)
+            logger.warning("LunaTask API request timeout for task %s", task_id)
+            raise
+        except LunaTaskAPIError as e:
+            # Handle other LunaTask API errors
+            error_msg = f"Failed to retrieve task {task_id} from LunaTask API: {e}"
+            await ctx.error(error_msg)
+            logger.exception("LunaTask API error for task %s", task_id)
+            raise
+        except Exception as e:
+            # Handle unexpected errors
+            error_msg = f"Unexpected error retrieving task {task_id}: {e}"
+            logger.exception(error_msg)
+            await ctx.error(error_msg)
+            raise LunaTaskAPIError(error_msg) from e
+        else:
+            await ctx.info(f"Successfully retrieved task {task_id} from LunaTask")
             return resource_data

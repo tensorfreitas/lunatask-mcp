@@ -103,13 +103,17 @@ class TaskTools:
                 await ctx.error(error_msg)
                 logger.exception("Authentication error accessing LunaTask API")
             elif e.__class__.__name__ == "LunaTaskRateLimitError":
-                error_msg = "Failed to retrieve tasks: LunaTask API rate limit exceeded - "
-                "please try again later"
+                error_msg = (
+                    "Failed to retrieve tasks: LunaTask API rate limit exceeded - "
+                    "please try again later"
+                )
                 await ctx.error(error_msg)
                 logger.warning("Rate limit exceeded for LunaTask API")
             elif e.__class__.__name__ == "LunaTaskServerError":
-                error_msg = f"Failed to retrieve tasks: LunaTask server error ({e.status_code}) "
-                "- please try again"
+                error_msg = (
+                    f"Failed to retrieve tasks: LunaTask server error ({e.status_code}) "
+                    "- please try again"
+                )
                 await ctx.error(error_msg)
                 logger.exception("LunaTask server error: %s", e.status_code)
             elif e.__class__.__name__ == "LunaTaskTimeoutError":

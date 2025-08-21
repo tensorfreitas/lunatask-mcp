@@ -17,9 +17,11 @@ from lunatask_mcp.api.exceptions import (
     LunaTaskNotFoundError,
     LunaTaskRateLimitError,
     LunaTaskServerError,
+    LunaTaskSubscriptionRequiredError,
     LunaTaskTimeoutError,
+    LunaTaskValidationError,
 )
-from lunatask_mcp.api.models import TaskResponse
+from lunatask_mcp.api.models import TaskCreate, TaskResponse
 
 # Configure logger to write to stderr
 logger = logging.getLogger(__name__)
@@ -45,9 +47,10 @@ class TaskTools:
         self._register_resources()
 
     def _register_resources(self) -> None:
-        """Register all task-related MCP resources with the FastMCP instance."""
+        """Register all task-related MCP resources and tools with the FastMCP instance."""
         self.mcp.resource("lunatask://tasks")(self.get_tasks_resource)
         self.mcp.resource("lunatask://tasks/{task_id}")(self.get_task_resource)
+        self.mcp.tool("create_task")(self.create_task_tool)
 
     def _serialize_task_response(self, task: TaskResponse) -> dict[str, Any]:
         """Convert a TaskResponse object to a dictionary for JSON serialization.
@@ -258,3 +261,149 @@ class TaskTools:
         else:
             await ctx.info(f"Successfully retrieved task {task_id} from LunaTask")
             return resource_data
+
+    async def create_task_tool(  # noqa: PLR0913, PLR0911
+        self,
+        ctx: Context,
+        name: str,
+        notes: str | None = None,
+        area_id: str | None = None,
+        status: str = "open",
+        priority: int | None = None,
+        tags: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Create a new task in LunaTask.
+
+        This MCP tool creates a new task using the LunaTask API. All task fields
+        are supported, with only the name being required.
+
+        Args:
+            ctx: MCP context for logging and communication
+            name: Task name (required)
+            notes: Optional task notes
+            area_id: Optional area ID the task belongs to
+            status: Task status (default: "open")
+            priority: Optional task priority level
+            tags: Optional list of task tags
+
+        Returns:
+            dict[str, Any]: Response containing task creation result with task_id
+
+        Raises:
+            LunaTaskValidationError: When task validation fails (422)
+            LunaTaskSubscriptionRequiredError: When subscription required (402)
+            LunaTaskAuthenticationError: When authentication fails (401)
+            LunaTaskRateLimitError: When rate limit exceeded (429)
+            LunaTaskServerError: When server error occurs (5xx)
+            LunaTaskAPIError: For other API errors
+        """
+        await ctx.info(f"Creating new task: {name}")
+
+        try:
+            # Create TaskCreate object from parameters
+            task_data = TaskCreate(
+                name=name,
+                notes=notes,
+                area_id=area_id,
+                status=status,
+                priority=priority,
+                tags=tags or [],
+            )
+
+            # Use LunaTask client to create the task
+            async with self.lunatask_client as client:
+                created_task = await client.create_task(task_data)
+
+            # Return success response with task ID
+            result = {
+                "success": True,
+                "task_id": created_task.id,
+                "message": "Task created successfully",
+            }
+
+        except LunaTaskValidationError as e:
+            # Handle validation errors (422)
+            error_msg = f"Task validation failed: {e}"
+            result = {
+                "success": False,
+                "error": "validation_error",
+                "message": error_msg,
+            }
+            await ctx.error(error_msg)
+            logger.warning("Task validation error: %s", e)
+            return result
+
+        except LunaTaskSubscriptionRequiredError as e:
+            # Handle subscription required errors (402)
+            error_msg = f"Subscription required: {e}"
+            result = {
+                "success": False,
+                "error": "subscription_required",
+                "message": error_msg,
+            }
+            await ctx.error(error_msg)
+            logger.warning("Subscription required for task creation: %s", e)
+            return result
+
+        except LunaTaskAuthenticationError as e:
+            # Handle authentication errors (401)
+            error_msg = f"Authentication failed: {e}"
+            result = {
+                "success": False,
+                "error": "authentication_error",
+                "message": error_msg,
+            }
+            await ctx.error(error_msg)
+            logger.warning("Authentication error during task creation: %s", e)
+            return result
+
+        except LunaTaskRateLimitError as e:
+            # Handle rate limit errors (429)
+            error_msg = f"Rate limit exceeded: {e}"
+            result = {
+                "success": False,
+                "error": "rate_limit_error",
+                "message": error_msg,
+            }
+            await ctx.error(error_msg)
+            logger.warning("Rate limit exceeded during task creation: %s", e)
+            return result
+
+        except LunaTaskServerError as e:
+            # Handle server errors (5xx)
+            error_msg = f"Server error: {e}"
+            result = {
+                "success": False,
+                "error": "server_error",
+                "message": error_msg,
+            }
+            await ctx.error(error_msg)
+            logger.warning("Server error during task creation: %s", e)
+            return result
+
+        except LunaTaskAPIError as e:
+            # Handle other API errors
+            error_msg = f"API error: {e}"
+            result = {
+                "success": False,
+                "error": "api_error",
+                "message": error_msg,
+            }
+            await ctx.error(error_msg)
+            logger.warning("API error during task creation: %s", e)
+            return result
+
+        except Exception as e:
+            # Handle unexpected errors
+            error_msg = f"Unexpected error creating task: {e}"
+            result = {
+                "success": False,
+                "error": "unexpected_error",
+                "message": error_msg,
+            }
+            await ctx.error(error_msg)
+            logger.exception("Unexpected error during task creation")
+            return result
+        else:
+            await ctx.info(f"Successfully created task {created_task.id}")
+            return result

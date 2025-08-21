@@ -35,3 +35,22 @@ class TaskResponse(BaseModel):
 
     # Note: 'name' and 'notes' fields are not included due to E2E encryption
     # and are not returned in GET responses from the LunaTask API
+
+
+class TaskCreate(BaseModel):
+    """Request model for creating new tasks in LunaTask.
+
+    This model represents the data required to create a new task via POST /v1/tasks.
+    Note: name and notes fields CAN be included in POST requests (they get encrypted client-side).
+    """
+
+    name: str = Field(..., description="Task name (required, gets encrypted client-side)")
+    notes: str | None = Field(
+        default=None, description="Task notes (optional, gets encrypted client-side)"
+    )
+    area_id: str | None = Field(default=None, description="Area ID the task belongs to")
+    status: str = Field(default="open", description="Task status (default: 'open')")
+    priority: int | None = Field(default=None, description="Task priority level")
+    due_date: datetime | None = Field(default=None, description="Task due date")
+    tags: list[str] = Field(default_factory=list, description="Task tags")
+    source: Source | None = Field(default=None, description="Task source information")

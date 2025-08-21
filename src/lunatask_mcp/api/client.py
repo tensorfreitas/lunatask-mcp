@@ -23,7 +23,7 @@ from lunatask_mcp.api.exceptions import (
     LunaTaskTimeoutError,
     LunaTaskValidationError,
 )
-from lunatask_mcp.api.models import TaskResponse
+from lunatask_mcp.api.models import TaskCreate, TaskResponse
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.rate_limiter import TokenBucketLimiter
 
@@ -337,6 +337,41 @@ class LunaTaskClient:
             raise LunaTaskAPIError.create_parse_error(f"tasks/{task_id}", task_id=task_id) from e
         else:
             logger.debug("Successfully retrieved task: %s", task.id)
+            return task
+
+    async def create_task(self, task_data: TaskCreate) -> TaskResponse:
+        """Create a new task in the LunaTask API.
+
+        Args:
+            task_data: TaskCreate object containing task data to create
+
+        Returns:
+            TaskResponse: Created task object from the API with assigned ID
+
+        Raises:
+            LunaTaskValidationError: Validation error (422)
+            LunaTaskSubscriptionRequiredError: Subscription required (402)
+            LunaTaskAuthenticationError: Invalid bearer token (401)
+            LunaTaskRateLimitError: Rate limit exceeded (429)
+            LunaTaskServerError: Server error occurred (5xx)
+            LunaTaskNetworkError: Network connectivity error
+            LunaTaskAPIError: Other API errors
+        """
+        # Convert TaskCreate model to JSON data
+        json_data = task_data.model_dump(exclude_none=True)
+
+        # Make authenticated request to POST /v1/tasks endpoint
+        response_data = await self.make_request("POST", "tasks", data=json_data)
+
+        # Parse response JSON into TaskResponse model instance
+        try:
+            task = TaskResponse(**response_data)
+        except Exception as e:
+            logger.exception("Failed to parse created task response data")
+            task_name = json_data.get("name", "unknown")
+            raise LunaTaskAPIError.create_parse_error("tasks", task_name=task_name) from e
+        else:
+            logger.debug("Successfully created task: %s", task.id)
             return task
 
     async def test_connectivity(self) -> bool:

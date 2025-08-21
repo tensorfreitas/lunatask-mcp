@@ -1,0 +1,42 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "analyst": {
+      "prompt": "{file:./.bmad-core/agents/analyst.md}"
+    },
+    "architect": {
+      "prompt": "{file:./.bmad-core/agents/architect.md}"
+    },
+    "bmad-master": {
+      "prompt": "{file:./.bmad-core/agents/bmad-master.md}"
+    },
+    "bmad-orchestrator": {
+      "prompt": "{file:./.bmad-core/agents/bmad-orchestrator.md}"
+    },
+    "dev": {
+      "prompt": "{file:./.bmad-core/agents/dev.md}"
+    },
+    "pm": {
+      "prompt": "{file:./.bmad-core/agents/pm.md}"
+    },
+    "po": {
+      "prompt": "{file:./.bmad-core/agents/po.md}"
+    },
+    "qa": {
+      "prompt": "{file:./.bmad-core/agents/qa.md}"
+    },
+    "sm": {
+      "prompt": "{file:./.bmad-core/agents/sm.md}"
+    },
+    "ux-expert": {
+      "prompt": "{file:./.bmad-core/agents/ux-expert.md}"
+    }
+  },
+  "mcp": {
+    "context7": {
+      "type": "local",
+      "command": ["npx", "-y", "@upstash/context7-mcp"],
+      "enabled": true
+    }
+  }
+}

@@ -263,8 +263,8 @@ class LunaTaskClient:
             logger.exception("Network error")
             raise LunaTaskNetworkError from e
         except Exception as e:
-            logger.exception("Unexpected error")
-            raise LunaTaskAPIError("Error") from e
+            logger.exception("Unexpected error during API request")
+            raise LunaTaskAPIError.create_unexpected_error(method, endpoint) from e
         else:
             return result
 
@@ -303,7 +303,8 @@ class LunaTaskClient:
             tasks = [TaskResponse(**task_data) for task_data in task_list]
         except Exception as e:
             logger.exception("Failed to parse task response data")
-            raise LunaTaskAPIError("") from e
+            task_count = len(task_list) if task_list else "unknown"
+            raise LunaTaskAPIError.create_parse_error("tasks", task_count=task_count) from e
         else:
             logger.debug("Successfully retrieved %d tasks", len(tasks))
             return tasks
@@ -333,7 +334,7 @@ class LunaTaskClient:
             task = TaskResponse(**response_data)
         except Exception as e:
             logger.exception("Failed to parse single task response data")
-            raise LunaTaskAPIError("") from e
+            raise LunaTaskAPIError.create_parse_error(f"tasks/{task_id}", task_id=task_id) from e
         else:
             logger.debug("Successfully retrieved task: %s", task.id)
             return task

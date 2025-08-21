@@ -13,11 +13,13 @@ from lunatask_mcp.api.client import LunaTaskClient
 from lunatask_mcp.api.exceptions import (
     LunaTaskAPIError,
     LunaTaskAuthenticationError,
+    LunaTaskBadRequestError,
     LunaTaskNotFoundError,
     LunaTaskRateLimitError,
     LunaTaskServerError,
     LunaTaskTimeoutError,
 )
+from lunatask_mcp.api.models import TaskResponse
 
 # Configure logger to write to stderr
 logger = logging.getLogger(__name__)
@@ -47,6 +49,36 @@ class TaskTools:
         self.mcp.resource("lunatask://tasks")(self.get_tasks_resource)
         self.mcp.resource("lunatask://tasks/{task_id}")(self.get_task_resource)
 
+    def _serialize_task_response(self, task: TaskResponse) -> dict[str, Any]:
+        """Convert a TaskResponse object to a dictionary for JSON serialization.
+
+        This shared helper method provides consistent serialization of TaskResponse
+        objects across all task-related resources, ensuring proper handling of
+        optional fields and datetime formatting.
+
+        Args:
+            task: TaskResponse object to serialize
+
+        Returns:
+            dict[str, Any]: Serialized task data suitable for JSON responses
+        """
+        return {
+            "id": task.id,
+            "area_id": task.area_id,
+            "status": task.status,
+            "priority": task.priority,
+            "due_date": task.due_date.isoformat() if task.due_date else None,
+            "created_at": task.created_at.isoformat(),
+            "updated_at": task.updated_at.isoformat(),
+            "source": {
+                "type": task.source.type,
+                "value": task.source.value,
+            }
+            if task.source
+            else None,
+            "tags": task.tags,
+        }
+
     async def get_tasks_resource(self, ctx: Context) -> dict[str, Any]:
         """MCP resource providing access to all LunaTask tasks.
 
@@ -70,25 +102,7 @@ class TaskTools:
                 tasks = await self.lunatask_client.get_tasks()
 
             # Convert TaskResponse objects to dictionaries for JSON serialization
-            task_data = [
-                {
-                    "id": task.id,
-                    "area_id": task.area_id,
-                    "status": task.status,
-                    "priority": task.priority,
-                    "due_date": task.due_date.isoformat() if task.due_date else None,
-                    "created_at": task.created_at.isoformat(),
-                    "updated_at": task.updated_at.isoformat(),
-                    "source": {
-                        "type": task.source.type,
-                        "value": task.source.value,
-                    }
-                    if task.source
-                    else None,
-                    "tags": task.tags,
-                }
-                for task in tasks
-            ]
+            task_data = [self._serialize_task_response(task) for task in tasks]
 
             resource_data = {
                 "resource_type": "lunatask_tasks",
@@ -157,9 +171,15 @@ class TaskTools:
             dict[str, Any]: JSON structure containing single task data with metadata
 
         Raises:
+            LunaTaskBadRequestError: If the task_id parameter is empty or invalid
             LunaTaskNotFoundError: If the task with the specified ID is not found
             LunaTaskAPIError: If the LunaTask API request fails
         """
+        # Defensive parameter validation for better UX
+        if not task_id or not task_id.strip():
+            await ctx.error("Empty or invalid task_id parameter provided")
+            raise LunaTaskBadRequestError.empty_task_id()
+
         try:
             await ctx.info(f"Retrieving task {task_id} from LunaTask API")
 
@@ -168,22 +188,7 @@ class TaskTools:
                 task = await self.lunatask_client.get_task(task_id)
 
             # Convert TaskResponse object to dictionary for JSON serialization
-            task_data = {
-                "id": task.id,
-                "area_id": task.area_id,
-                "status": task.status,
-                "priority": task.priority,
-                "due_date": task.due_date.isoformat() if task.due_date else None,
-                "created_at": task.created_at.isoformat(),
-                "updated_at": task.updated_at.isoformat(),
-                "source": {
-                    "type": task.source.type,
-                    "value": task.source.value,
-                }
-                if task.source
-                else None,
-                "tags": task.tags,
-            }
+            task_data = self._serialize_task_response(task)
 
             resource_data = {
                 "resource_type": "lunatask_task",

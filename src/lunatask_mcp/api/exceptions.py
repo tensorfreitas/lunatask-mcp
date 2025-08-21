@@ -22,6 +22,36 @@ class LunaTaskAPIError(Exception):
         self.status_code = status_code
         super().__init__(message)
 
+    @classmethod
+    def create_unexpected_error(cls, method: str, endpoint: str) -> "LunaTaskAPIError":
+        """Create an error for unexpected API errors with safe context.
+
+        Args:
+            method: HTTP method used
+            endpoint: API endpoint called
+
+        Returns:
+            LunaTaskAPIError with contextual message
+        """
+        safe_context = f"method={method}, endpoint={endpoint}, status_unknown"
+        return cls(f"Unexpected API error ({safe_context})")
+
+    @classmethod
+    def create_parse_error(cls, endpoint: str, **context: str | int) -> "LunaTaskAPIError":
+        """Create an error for response parsing failures with safe context.
+
+        Args:
+            endpoint: API endpoint that failed
+            **context: Additional safe context information
+
+        Returns:
+            LunaTaskAPIError with contextual message
+        """
+        context_parts = [f"endpoint={endpoint}"]
+        context_parts.extend(f"{key}={value}" for key, value in context.items())
+        safe_context = ", ".join(context_parts)
+        return cls(f"Failed to parse response ({safe_context})")
+
 
 class LunaTaskBadRequestError(LunaTaskAPIError):
     """Raised when request parameters are invalid, malformed, or missing (400 Bad Request)."""
@@ -33,6 +63,15 @@ class LunaTaskBadRequestError(LunaTaskAPIError):
             message: Error message describing the invalid parameters
         """
         super().__init__(message, status_code=400)
+
+    @classmethod
+    def empty_task_id(cls) -> "LunaTaskBadRequestError":
+        """Create an error for empty or invalid task ID parameter.
+
+        Returns:
+            LunaTaskBadRequestError for empty task ID
+        """
+        return cls("Task ID cannot be empty")
 
 
 class LunaTaskAuthenticationError(LunaTaskAPIError):

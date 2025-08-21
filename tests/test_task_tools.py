@@ -841,19 +841,21 @@ class TestSingleTaskResource:
         # Mock context
         mock_ctx = mocker.AsyncMock()
 
-        # Mock bad request error for empty task_id
-
-        bad_request_error = LunaTaskBadRequestError("Invalid task ID")
-        mocker.patch.object(client, "get_task", side_effect=bad_request_error)
+        # Mock client methods (should not be called due to early validation)
+        mock_get_task = mocker.patch.object(client, "get_task")
         mocker.patch.object(client, "__aenter__", return_value=client)
         mocker.patch.object(client, "__aexit__", return_value=None)
 
-        # Should re-raise the bad request error
+        # Should raise bad request error for empty task_id
         with pytest.raises(LunaTaskBadRequestError) as exc_info:
             await task_tools.get_task_resource(mock_ctx, task_id="")
 
-        assert exc_info.value is bad_request_error
-        mock_ctx.error.assert_called_once()
+        # Verify defensive validation caught empty task_id
+        assert str(exc_info.value) == "Task ID cannot be empty"
+        mock_ctx.error.assert_called_once_with("Empty or invalid task_id parameter provided")
+
+        # Client should not have been called due to early validation
+        mock_get_task.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_get_task_resource_special_characters_in_id(self, mocker: MockerFixture) -> None:

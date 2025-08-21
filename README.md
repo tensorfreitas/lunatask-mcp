@@ -37,8 +37,171 @@ The server will start and listen for MCP protocol messages on stdio. All logging
 ### Server Capabilities
 The server provides:
 - **Ping Tool**: A health-check tool that responds with "pong" when called
+- **LunaTask Resources**: Access to tasks and individual task details via MCP resources
 - **MCP Protocol Version**: Supports MCP protocol version `2025-06-18`
 - **Stdio Transport**: Communicates over standard input/output streams
+
+## LunaTask Integration
+
+### Resources Available
+
+The server exposes LunaTask data through MCP resources:
+
+#### All Tasks Resource
+- **URI**: `lunatask://tasks`
+- **Description**: Retrieves a list of all tasks from your LunaTask account
+- **Response**: JSON array containing task objects with metadata
+
+#### Single Task Resource  
+- **URI**: `lunatask://tasks/{task_id}`
+- **Description**: Retrieves details of a specific task by its ID
+- **Parameters**: `task_id` - The unique identifier of the task
+- **Response**: JSON object containing the task details and metadata
+
+### Usage Examples
+
+#### Accessing All Tasks
+```python
+from fastmcp import Client
+from fastmcp.client.transports import StdioTransport
+
+async def get_all_tasks():
+    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
+    client = Client(transport)
+    
+    async with client:
+        # List all available resources
+        resources = await client.list_resources()
+        print(f"Available resources: {[r.uri for r in resources]}")
+        
+        # Access all tasks
+        tasks_resource = await client.read_resource("lunatask://tasks")
+        print(f"Retrieved {len(tasks_resource.contents[0].json['tasks'])} tasks")
+        
+        # Display task information
+        for task in tasks_resource.contents[0].json['tasks']:
+            print(f"Task {task['id']}: {task['status']} (Priority: {task['priority']})")
+```
+
+#### Accessing a Specific Task
+```python
+async def get_specific_task():
+    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
+    client = Client(transport)
+    
+    async with client:
+        # Access a specific task by ID
+        task_id = "your-task-id-here"
+        task_resource = await client.read_resource(f"lunatask://tasks/{task_id}")
+        
+        # Extract task details
+        task_data = task_resource.contents[0].json
+        task = task_data['task']
+        
+        print(f"Task Details:")
+        print(f"  ID: {task['id']}")
+        print(f"  Status: {task['status']}")
+        print(f"  Priority: {task['priority']}")
+        print(f"  Created: {task['created_at']}")
+        print(f"  Due Date: {task.get('due_date', 'Not set')}")
+        print(f"  Area: {task.get('area_id', 'No area assigned')}")
+        print(f"  Tags: {', '.join(task.get('tags', []))}")
+```
+
+### Resource Response Format
+
+#### All Tasks Resource Response
+```json
+{
+  "resource_type": "lunatask_tasks",
+  "total_count": 3,
+  "tasks": [
+    {
+      "id": "task-123",
+      "status": "open",
+      "priority": 1,
+      "due_date": "2025-08-25T18:00:00+00:00",
+      "created_at": "2025-08-20T10:00:00+00:00",
+      "updated_at": "2025-08-20T10:30:00+00:00",
+      "area_id": "area-456",
+      "source": {
+        "type": "manual",
+        "value": "user_created"
+      },
+      "tags": ["work", "urgent"]
+    }
+  ],
+  "metadata": {
+    "retrieved_at": "session-id-123",
+    "encrypted_fields_note": "Fields like 'name' and 'notes' are not included due to LunaTask's E2E encryption"
+  }
+}
+```
+
+#### Single Task Resource Response
+```json
+{
+  "resource_type": "lunatask_task",
+  "task_id": "task-123",
+  "task": {
+    "id": "task-123",
+    "status": "open",
+    "priority": 1,
+    "due_date": "2025-08-25T18:00:00+00:00",
+    "created_at": "2025-08-20T10:00:00+00:00",
+    "updated_at": "2025-08-20T10:30:00+00:00",
+    "area_id": "area-456",
+    "source": {
+      "type": "manual",
+      "value": "user_created"
+    },
+    "tags": ["work", "urgent"]
+  },
+  "metadata": {
+    "retrieved_at": "session-id-456",
+    "encrypted_fields_note": "Fields like 'name' and 'notes' are not included due to LunaTask's E2E encryption"
+  }
+}
+```
+
+### Error Handling
+
+The server provides structured error responses for various scenarios:
+
+#### Task Not Found (404)
+```python
+try:
+    task_resource = await client.read_resource("lunatask://tasks/nonexistent-task")
+except Exception as e:
+    print(f"Error: {e}")
+    # Error message will indicate the task was not found
+```
+
+#### Authentication Error (401)
+```python
+# Occurs when bearer token is invalid or expired
+# Check your config.toml file and ensure the token is correct
+```
+
+#### Rate Limit Error (429)
+```python
+# Occurs when API rate limits are exceeded
+# The server implements rate limiting to prevent this
+# Wait and retry if this occurs
+```
+
+### Important Notes
+
+#### End-to-End Encryption
+LunaTask uses end-to-end encryption for sensitive task data. As a result:
+- Task `name` and `notes` fields are **not included** in API responses
+- Only non-sensitive metadata and structural information is available
+- This is a security feature of LunaTask and cannot be bypassed
+
+#### Task IDs
+- Task IDs are unique identifiers assigned by LunaTask
+- Use the All Tasks resource to discover available task IDs
+- Task IDs remain consistent across API calls
 
 ## Configuration
 

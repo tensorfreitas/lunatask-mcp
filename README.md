@@ -38,6 +38,7 @@ The server will start and listen for MCP protocol messages on stdio. All logging
 The server provides:
 - **Ping Tool**: A health-check tool that responds with "pong" when called
 - **LunaTask Resources**: Access to tasks and individual task details via MCP resources
+- **LunaTask Tools**: Create new tasks in LunaTask via MCP tools
 - **MCP Protocol Version**: Supports MCP protocol version `2025-06-18`
 - **Stdio Transport**: Communicates over standard input/output streams
 
@@ -203,6 +204,181 @@ LunaTask uses end-to-end encryption for sensitive task data. As a result:
 - Use the All Tasks resource to discover available task IDs
 - Task IDs remain consistent across API calls
 
+### Tools Available
+
+The server provides MCP tools for creating new tasks in LunaTask:
+
+#### Create Task Tool
+- **Tool Name**: `create_task`
+- **Description**: Creates a new task in LunaTask with the specified parameters
+- **Returns**: Task creation result with the newly assigned task ID
+
+##### Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `name` | string | ✅ Yes | - | Task name (will be encrypted client-side by LunaTask) |
+| `notes` | string | ❌ No | `null` | Task notes (will be encrypted client-side by LunaTask) |
+| `area_id` | string | ❌ No | `null` | Area ID the task belongs to |
+| `status` | string | ❌ No | `"open"` | Task status (e.g., "open", "completed") |
+| `priority` | integer | ❌ No | `null` | Task priority level |
+| `tags` | list[string] | ❌ No | `[]` | List of task tags |
+
+##### Tool Usage Examples
+
+###### Create Minimal Task
+```python
+from fastmcp import Client
+from fastmcp.client.transports import StdioTransport
+
+async def create_simple_task():
+    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
+    client = Client(transport)
+    
+    async with client:
+        # Create a task with just the required name parameter
+        result = await client.call_tool("create_task", {
+            "name": "Review quarterly reports"
+        })
+        
+        if result.success:
+            print(f"Task created successfully with ID: {result.task_id}")
+        else:
+            print(f"Error creating task: {result.message}")
+```
+
+###### Create Complete Task
+```python
+async def create_detailed_task():
+    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
+    client = Client(transport)
+    
+    async with client:
+        # Create a task with all available parameters
+        result = await client.call_tool("create_task", {
+            "name": "Implement OAuth2 authentication",
+            "notes": "Add support for Google and GitHub OAuth2 providers with PKCE security",
+            "area_id": "development-area-123",
+            "status": "open",
+            "priority": 3,
+            "tags": ["security", "authentication", "urgent"]
+        })
+        
+        if result.success:
+            print(f"Detailed task created with ID: {result.task_id}")
+        else:
+            print(f"Task creation failed: {result.error} - {result.message}")
+```
+
+##### Response Format
+
+###### Successful Creation Response
+```json
+{
+  "success": true,
+  "task_id": "new-task-abc123",
+  "message": "Task created successfully"
+}
+```
+
+###### Error Response Examples
+
+**Validation Error (422)**
+```json
+{
+  "success": false,
+  "error": "validation_error",
+  "message": "Task validation failed: Task name is required"
+}
+```
+
+**Subscription Required (402)**
+```json
+{
+  "success": false,
+  "error": "subscription_required", 
+  "message": "Subscription required: Free plan task limit reached"
+}
+```
+
+**Authentication Error (401)**
+```json
+{
+  "success": false,
+  "error": "authentication_error",
+  "message": "Authentication failed: Invalid or expired LunaTask API credentials"
+}
+```
+
+**Rate Limit Error (429)**
+```json
+{
+  "success": false,
+  "error": "rate_limit_error",
+  "message": "Rate limit exceeded: Please try again later"
+}
+```
+
+**Server Error (5xx)**
+```json
+{
+  "success": false,
+  "error": "server_error",
+  "message": "Server error: LunaTask API is temporarily unavailable"
+}
+```
+
+##### Tool Error Handling
+
+```python
+async def create_task_with_error_handling():
+    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
+    client = Client(transport)
+    
+    async with client:
+        try:
+            result = await client.call_tool("create_task", {
+                "name": "Test task",
+                "priority": 1
+            })
+            
+            if result.success:
+                print(f"✅ Task created: {result.task_id}")
+            else:
+                # Handle specific error types
+                if result.error == "validation_error":
+                    print("❌ Validation failed - check your parameters")
+                elif result.error == "subscription_required":
+                    print("💳 Upgrade your LunaTask plan to create more tasks")
+                elif result.error == "authentication_error":
+                    print("🔑 Check your bearer token in config.toml")
+                elif result.error == "rate_limit_error":
+                    print("⏰ Rate limit exceeded - wait and retry")
+                else:
+                    print(f"❌ Unknown error: {result.message}")
+                    
+        except Exception as e:
+            print(f"🚨 Unexpected error: {e}")
+```
+
+##### Important Notes
+
+###### End-to-End Encryption Support
+- The `name` and `notes` fields **can be included** in create requests
+- LunaTask automatically encrypts these fields client-side before storage
+- Once created, these fields will not be visible in GET responses due to E2E encryption
+- This is normal LunaTask behavior and ensures data privacy
+
+###### Task Creation Limits
+- Free LunaTask plans have limits on the number of tasks that can be created
+- When limits are reached, the tool returns a `subscription_required` error
+- Consider upgrading your LunaTask plan if you need to create more tasks
+
+###### Rate Limiting
+- The server implements rate limiting to prevent API abuse
+- If you encounter rate limit errors, wait before retrying
+- Rate limits are per-server instance and reset over time
+
 ## Configuration
 
 The LunaTask MCP server supports flexible configuration through TOML files and command-line arguments. A bearer token is required to authenticate with the LunaTask API.
@@ -348,10 +524,17 @@ async def test_server():
         # List available tools
         tools = await client.list_tools()
         print(f"Available tools: {[tool.name for tool in tools]}")
+        # Expected tools: ['ping', 'create_task']
         
         # Call the ping tool
         result = await client.call_tool("ping", {})
         print(f"Ping result: {result}")
+        
+        # Call the create_task tool
+        task_result = await client.call_tool("create_task", {
+            "name": "Test task from manual testing"
+        })
+        print(f"Task creation result: {task_result}")
 
 # Run the test
 asyncio.run(test_server())
@@ -373,7 +556,9 @@ client = Client(transport)
 async with client:
     # Verify server capabilities
     tools = await client.list_tools()
-    assert "ping" in [tool.name for tool in tools]
+    tool_names = [tool.name for tool in tools]
+    assert "ping" in tool_names
+    assert "create_task" in tool_names
     
     # Test server health
     ping_response = await client.call_tool("ping", {})

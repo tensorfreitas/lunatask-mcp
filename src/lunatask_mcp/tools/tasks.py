@@ -5,6 +5,7 @@ through the Model Context Protocol, enabling AI models to interact with task dat
 """
 
 import logging
+from datetime import datetime
 from typing import Any
 
 from fastmcp import Context, FastMCP
@@ -21,7 +22,7 @@ from lunatask_mcp.api.exceptions import (
     LunaTaskTimeoutError,
     LunaTaskValidationError,
 )
-from lunatask_mcp.api.models import TaskCreate, TaskResponse
+from lunatask_mcp.api.models import TaskCreate, TaskResponse, TaskUpdate
 
 # Configure logger to write to stderr
 logger = logging.getLogger(__name__)
@@ -51,6 +52,7 @@ class TaskTools:
         self.mcp.resource("lunatask://tasks")(self.get_tasks_resource)
         self.mcp.resource("lunatask://tasks/{task_id}")(self.get_task_resource)
         self.mcp.tool("create_task")(self.create_task_tool)
+        self.mcp.tool("update_task")(self.update_task_tool)
 
     def _serialize_task_response(self, task: TaskResponse) -> dict[str, Any]:
         """Convert a TaskResponse object to a dictionary for JSON serialization.
@@ -406,4 +408,197 @@ class TaskTools:
             return result
         else:
             await ctx.info(f"Successfully created task {created_task.id}")
+            return result
+
+    async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, C901
+        self,
+        ctx: Context,
+        id: str,  # noqa: A002
+        name: str | None = None,
+        notes: str | None = None,
+        area_id: str | None = None,
+        status: str | None = None,
+        priority: int | None = None,
+        due_date: str | None = None,
+        tags: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Update an existing task in LunaTask.
+
+        This MCP tool updates an existing task using the LunaTask API. The task ID
+        is required, and any combination of other fields can be updated.
+
+        Args:
+            ctx: MCP context for logging and communication
+            id: Task ID to update (required)
+            name: Updated task name (optional)
+            notes: Updated task notes (optional)
+            area_id: Updated area ID the task belongs to (optional)
+            status: Updated task status (optional)
+            priority: Updated task priority level (optional)
+            due_date: Updated due date as ISO 8601 string (optional)
+            tags: Updated list of task tags (optional)
+
+        Returns:
+            dict[str, Any]: Response containing task update result with updated task data
+
+        Raises:
+            LunaTaskValidationError: When task validation fails (422)
+            LunaTaskNotFoundError: When task is not found (404)
+            LunaTaskAuthenticationError: When authentication fails (401)
+            LunaTaskRateLimitError: When rate limit exceeded (429)
+            LunaTaskServerError: When server error occurs (5xx)
+            LunaTaskAPIError: For other API errors
+        """
+        # Validate required task ID parameter
+        if not id or not id.strip():
+            error_msg = "Task ID cannot be empty"
+            result = {
+                "success": False,
+                "error": "validation_error",
+                "message": error_msg,
+            }
+            await ctx.error(error_msg)
+            logger.warning("Empty task_id provided for update")
+            return result
+
+        # Validate that at least one field is provided for update
+        update_fields = [name, notes, area_id, status, priority, due_date, tags]
+        if all(field is None for field in update_fields):
+            error_msg = "At least one field must be provided for update"
+            result = {
+                "success": False,
+                "error": "validation_error",
+                "message": error_msg,
+            }
+            await ctx.error(error_msg)
+            logger.warning("No fields provided for task update: %s", id)
+            return result
+
+        # Parse and validate due_date if provided
+        parsed_due_date = None
+        if due_date is not None:
+            try:
+                parsed_due_date = datetime.fromisoformat(due_date)
+            except (ValueError, TypeError) as e:
+                error_msg = f"Invalid due_date format. Expected ISO 8601 string: {e}"
+                result = {
+                    "success": False,
+                    "error": "validation_error",
+                    "message": error_msg,
+                }
+                await ctx.error(error_msg)
+                logger.warning("Invalid due_date format for task %s: %s", id, due_date)
+                return result
+
+        await ctx.info(f"Updating task {id}")
+
+        try:
+            # Create TaskUpdate object from provided parameters
+            task_update = TaskUpdate(
+                name=name,
+                notes=notes,
+                area_id=area_id,
+                status=status,
+                priority=priority,
+                due_date=parsed_due_date,
+                tags=tags,
+            )
+
+            # Use LunaTask client to update the task
+            async with self.lunatask_client as client:
+                updated_task = await client.update_task(id, task_update)
+
+            # Return success response with updated task data
+            result = {
+                "success": True,
+                "task_id": id,
+                "message": "Task updated successfully",
+                "task": self._serialize_task_response(updated_task),
+            }
+
+        except LunaTaskNotFoundError as e:
+            # Handle task not found errors (404)
+            error_msg = f"Task not found: {e}"
+            result = {
+                "success": False,
+                "error": "not_found_error",
+                "message": error_msg,
+            }
+            await ctx.error(error_msg)
+            logger.warning("Task not found during update: %s", id)
+            return result
+
+        except LunaTaskValidationError as e:
+            # Handle validation errors (422)
+            error_msg = f"Task validation failed: {e}"
+            result = {
+                "success": False,
+                "error": "validation_error",
+                "message": error_msg,
+            }
+            await ctx.error(error_msg)
+            logger.warning("Task validation error during update: %s", e)
+            return result
+
+        except LunaTaskAuthenticationError as e:
+            # Handle authentication errors (401)
+            error_msg = f"Authentication failed: {e}"
+            result = {
+                "success": False,
+                "error": "authentication_error",
+                "message": error_msg,
+            }
+            await ctx.error(error_msg)
+            logger.warning("Authentication error during task update: %s", e)
+            return result
+
+        except LunaTaskRateLimitError as e:
+            # Handle rate limit errors (429)
+            error_msg = f"Rate limit exceeded: {e}"
+            result = {
+                "success": False,
+                "error": "rate_limit_error",
+                "message": error_msg,
+            }
+            await ctx.error(error_msg)
+            logger.warning("Rate limit exceeded during task update: %s", e)
+            return result
+
+        except LunaTaskServerError as e:
+            # Handle server errors (5xx)
+            error_msg = f"Server error: {e}"
+            result = {
+                "success": False,
+                "error": "server_error",
+                "message": error_msg,
+            }
+            await ctx.error(error_msg)
+            logger.warning("Server error during task update: %s", e)
+            return result
+
+        except LunaTaskAPIError as e:
+            # Handle other API errors
+            error_msg = f"API error: {e}"
+            result = {
+                "success": False,
+                "error": "api_error",
+                "message": error_msg,
+            }
+            await ctx.error(error_msg)
+            logger.warning("API error during task update: %s", e)
+            return result
+
+        except Exception as e:
+            # Handle unexpected errors
+            error_msg = f"Unexpected error updating task: {e}"
+            result = {
+                "success": False,
+                "error": "unexpected_error",
+                "message": error_msg,
+            }
+            await ctx.error(error_msg)
+            logger.exception("Unexpected error during task update")
+            return result
+        else:
+            await ctx.info(f"Successfully updated task {id}")
             return result

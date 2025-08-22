@@ -11,7 +11,9 @@
         "http://localhost:8051/mcp"
       ],
       "alwaysAllow": [
-        "perform_rag_query"
+        "perform_rag_query",
+        "get_available_sources",
+        "search_code_examples"
       ]
     }
   }

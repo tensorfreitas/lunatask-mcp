@@ -54,3 +54,21 @@ class TaskCreate(BaseModel):
     due_date: datetime | None = Field(default=None, description="Task due date")
     tags: list[str] = Field(default_factory=list, description="Task tags")
     source: Source | None = Field(default=None, description="Task source information")
+
+
+class TaskUpdate(BaseModel):
+    """Request model for updating existing tasks in LunaTask.
+
+    This model supports partial updates via PATCH /v1/tasks/{id}.
+    All fields are optional to allow selective updates.
+    Note: name and notes fields CAN be included in PATCH requests (they get encrypted client-side).
+    """
+
+    name: str | None = Field(default=None, description="Task name (gets encrypted client-side)")
+    notes: str | None = Field(default=None, description="Task notes (gets encrypted client-side)")
+    area_id: str | None = Field(default=None, description="Area ID the task belongs to")
+    status: str | None = Field(default=None, description="Task status")
+    priority: int | None = Field(default=None, description="Task priority level")
+    due_date: datetime | None = Field(default=None, description="Task due date")
+    tags: list[str] | None = Field(default=None, description="Task tags")
+    source: Source | None = Field(default=None, description="Task source information")

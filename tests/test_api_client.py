@@ -5,6 +5,7 @@ following TDD methodology and ensuring secure token handling.
 """
 # pyright: reportPrivateUsage=false
 
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -26,7 +27,7 @@ from lunatask_mcp.api.exceptions import (
     LunaTaskTimeoutError,
     LunaTaskValidationError,
 )
-from lunatask_mcp.api.models import TaskCreate, TaskResponse
+from lunatask_mcp.api.models import TaskCreate, TaskResponse, TaskUpdate
 from lunatask_mcp.config import ServerConfig
 
 # Test constants
@@ -1636,3 +1637,452 @@ class TestLunaTaskClientCreateTask:
             "POST", "tasks", data={"name": "Rate Limited Task", "status": "open", "tags": []}
         )
         assert result.id == "rate-limited-task"
+
+
+class TestLunaTaskClientUpdateTask:
+    """Test suite for LunaTaskClient.update_task() method."""
+
+    @pytest.mark.asyncio
+    async def test_update_task_success_single_field(self, mocker: MockerFixture) -> None:
+        """Test successful task update with single field change."""
+        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        task_id = "task-123"
+        update_data = TaskUpdate(status="completed")
+
+        mock_response_data: dict[str, Any] = {
+            "id": "task-123",
+            "status": "completed",
+            "created_at": "2025-08-21T10:00:00Z",
+            "updated_at": "2025-08-21T11:00:00Z",
+        }
+
+        mock_request = mocker.patch.object(
+            client,
+            "make_request",
+            return_value=mock_response_data,
+        )
+
+        result = await client.update_task(task_id, update_data)
+
+        assert result.id == "task-123"
+        assert result.status == "completed"
+        mock_request.assert_called_once_with(
+            "PATCH", "tasks/task-123", data={"status": "completed"}
+        )
+
+    @pytest.mark.asyncio
+    async def test_update_task_success_multiple_fields(self, mocker: MockerFixture) -> None:
+        """Test successful task update with multiple field changes."""
+        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        task_id = "task-456"
+        due_date = datetime(2025, 8, 30, 14, 30, 0, tzinfo=UTC)
+        update_data = TaskUpdate(
+            name="Updated Task Name",
+            status="in_progress",
+            priority=2,
+            due_date=due_date,
+            tags=["urgent", "updated"],
+        )
+
+        mock_response_data: dict[str, Any] = {
+            "id": "task-456",
+            "status": "in_progress",
+            "priority": 2,
+            "due_date": "2025-08-30T14:30:00Z",
+            "created_at": "2025-08-21T10:00:00Z",
+            "updated_at": "2025-08-21T11:30:00Z",
+            "tags": ["urgent", "updated"],
+        }
+
+        mock_request = mocker.patch.object(
+            client,
+            "make_request",
+            return_value=mock_response_data,
+        )
+
+        result = await client.update_task(task_id, update_data)
+
+        assert result.id == "task-456"
+        assert result.status == "in_progress"
+        expected_priority = 2
+        assert result.priority == expected_priority
+        assert result.tags == ["urgent", "updated"]
+        mock_request.assert_called_once_with(
+            "PATCH",
+            "tasks/task-456",
+            data={
+                "name": "Updated Task Name",
+                "status": "in_progress",
+                "priority": 2,
+                "due_date": due_date,
+                "tags": ["urgent", "updated"],
+            },
+        )
+
+    @pytest.mark.asyncio
+    async def test_update_task_partial_update_excludes_none(self, mocker: MockerFixture) -> None:
+        """Test that only non-None fields are sent in partial update."""
+        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        task_id = "task-partial"
+        # Only set status field, leaving others as None
+        update_data = TaskUpdate(status="completed")
+
+        mock_response_data: dict[str, Any] = {
+            "id": "task-partial",
+            "status": "completed",
+            "created_at": "2025-08-21T10:00:00Z",
+            "updated_at": "2025-08-21T11:00:00Z",
+        }
+
+        mock_request = mocker.patch.object(
+            client,
+            "make_request",
+            return_value=mock_response_data,
+        )
+
+        result = await client.update_task(task_id, update_data)
+
+        # Verify only non-None fields were sent
+        mock_request.assert_called_once_with(
+            "PATCH", "tasks/task-partial", data={"status": "completed"}
+        )
+        assert result.status == "completed"
+
+    @pytest.mark.asyncio
+    async def test_update_task_handles_204_no_content(self, mocker: MockerFixture) -> None:
+        """Test handling of 204 No Content response."""
+        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        task_id = "task-no-content"
+        update_data = TaskUpdate(status="completed")
+
+        # Mock 204 response which returns minimal data
+        mock_response_data: dict[str, Any] = {
+            "id": "task-no-content",
+            "status": "completed",
+            "created_at": "2025-08-21T10:00:00Z",
+            "updated_at": "2025-08-21T11:00:00Z",
+        }
+
+        mock_request = mocker.patch.object(
+            client,
+            "make_request",
+            return_value=mock_response_data,
+        )
+
+        result = await client.update_task(task_id, update_data)
+
+        assert result.id == "task-no-content"
+        assert result.status == "completed"
+        mock_request.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_update_task_not_found_error_404(self, mocker: MockerFixture) -> None:
+        """Test update_task raises TaskNotFoundError on 404 response."""
+        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        task_id = "nonexistent-task"
+        update_data = TaskUpdate(status="completed")
+
+        mock_request = mocker.patch.object(
+            client,
+            "make_request",
+            side_effect=LunaTaskNotFoundError("Task not found"),
+        )
+
+        with pytest.raises(LunaTaskNotFoundError, match="Task not found"):
+            await client.update_task(task_id, update_data)
+
+        mock_request.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_update_task_validation_error_400(self, mocker: MockerFixture) -> None:
+        """Test update_task raises LunaTaskBadRequestError on 400 response."""
+        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        task_id = "task-invalid"
+        update_data = TaskUpdate(status="invalid_status")
+
+        mock_request = mocker.patch.object(
+            client,
+            "make_request",
+            side_effect=LunaTaskBadRequestError("Invalid task status"),
+        )
+
+        with pytest.raises(LunaTaskBadRequestError, match="Invalid task status"):
+            await client.update_task(task_id, update_data)
+
+        mock_request.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_update_task_authentication_error_401(self, mocker: MockerFixture) -> None:
+        """Test update_task raises LunaTaskAuthenticationError on 401 response."""
+        config = ServerConfig(
+            lunatask_bearer_token=INVALID_TOKEN, lunatask_base_url=DEFAULT_API_URL
+        )
+        client = LunaTaskClient(config)
+
+        task_id = "task-123"
+        update_data = TaskUpdate(status="completed")
+
+        mock_request = mocker.patch.object(
+            client,
+            "make_request",
+            side_effect=LunaTaskAuthenticationError("Invalid token"),
+        )
+
+        with pytest.raises(LunaTaskAuthenticationError, match="Invalid token"):
+            await client.update_task(task_id, update_data)
+
+        mock_request.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_update_task_rate_limit_error_429(self, mocker: MockerFixture) -> None:
+        """Test update_task raises LunaTaskRateLimitError on 429 response."""
+        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        task_id = "task-123"
+        update_data = TaskUpdate(status="completed")
+
+        mock_request = mocker.patch.object(
+            client,
+            "make_request",
+            side_effect=LunaTaskRateLimitError("Rate limit exceeded"),
+        )
+
+        with pytest.raises(LunaTaskRateLimitError, match="Rate limit exceeded"):
+            await client.update_task(task_id, update_data)
+
+        mock_request.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_update_task_server_error_500(self, mocker: MockerFixture) -> None:
+        """Test update_task raises LunaTaskServerError on 500 response."""
+        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        task_id = "task-123"
+        update_data = TaskUpdate(status="completed")
+
+        mock_request = mocker.patch.object(
+            client,
+            "make_request",
+            side_effect=LunaTaskServerError("Internal server error"),
+        )
+
+        with pytest.raises(LunaTaskServerError, match="Internal server error"):
+            await client.update_task(task_id, update_data)
+
+        mock_request.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_update_task_timeout_error(self, mocker: MockerFixture) -> None:
+        """Test update_task raises LunaTaskTimeoutError on network timeout."""
+        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        task_id = "task-123"
+        update_data = TaskUpdate(status="completed")
+
+        mock_request = mocker.patch.object(
+            client,
+            "make_request",
+            side_effect=LunaTaskTimeoutError("Request timeout"),
+        )
+
+        with pytest.raises(LunaTaskTimeoutError, match="Request timeout"):
+            await client.update_task(task_id, update_data)
+
+        mock_request.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_update_task_response_parsing_success(self, mocker: MockerFixture) -> None:
+        """Test update_task correctly parses task response with updated fields."""
+        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        task_id = "parse-test-task"
+        update_data = TaskUpdate(priority=TEST_PRIORITY_HIGH, area_id="new-area")
+
+        mock_response_data: dict[str, Any] = {
+            "id": "parse-test-task",
+            "area_id": "new-area",
+            "status": "open",
+            "priority": TEST_PRIORITY_HIGH,
+            "created_at": "2025-08-21T10:00:00Z",
+            "updated_at": "2025-08-21T12:00:00Z",
+            "source": {"type": "api", "value": "mcp-update"},
+            "tags": ["updated"],
+        }
+
+        mocker.patch.object(
+            client,
+            "make_request",
+            return_value=mock_response_data,
+        )
+
+        result = await client.update_task(task_id, update_data)
+
+        assert isinstance(result, TaskResponse)
+        assert result.id == "parse-test-task"
+        assert result.area_id == "new-area"
+        assert result.priority == TEST_PRIORITY_HIGH
+        assert result.tags == ["updated"]
+        assert result.source is not None
+        assert result.source.type == "api"
+        assert result.source.value == "mcp-update"
+
+    @pytest.mark.asyncio
+    async def test_update_task_parsing_error(self, mocker: MockerFixture) -> None:
+        """Test update_task handles JSON parsing error."""
+        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        task_id = "task-123"
+        update_data = TaskUpdate(status="completed")
+
+        # Mock response with invalid data that cannot be parsed into TaskResponse
+        mock_response_data = {"invalid": "data", "missing": "required_fields"}
+
+        mocker.patch.object(
+            client,
+            "make_request",
+            return_value=mock_response_data,
+        )
+
+        with pytest.raises(LunaTaskAPIError):
+            await client.update_task(task_id, update_data)
+
+    @pytest.mark.asyncio
+    async def test_update_task_rate_limiter_integration(self, mocker: MockerFixture) -> None:
+        """Test update_task applies rate limiting before request."""
+        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        task_id = "rate-limited-update"
+        update_data = TaskUpdate(status="completed")
+
+        mock_response_data: dict[str, Any] = {
+            "id": "rate-limited-update",
+            "status": "completed",
+            "created_at": "2025-08-21T10:00:00Z",
+            "updated_at": "2025-08-21T11:00:00Z",
+        }
+
+        # Mock make_request (which applies rate limiting)
+        mock_request = mocker.patch.object(
+            client,
+            "make_request",
+            return_value=mock_response_data,
+        )
+
+        result = await client.update_task(task_id, update_data)
+
+        # Verify make_request was called (which applies rate limiting)
+        mock_request.assert_called_once_with(
+            "PATCH", "tasks/rate-limited-update", data={"status": "completed"}
+        )
+        assert result.id == "rate-limited-update"
+
+    @pytest.mark.asyncio
+    async def test_update_task_empty_update(self, mocker: MockerFixture) -> None:
+        """Test update_task with no fields set (all None) sends empty data."""
+        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        task_id = "task-empty"
+        # Create TaskUpdate with all default None values
+        update_data = TaskUpdate()
+
+        mock_response_data: dict[str, Any] = {
+            "id": "task-empty",
+            "status": "open",
+            "created_at": "2025-08-21T10:00:00Z",
+            "updated_at": "2025-08-21T10:00:00Z",
+        }
+
+        mock_request = mocker.patch.object(
+            client,
+            "make_request",
+            return_value=mock_response_data,
+        )
+
+        result = await client.update_task(task_id, update_data)
+
+        # Verify empty data object was sent (no None values)
+        mock_request.assert_called_once_with("PATCH", "tasks/task-empty", data={})
+        assert result.id == "task-empty"
+
+    @pytest.mark.asyncio
+    async def test_update_task_handles_missing_encrypted_fields(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test update_task handles missing encrypted fields (name, notes) in response."""
+        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        task_id = "task-encrypted-update"
+        update_data = TaskUpdate(status="completed")
+
+        # Response without encrypted fields (name, notes) as expected from E2E encryption
+        mock_response_data: dict[str, Any] = {
+            "id": "task-encrypted-update",
+            "status": "completed",
+            "created_at": "2025-08-21T10:00:00Z",
+            "updated_at": "2025-08-21T11:00:00Z",
+            # Note: 'name' and 'notes' fields intentionally missing
+        }
+
+        mock_request = mocker.patch.object(
+            client,
+            "make_request",
+            return_value=mock_response_data,
+        )
+
+        result = await client.update_task(task_id, update_data)
+
+        assert result.id == "task-encrypted-update"
+        assert result.status == "completed"
+        # Encrypted fields should not be present in the model
+        assert not hasattr(result, "name")
+        assert not hasattr(result, "notes")
+        mock_request.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_update_task_special_characters_in_id(self, mocker: MockerFixture) -> None:
+        """Test update_task with special characters in task_id."""
+        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        task_id = "task-with-special/chars"
+        update_data = TaskUpdate(status="completed")
+
+        mock_response_data: dict[str, Any] = {
+            "id": "task-with-special/chars",
+            "status": "completed",
+            "created_at": "2025-08-21T10:00:00Z",
+            "updated_at": "2025-08-21T11:00:00Z",
+        }
+
+        mock_request = mocker.patch.object(
+            client,
+            "make_request",
+            return_value=mock_response_data,
+        )
+
+        result = await client.update_task(task_id, update_data)
+
+        assert result.id == "task-with-special/chars"
+        mock_request.assert_called_once_with(
+            "PATCH", "tasks/task-with-special/chars", data={"status": "completed"}
+        )

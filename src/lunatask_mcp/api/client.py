@@ -23,7 +23,7 @@ from lunatask_mcp.api.exceptions import (
     LunaTaskTimeoutError,
     LunaTaskValidationError,
 )
-from lunatask_mcp.api.models import TaskCreate, TaskResponse
+from lunatask_mcp.api.models import TaskCreate, TaskResponse, TaskUpdate
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.rate_limiter import TokenBucketLimiter
 
@@ -372,6 +372,41 @@ class LunaTaskClient:
             raise LunaTaskAPIError.create_parse_error("tasks", task_name=task_name) from e
         else:
             logger.debug("Successfully created task: %s", task.id)
+            return task
+
+    async def update_task(self, task_id: str, update: TaskUpdate) -> TaskResponse:
+        """Update an existing task in the LunaTask API.
+
+        Args:
+            task_id: The unique identifier for the task to update
+            update: TaskUpdate object containing fields to update
+
+        Returns:
+            TaskResponse: Updated task object from the API
+
+        Raises:
+            LunaTaskNotFoundError: Task not found (404)
+            LunaTaskBadRequestError: Invalid update data (400)
+            LunaTaskAuthenticationError: Invalid bearer token (401)
+            LunaTaskRateLimitError: Rate limit exceeded (429)
+            LunaTaskServerError: Server error occurred (5xx)
+            LunaTaskNetworkError: Network connectivity error
+            LunaTaskAPIError: Other API errors
+        """
+        # Convert TaskUpdate model to JSON data, excluding None values for partial update
+        json_data = update.model_dump(exclude_none=True)
+
+        # Make authenticated request to PATCH /v1/tasks/{task_id} endpoint
+        response_data = await self.make_request("PATCH", f"tasks/{task_id}", data=json_data)
+
+        # Parse response JSON into TaskResponse model instance
+        try:
+            task = TaskResponse(**response_data)
+        except Exception as e:
+            logger.exception("Failed to parse updated task response data")
+            raise LunaTaskAPIError.create_parse_error(f"tasks/{task_id}", task_id=task_id) from e
+        else:
+            logger.debug("Successfully updated task: %s", task.id)
             return task
 
     async def test_connectivity(self) -> bool:

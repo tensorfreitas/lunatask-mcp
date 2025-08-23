@@ -28,6 +28,7 @@ from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.rate_limiter import TokenBucketLimiter
 
 # HTTP status code constants
+_HTTP_NO_CONTENT = 204
 _HTTP_BAD_REQUEST = 400
 _HTTP_UNAUTHORIZED = 401
 _HTTP_PAYMENT_REQUIRED = 402
@@ -250,6 +251,11 @@ class LunaTaskClient:
             # Raise for HTTP status errors
             response.raise_for_status()
 
+            # Handle 204 No Content responses (common for DELETE operations)
+            if response.status_code == _HTTP_NO_CONTENT:
+                logger.debug("Successful API response: %s (No Content)", response.status_code)
+                return {}  # Return empty dict for 204 responses
+
             # Parse and return JSON response
             result = response.json()
             logger.debug("Successful API response: %s", response.status_code)
@@ -408,6 +414,35 @@ class LunaTaskClient:
         else:
             logger.debug("Successfully updated task: %s", task.id)
             return task
+
+    async def delete_task(self, task_id: str) -> bool:
+        """Delete an existing task in the LunaTask API.
+
+        Args:
+            task_id: The unique identifier for the task to delete
+
+        Returns:
+            bool: True if deletion successful (204 response)
+
+        Raises:
+            LunaTaskNotFoundError: Task not found (404)
+            LunaTaskAuthenticationError: Invalid bearer token (401)
+            LunaTaskRateLimitError: Rate limit exceeded (429)
+            LunaTaskServerError: Server error occurred (5xx)
+            LunaTaskNetworkError: Network connectivity error
+            LunaTaskAPIError: Other API errors
+        """
+        # Make authenticated request to DELETE /v1/tasks/{task_id} endpoint
+        result = await self.make_request("DELETE", f"tasks/{task_id}")
+
+        # For 204 No Content, make_request returns empty dict, which means success
+        if result == {}:
+            logger.debug("Successfully deleted task: %s", task_id)
+            return True
+
+        # This shouldn't happen for DELETE operations, but handle gracefully
+        logger.warning("Unexpected non-empty response for DELETE operation: %s", result)
+        return False
 
     async def test_connectivity(self) -> bool:
         """Test connectivity to the LunaTask API.

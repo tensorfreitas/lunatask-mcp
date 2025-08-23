@@ -206,7 +206,7 @@ LunaTask uses end-to-end encryption for sensitive task data. As a result:
 
 ### Tools Available
 
-The server provides MCP tools for creating and updating tasks in LunaTask:
+The server provides MCP tools for creating, updating, and deleting tasks in LunaTask:
 
 #### Create Task Tool
 - **Tool Name**: `create_task`
@@ -609,6 +609,143 @@ async def update_task_with_error_handling():
 - The server implements rate limiting for update operations
 - If you encounter rate limit errors, wait before retrying
 - Rate limits help prevent API abuse and ensure service stability
+
+#### Delete Task Tool
+- **Tool Name**: `delete_task`
+- **Description**: Deletes an existing task from LunaTask permanently
+- **Returns**: Task deletion confirmation with the deleted task ID
+
+##### Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `id` | string | ✅ Yes | - | Task ID to delete (unique identifier) |
+
+##### Tool Usage Examples
+
+###### Delete Task
+```python
+from fastmcp import Client
+from fastmcp.client.transports import StdioTransport
+
+async def delete_completed_task():
+    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
+    client = Client(transport)
+    
+    async with client:
+        # Delete a task by its ID
+        result = await client.call_tool("delete_task", {
+            "id": "task-abc123"
+        })
+        
+        if result.success:
+            print(f"Task {result.task_id} deleted successfully")
+        else:
+            print(f"Error deleting task: {result.message}")
+```
+
+###### Delete with Error Handling
+```python
+async def delete_task_safely():
+    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
+    client = Client(transport)
+    
+    async with client:
+        try:
+            result = await client.call_tool("delete_task", {
+                "id": "task-to-delete"
+            })
+            
+            if result.success:
+                print(f"✅ Task {result.task_id} deleted permanently")
+            else:
+                # Handle specific error types
+                if result.error == "not_found_error":
+                    print("❌ Task not found - already deleted or invalid ID")
+                elif result.error == "validation_error":
+                    print("❌ Invalid task ID provided")
+                elif result.error == "authentication_error":
+                    print("🔑 Check your bearer token in config.toml")
+                elif result.error == "rate_limit_error":
+                    print("⏰ Rate limit exceeded - wait and retry")
+                else:
+                    print(f"❌ Delete failed: {result.message}")
+                    
+        except Exception as e:
+            print(f"🚨 Unexpected error: {e}")
+```
+
+##### Response Format
+
+###### Successful Delete Response
+```json
+{
+  "success": true,
+  "task_id": "task-abc123",
+  "message": "Task deleted successfully"
+}
+```
+
+###### Error Response Examples
+
+**Task Not Found (404)**
+```json
+{
+  "success": false,
+  "error": "not_found_error",
+  "message": "Task not found: Task with ID 'nonexistent-task' was not found"
+}
+```
+
+**Validation Error (Empty Task ID)**
+```json
+{
+  "success": false,
+  "error": "validation_error",
+  "message": "Task ID cannot be empty"
+}
+```
+
+**Authentication Error (401)**
+```json
+{
+  "success": false,
+  "error": "authentication_error",
+  "message": "Authentication failed: Invalid or expired LunaTask API credentials"
+}
+```
+
+**Rate Limit Error (429)**
+```json
+{
+  "success": false,
+  "error": "rate_limit_error",
+  "message": "Rate limit exceeded: Please try again later"
+}
+```
+
+##### Important Notes
+
+###### Permanent Deletion
+- **Task deletion is permanent** - deleted tasks cannot be recovered
+- Use with caution as this action is irreversible
+- Consider marking tasks as "completed" instead if you might need them later
+
+###### Non-Idempotent Behavior
+- Attempting to delete an already-deleted task returns a "not_found_error"
+- This is intentional behavior to indicate the task no longer exists
+- Check task existence using resources before deletion if needed
+
+###### Task ID Requirements
+- Task ID is required and cannot be empty or whitespace-only
+- Must be a valid, existing task ID from your LunaTask account
+- Use the resources (`lunatask://tasks`) to discover available task IDs
+- Invalid or non-existent task IDs will result in "not_found_error"
+
+###### Rate Limiting
+- The server implements rate limiting for delete operations
+- If you encounter rate limit errors, wait before retrying
+- Rate limits help prevent accidental bulk deletions and ensure service stability
 
 ## Configuration
 

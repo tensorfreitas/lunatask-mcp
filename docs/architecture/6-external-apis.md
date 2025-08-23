@@ -56,12 +56,14 @@ This project has one critical external dependency: the LunaTask API. All core fu
    - **Date Handling**: ISO 8601 string parsing and validation for `due_date` field
    - **Status**: ✅ Implemented (Story 2.4)
 
-#### Not Yet Implemented
-
 5. **DELETE /v1/tasks/{id}** - Delete Task
    - **Purpose**: Delete a task by ID
-   - **Planned Implementation**: `delete_task` MCP tool
-   - **Status**: 📋 Planned (Story 2.5)
+   - **Implementation**: `delete_task` MCP tool
+   - **Response**: 204 No Content on success, 404 if not found
+   - **Behavior**: Non-idempotent (repeated deletion returns 404)
+   - **Status**: ✅ Implemented (Story 2.5)
+
+#### Not Yet Implemented
 
 ### Response Format Notes
 

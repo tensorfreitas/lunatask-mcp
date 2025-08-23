@@ -35,17 +35,28 @@ This project has one critical external dependency: the LunaTask API. All core fu
    - **Error Handling**: Returns `TaskNotFoundError` for non-existent tasks (404)
    - **Status**: ✅ Implemented (Story 2.2)
 
-#### Not Yet Implemented
-
 3. **POST /v1/tasks** - Create Task
-   - **Purpose**: Create a new task
-   - **Planned Implementation**: `create_task` MCP tool
-   - **Status**: 📋 Planned (Story 2.3)
+   - **Purpose**: Create a new task with specified parameters
+   - **Implementation**: `LunaTaskClient.create_task(task: TaskCreate)` method
+   - **MCP Tool**: `create_task` tool
+   - **Request Model**: `TaskCreate` object with required/optional fields
+   - **Response Model**: Task creation result with new task ID
+   - **Features**: Supports E2E encryption for `name` and `notes` fields
+   - **Error Handling**: Validation errors (422), subscription limits (402), auth errors (401)
+   - **Status**: ✅ Implemented (Story 2.3)
 
 4. **PATCH /v1/tasks/{id}** - Update Task
-   - **Purpose**: Update an existing task
-   - **Planned Implementation**: `update_task` MCP tool  
-   - **Status**: 📋 Planned (Story 2.4)
+   - **Purpose**: Update an existing task with partial field updates
+   - **Implementation**: `LunaTaskClient.update_task(task_id: str, update: TaskUpdate)` method
+   - **MCP Tool**: `update_task` tool
+   - **Request Model**: `TaskUpdate` object with all optional fields (partial updates)
+   - **Response Model**: `TaskResponse` object with updated task data
+   - **Features**: Supports partial updates (only provided fields are modified)
+   - **Error Handling**: Task not found (404), validation errors (400), auth errors (401)
+   - **Date Handling**: ISO 8601 string parsing and validation for `due_date` field
+   - **Status**: ✅ Implemented (Story 2.4)
+
+#### Not Yet Implemented
 
 5. **DELETE /v1/tasks/{id}** - Delete Task
    - **Purpose**: Delete a task by ID

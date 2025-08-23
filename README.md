@@ -38,7 +38,7 @@ The server will start and listen for MCP protocol messages on stdio. All logging
 The server provides:
 - **Ping Tool**: A health-check tool that responds with "pong" when called
 - **LunaTask Resources**: Access to tasks and individual task details via MCP resources
-- **LunaTask Tools**: Create new tasks in LunaTask via MCP tools
+- **LunaTask Tools**: Create and update tasks in LunaTask via MCP tools
 - **MCP Protocol Version**: Supports MCP protocol version `2025-06-18`
 - **Stdio Transport**: Communicates over standard input/output streams
 
@@ -206,7 +206,7 @@ LunaTask uses end-to-end encryption for sensitive task data. As a result:
 
 ### Tools Available
 
-The server provides MCP tools for creating new tasks in LunaTask:
+The server provides MCP tools for creating and updating tasks in LunaTask:
 
 #### Create Task Tool
 - **Tool Name**: `create_task`
@@ -379,6 +379,237 @@ async def create_task_with_error_handling():
 - If you encounter rate limit errors, wait before retrying
 - Rate limits are per-server instance and reset over time
 
+#### Update Task Tool
+- **Tool Name**: `update_task`
+- **Description**: Updates an existing task in LunaTask with the specified parameters
+- **Returns**: Task update result with the updated task data
+
+##### Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `id` | string | ✅ Yes | - | Task ID to update (unique identifier) |
+| `name` | string | ❌ No | `null` | Updated task name (will be encrypted client-side by LunaTask) |
+| `notes` | string | ❌ No | `null` | Updated task notes (will be encrypted client-side by LunaTask) |
+| `area_id` | string | ❌ No | `null` | Updated area ID the task belongs to |
+| `status` | string | ❌ No | `null` | Updated task status (e.g., "open", "completed") |
+| `priority` | integer | ❌ No | `null` | Updated task priority level |
+| `due_date` | string | ❌ No | `null` | Updated due date as ISO 8601 string (e.g., "2025-12-31T23:59:59Z") |
+| `tags` | list[string] | ❌ No | `null` | Updated list of task tags |
+
+##### Tool Usage Examples
+
+###### Update Single Field
+```python
+from fastmcp import Client
+from fastmcp.client.transports import StdioTransport
+
+async def update_task_status():
+    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
+    client = Client(transport)
+    
+    async with client:
+        # Update only the status of a specific task
+        result = await client.call_tool("update_task", {
+            "id": "task-abc123",
+            "status": "completed"
+        })
+        
+        if result.success:
+            print(f"Task {result.task_id} status updated successfully")
+        else:
+            print(f"Error updating task: {result.message}")
+```
+
+###### Update Multiple Fields
+```python
+async def update_task_details():
+    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
+    client = Client(transport)
+    
+    async with client:
+        # Update multiple fields of a task (partial update)
+        result = await client.call_tool("update_task", {
+            "id": "task-xyz789",
+            "name": "Updated task name",
+            "priority": 2,
+            "due_date": "2025-12-31T23:59:59Z",
+            "tags": ["updated", "high-priority"]
+        })
+        
+        if result.success:
+            print(f"Task {result.task_id} updated successfully")
+            # The response includes updated task data
+            if 'task' in result:
+                task = result.task
+                print(f"Updated priority: {task.get('priority')}")
+                print(f"Updated due date: {task.get('due_date')}")
+                print(f"Updated tags: {task.get('tags')}")
+        else:
+            print(f"Task update failed: {result.error} - {result.message}")
+```
+
+###### Update with ISO 8601 Date Handling
+```python
+from datetime import datetime, timezone
+
+async def update_task_due_date():
+    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
+    client = Client(transport)
+    
+    async with client:
+        # Update due date with proper timezone handling
+        due_date = datetime(2025, 12, 25, 18, 0, 0, tzinfo=timezone.utc)
+        
+        result = await client.call_tool("update_task", {
+            "id": "task-holiday-prep",
+            "due_date": due_date.isoformat(),  # "2025-12-25T18:00:00+00:00"
+            "tags": ["holiday", "deadline"]
+        })
+        
+        if result.success:
+            print(f"Task due date updated to {due_date}")
+        else:
+            print(f"Date update failed: {result.message}")
+```
+
+##### Response Format
+
+###### Successful Update Response
+```json
+{
+  "success": true,
+  "task_id": "task-abc123",
+  "message": "Task updated successfully",
+  "task": {
+    "id": "task-abc123",
+    "status": "completed",
+    "priority": 2,
+    "due_date": "2025-12-31T23:59:59+00:00",
+    "created_at": "2025-08-20T10:00:00+00:00",
+    "updated_at": "2025-08-23T15:30:00+00:00",
+    "area_id": "area-456",
+    "source": {
+      "type": "api",
+      "value": "mcp_update"
+    },
+    "tags": ["updated", "high-priority"]
+  }
+}
+```
+
+###### Error Response Examples
+
+**Task Not Found (404)**
+```json
+{
+  "success": false,
+  "error": "not_found_error",
+  "message": "Task not found: Task with ID 'nonexistent-task' was not found"
+}
+```
+
+**Validation Error (Empty Task ID)**
+```json
+{
+  "success": false,
+  "error": "validation_error",
+  "message": "Task ID cannot be empty"
+}
+```
+
+**Validation Error (Invalid Due Date)**
+```json
+{
+  "success": false,
+  "error": "validation_error",
+  "message": "Invalid due_date format. Expected ISO 8601 string: time data 'invalid-date' does not match format"
+}
+```
+
+**Authentication Error (401)**
+```json
+{
+  "success": false,
+  "error": "authentication_error",
+  "message": "Authentication failed: Invalid or expired LunaTask API credentials"
+}
+```
+
+**Rate Limit Error (429)**
+```json
+{
+  "success": false,
+  "error": "rate_limit_error",
+  "message": "Rate limit exceeded: Please try again later"
+}
+```
+
+##### Tool Error Handling
+
+```python
+async def update_task_with_error_handling():
+    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
+    client = Client(transport)
+    
+    async with client:
+        try:
+            result = await client.call_tool("update_task", {
+                "id": "task-to-update",
+                "status": "completed",
+                "priority": 1
+            })
+            
+            if result.success:
+                print(f"✅ Task updated: {result.task_id}")
+            else:
+                # Handle specific error types
+                if result.error == "not_found_error":
+                    print("❌ Task not found - check the task ID")
+                elif result.error == "validation_error":
+                    print("❌ Validation failed - check your parameters")
+                elif result.error == "authentication_error":
+                    print("🔑 Check your bearer token in config.toml")
+                elif result.error == "rate_limit_error":
+                    print("⏰ Rate limit exceeded - wait and retry")
+                else:
+                    print(f"❌ Unknown error: {result.message}")
+                    
+        except Exception as e:
+            print(f"🚨 Unexpected error: {e}")
+```
+
+##### Important Notes
+
+###### Partial Updates
+- **Only provided fields are updated** - omitted fields remain unchanged
+- You can update just one field (e.g., only status) without affecting other fields
+- Pass `null` or omit parameters to leave fields unchanged
+- This allows for precise, targeted task modifications
+
+###### End-to-End Encryption Support
+- The `name` and `notes` fields **can be included** in update requests
+- LunaTask automatically encrypts these fields client-side before storage
+- Updated encrypted fields will not be visible in the response due to E2E encryption
+- Non-encrypted fields (status, priority, etc.) will be visible in the response
+
+###### Date Format Requirements
+- `due_date` must be provided as an ISO 8601 string
+- Supported formats: `"2025-12-31T23:59:59Z"` (UTC), `"2025-12-31T18:00:00-05:00"` (with timezone)
+- Invalid date formats will result in validation errors
+- Use Python's `datetime.isoformat()` for proper formatting
+
+###### Task ID Requirements
+- Task ID is required and cannot be empty
+- Must be a valid, existing task ID from your LunaTask account
+- Use the resources (`lunatask://tasks`) to discover available task IDs
+- Non-existent task IDs will result in "not_found_error"
+
+###### Rate Limiting
+- The server implements rate limiting for update operations
+- If you encounter rate limit errors, wait before retrying
+- Rate limits help prevent API abuse and ensure service stability
+
 ## Configuration
 
 The LunaTask MCP server supports flexible configuration through TOML files and command-line arguments. A bearer token is required to authenticate with the LunaTask API.
@@ -524,7 +755,7 @@ async def test_server():
         # List available tools
         tools = await client.list_tools()
         print(f"Available tools: {[tool.name for tool in tools]}")
-        # Expected tools: ['ping', 'create_task']
+        # Expected tools: ['ping', 'create_task', 'update_task']
         
         # Call the ping tool
         result = await client.call_tool("ping", {})
@@ -559,6 +790,7 @@ async with client:
     tool_names = [tool.name for tool in tools]
     assert "ping" in tool_names
     assert "create_task" in tool_names
+    assert "update_task" in tool_names
     
     # Test server health
     ping_response = await client.call_tool("ping", {})

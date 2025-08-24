@@ -19,6 +19,7 @@ Configuration failures that result in exit code 1:
 import argparse
 import asyncio
 import logging
+import os
 import signal
 import sys
 import tomllib
@@ -51,6 +52,7 @@ class CoreServer:
         self._lunatask_client: LunaTaskClient | None = None
         self._register_tools()
         self._shutdown_requested = False
+        self._sigint_count = 0
         self._setup_signal_handlers()
 
     def _setup_logging(self) -> None:
@@ -95,11 +97,24 @@ class CoreServer:
         """
 
         def signal_handler(signum: int, _: object | None) -> None:
-            """Handle shutdown signals by setting shutdown flag."""
+            """Handle shutdown signals by forcing immediate exit."""
             logger = logging.getLogger(__name__)
             signal_name = "SIGINT" if signum == signal.SIGINT else f"Signal {signum}"
-            logger.info("Received %s, initiating graceful shutdown", signal_name)
-            self._shutdown_requested = True
+
+            if signum == signal.SIGINT:
+                self._sigint_count += 1
+                if self._sigint_count == 1:
+                    logger.info("Received %s, initiating graceful shutdown", signal_name)
+                    self._shutdown_requested = True
+                    # Force immediate exit since FastMCP doesn't provide a clean shutdown mechanism
+                    os._exit(0)
+                else:
+                    logger.warning("Second SIGINT received; forcing immediate exit")
+                    os._exit(1)
+            else:
+                logger.info("Received %s, initiating graceful shutdown", signal_name)
+                self._shutdown_requested = True
+                os._exit(0)
 
         # Set up signal handlers
         signal.signal(signal.SIGINT, signal_handler)

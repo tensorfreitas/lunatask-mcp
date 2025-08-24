@@ -106,7 +106,6 @@ async def get_specific_task():
         print(f"  Created: {task['created_at']}")
         print(f"  Due Date: {task.get('due_date', 'Not set')}")
         print(f"  Area: {task.get('area_id', 'No area assigned')}")
-        print(f"  Tags: {', '.join(task.get('tags', []))}")
 ```
 
 ### Resource Response Format
@@ -129,12 +128,11 @@ async def get_specific_task():
         "type": "manual",
         "value": "user_created"
       },
-      "tags": ["work", "urgent"]
     }
   ],
   "metadata": {
     "retrieved_at": "session-id-123",
-    "encrypted_fields_note": "Fields like 'name' and 'notes' are not included due to LunaTask's E2E encryption"
+    "encrypted_fields_note": "Fields like 'name' and 'note' are not included due to LunaTask's E2E encryption"
   }
 }
 ```
@@ -156,11 +154,10 @@ async def get_specific_task():
       "type": "manual",
       "value": "user_created"
     },
-    "tags": ["work", "urgent"]
   },
   "metadata": {
     "retrieved_at": "session-id-456",
-    "encrypted_fields_note": "Fields like 'name' and 'notes' are not included due to LunaTask's E2E encryption"
+    "encrypted_fields_note": "Fields like 'name' and 'note' are not included due to LunaTask's E2E encryption"
   }
 }
 ```
@@ -195,7 +192,7 @@ except Exception as e:
 
 #### End-to-End Encryption
 LunaTask uses end-to-end encryption for sensitive task data. As a result:
-- Task `name` and `notes` fields are **not included** in API responses
+- Task `name` and `note` fields are **not included** in API responses
 - Only non-sensitive metadata and structural information is available
 - This is a security feature of LunaTask and cannot be bypassed
 
@@ -218,11 +215,10 @@ The server provides MCP tools for creating, updating, and deleting tasks in Luna
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | `name` | string | ✅ Yes | - | Task name (will be encrypted client-side by LunaTask) |
-| `notes` | string | ❌ No | `null` | Task notes (will be encrypted client-side by LunaTask) |
+| `note` | string | ❌ No | `null` | Task note (will be encrypted client-side by LunaTask) |
 | `area_id` | string | ❌ No | `null` | Area ID the task belongs to |
 | `status` | string | ❌ No | `"open"` | Task status (e.g., "open", "completed") |
 | `priority` | integer | ❌ No | `null` | Task priority level |
-| `tags` | list[string] | ❌ No | `[]` | List of task tags |
 
 ##### Tool Usage Examples
 
@@ -257,11 +253,10 @@ async def create_detailed_task():
         # Create a task with all available parameters
         result = await client.call_tool("create_task", {
             "name": "Implement OAuth2 authentication",
-            "notes": "Add support for Google and GitHub OAuth2 providers with PKCE security",
+            "note": "Add support for Google and GitHub OAuth2 providers with PKCE security",
             "area_id": "development-area-123",
             "status": "open",
             "priority": 3,
-            "tags": ["security", "authentication", "urgent"]
         })
         
         if result.success:
@@ -364,7 +359,7 @@ async def create_task_with_error_handling():
 ##### Important Notes
 
 ###### End-to-End Encryption Support
-- The `name` and `notes` fields **can be included** in create requests
+- The `name` and `note` fields **can be included** in create requests
 - LunaTask automatically encrypts these fields client-side before storage
 - Once created, these fields will not be visible in GET responses due to E2E encryption
 - This is normal LunaTask behavior and ensures data privacy
@@ -390,12 +385,11 @@ async def create_task_with_error_handling():
 |-----------|------|----------|---------|-------------|
 | `id` | string | ✅ Yes | - | Task ID to update (unique identifier) |
 | `name` | string | ❌ No | `null` | Updated task name (will be encrypted client-side by LunaTask) |
-| `notes` | string | ❌ No | `null` | Updated task notes (will be encrypted client-side by LunaTask) |
+| `note` | string | ❌ No | `null` | Updated task note (will be encrypted client-side by LunaTask) |
 | `area_id` | string | ❌ No | `null` | Updated area ID the task belongs to |
 | `status` | string | ❌ No | `null` | Updated task status (e.g., "open", "completed") |
 | `priority` | integer | ❌ No | `null` | Updated task priority level |
 | `due_date` | string | ❌ No | `null` | Updated due date as ISO 8601 string (e.g., "2025-12-31T23:59:59Z") |
-| `tags` | list[string] | ❌ No | `null` | Updated list of task tags |
 
 ##### Tool Usage Examples
 
@@ -434,7 +428,6 @@ async def update_task_details():
             "name": "Updated task name",
             "priority": 2,
             "due_date": "2025-12-31T23:59:59Z",
-            "tags": ["updated", "high-priority"]
         })
         
         if result.success:
@@ -444,7 +437,6 @@ async def update_task_details():
                 task = result.task
                 print(f"Updated priority: {task.get('priority')}")
                 print(f"Updated due date: {task.get('due_date')}")
-                print(f"Updated tags: {task.get('tags')}")
         else:
             print(f"Task update failed: {result.error} - {result.message}")
 ```
@@ -464,7 +456,6 @@ async def update_task_due_date():
         result = await client.call_tool("update_task", {
             "id": "task-holiday-prep",
             "due_date": due_date.isoformat(),  # "2025-12-25T18:00:00+00:00"
-            "tags": ["holiday", "deadline"]
         })
         
         if result.success:
@@ -493,7 +484,6 @@ async def update_task_due_date():
       "type": "api",
       "value": "mcp_update"
     },
-    "tags": ["updated", "high-priority"]
   }
 }
 ```
@@ -588,7 +578,7 @@ async def update_task_with_error_handling():
 - This allows for precise, targeted task modifications
 
 ###### End-to-End Encryption Support
-- The `name` and `notes` fields **can be included** in update requests
+- The `name` and `note` fields **can be included** in update requests
 - LunaTask automatically encrypts these fields client-side before storage
 - Updated encrypted fields will not be visible in the response due to E2E encryption
 - Non-encrypted fields (status, priority, etc.) will be visible in the response

@@ -277,6 +277,9 @@ class LunaTaskClient:
     async def get_tasks(self, **params: str | int | None) -> list[TaskResponse]:
         """Retrieve all tasks from the LunaTask API.
 
+        The API returns tasks in wrapped format: {"tasks": [TaskResponse, ...]}
+        This method extracts and returns the task list.
+
         Args:
             **params: Optional query parameters for pagination/filtering
                      (e.g., limit, offset, status)
@@ -289,7 +292,7 @@ class LunaTaskClient:
             LunaTaskRateLimitError: Rate limit exceeded
             LunaTaskServerError: Server error occurred
             LunaTaskNetworkError: Network connectivity error
-            LunaTaskAPIError: Other API errors
+            LunaTaskAPIError: Other API errors (including missing 'tasks' key)
         """
         # Prepare params dict, filtering out None values
         query_params = {k: v for k, v in params.items() if v is not None} if params else None
@@ -301,12 +304,16 @@ class LunaTaskClient:
             response_data = await self.make_request("GET", "tasks")
 
         # Parse response JSON into TaskResponse model list
-        # The tasks API returns a list of task dictionaries, but make_request() is typed
-        # to return dict[str, Any] for general use. We know from the API spec that GET /v1/tasks
-        # specifically returns a JSON array of task objects, so this assignment is safe.
-        task_list: list[dict[str, Any]] = response_data  # type: ignore[assignment]
+        # The tasks API returns a wrapped response in format {"tasks": [...]}
+        # Extract the task list from the wrapped response
+        task_list: list[dict[str, Any]] = response_data["tasks"]
         try:
             tasks = [TaskResponse(**task_data) for task_data in task_list]
+        except KeyError as e:
+            logger.exception("Failed to extract tasks from wrapped response format")
+            raise LunaTaskAPIError.create_parse_error(
+                "tasks", task_count="unknown - missing 'tasks' key"
+            ) from e
         except Exception as e:
             logger.exception("Failed to parse task response data")
             task_count = len(task_list) if task_list else "unknown"
@@ -336,8 +343,14 @@ class LunaTaskClient:
         response_data = await self.make_request("GET", f"tasks/{task_id}")
 
         # Parse response JSON into TaskResponse model instance
+        # The get task API returns a wrapped response in format {"task": {...}}
         try:
-            task = TaskResponse(**response_data)
+            task = TaskResponse(**response_data["task"])
+        except KeyError as e:
+            logger.exception("Failed to extract task from wrapped response format")
+            raise LunaTaskAPIError.create_parse_error(
+                f"tasks/{task_id}", task_id=f"{task_id} - missing 'task' key"
+            ) from e
         except Exception as e:
             logger.exception("Failed to parse single task response data")
             raise LunaTaskAPIError.create_parse_error(f"tasks/{task_id}", task_id=task_id) from e
@@ -370,8 +383,15 @@ class LunaTaskClient:
         response_data = await self.make_request("POST", "tasks", data=json_data)
 
         # Parse response JSON into TaskResponse model instance
+        # The create task API returns a wrapped response in format {"task": {...}}
         try:
-            task = TaskResponse(**response_data)
+            task = TaskResponse(**response_data["task"])
+        except KeyError as e:
+            logger.exception("Failed to extract task from wrapped response format")
+            task_name = json_data.get("name", "unknown")
+            raise LunaTaskAPIError.create_parse_error(
+                "tasks", task_name=f"{task_name} - missing 'task' key"
+            ) from e
         except Exception as e:
             logger.exception("Failed to parse created task response data")
             task_name = json_data.get("name", "unknown")
@@ -406,8 +426,14 @@ class LunaTaskClient:
         response_data = await self.make_request("PATCH", f"tasks/{task_id}", data=json_data)
 
         # Parse response JSON into TaskResponse model instance
+        # The update task API returns a wrapped response in format {"task": {...}}
         try:
-            task = TaskResponse(**response_data)
+            task = TaskResponse(**response_data["task"])
+        except KeyError as e:
+            logger.exception("Failed to extract task from wrapped response format")
+            raise LunaTaskAPIError.create_parse_error(
+                f"tasks/{task_id}", task_id=f"{task_id} - missing 'task' key"
+            ) from e
         except Exception as e:
             logger.exception("Failed to parse updated task response data")
             raise LunaTaskAPIError.create_parse_error(f"tasks/{task_id}", task_id=task_id) from e

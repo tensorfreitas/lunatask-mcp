@@ -8,7 +8,7 @@
 1. An MCP `resource` is implemented that corresponds to the `GET /v1/tasks` endpoint.
 2. When accessed, the resource makes an authenticated `GET` request to the LunaTask API.
 3. A successful response returns a list of task objects.
-4. **Crucially**, the returned data respects LunaTask's E2E encryption: fields like `name` and `notes` will not be present in the response, and the implementation must handle their absence gracefully.
+4. **Crucially**, the returned data respects LunaTask's E2E encryption: fields like `name` and `note` will not be present in the response, and the implementation must handle their absence gracefully.
 5. An error response from the LunaTask API results in a structured MCP error.
 
 ## **Story 2.2: Retrieve a Single Task Resource**
@@ -17,14 +17,14 @@
 1. An MCP `resource` is implemented that corresponds to the `GET /v1/tasks/<id>` endpoint.
 2. The resource accepts a task `id` as a parameter.
 3. A successful response returns the specific task object.
-4. The implementation correctly handles the absence of encrypted fields (`name`, `notes`, etc.) in the API response.
+4. The implementation correctly handles the absence of encrypted fields (`name`, `note`, etc.) in the API response.
 5. If the task is not found, a specific MCP error is returned.
 
 ## **Story 2.3: Create Task Tool**
 **As a** user, **I want** to create a new task in LunaTask using an MCP tool, **so that** I can add to-dos from my integrated AI applications.
 ### Acceptance Criteria
 1. An MCP `tool` named `create_task` is implemented, corresponding to `POST /v1/tasks`.
-2. The tool accepts all necessary parameters to create a LunaTask task (e.g., `listId`, `name`, `notes`).
+2. The tool accepts all necessary parameters to create a LunaTask task (e.g., `listId`, `name`, `note`).
 3. A successful API call results in an MCP response containing the ID of the newly created task.
 
 ## **Story 2.4: Update Task Tool**

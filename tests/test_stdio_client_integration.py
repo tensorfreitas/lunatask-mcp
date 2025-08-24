@@ -202,12 +202,11 @@ class TestStdioClientIntegration:
             expected_params = {
                 "id": True,  # Required
                 "name": False,  # Optional
-                "notes": False,  # Optional
+                "note": False,  # Optional
                 "area_id": False,  # Optional
                 "status": False,  # Optional
                 "priority": False,  # Optional
                 "due_date": False,  # Optional
-                "tags": False,  # Optional
             }
 
             # Check tool schema has expected parameters
@@ -296,7 +295,6 @@ log_level = "INFO"
                             "name": "Multi-field Update",
                             "status": "completed",
                             "due_date": "2025-12-31T23:59:59Z",
-                            "tags": ["urgent", "backend"],
                         },
                     )
 
@@ -320,7 +318,7 @@ log_level = "INFO"
                         {
                             "id": "test-task-789",
                             "name": "Partial Update Test",
-                            "notes": None,  # Should be excluded from API request
+                            "note": None,  # Should be excluded from API request
                             "area_id": None,  # Should be excluded from API request
                         },
                     )

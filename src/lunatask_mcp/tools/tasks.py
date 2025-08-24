@@ -82,7 +82,14 @@ class TaskTools:
             }
             if task.source
             else None,
-            "tags": task.tags,
+            "goal_id": task.goal_id,
+            "estimate": task.estimate,
+            "motivation": task.motivation,
+            "eisenhower": task.eisenhower,
+            "previous_status": task.previous_status,
+            "progress": task.progress,
+            "scheduled_on": task.scheduled_on.isoformat() if task.scheduled_on else None,
+            "completed_at": task.completed_at.isoformat() if task.completed_at else None,
         }
 
     async def get_tasks_resource(self, ctx: Context) -> dict[str, Any]:
@@ -117,7 +124,7 @@ class TaskTools:
                 "metadata": {
                     "retrieved_at": ctx.session_id if hasattr(ctx, "session_id") else "unknown",
                     "encrypted_fields_note": (
-                        "Task names and notes are not included due to E2E encryption"
+                        "Task names and note are not included due to E2E encryption"
                     ),
                 },
             }
@@ -203,7 +210,7 @@ class TaskTools:
                 "metadata": {
                     "retrieved_at": ctx.session_id if hasattr(ctx, "session_id") else "unknown",
                     "encrypted_fields_note": (
-                        "Task names and notes are not included due to E2E encryption"
+                        "Task names and note are not included due to E2E encryption"
                     ),
                 },
             }
@@ -269,11 +276,10 @@ class TaskTools:
         self,
         ctx: Context,
         name: str,
-        notes: str | None = None,
+        note: str | None = None,
         area_id: str | None = None,
-        status: str = "open",
+        status: str = "later",
         priority: int | None = None,
-        tags: list[str] | None = None,
     ) -> dict[str, Any]:
         """Create a new task in LunaTask.
 
@@ -283,11 +289,10 @@ class TaskTools:
         Args:
             ctx: MCP context for logging and communication
             name: Task name (required)
-            notes: Optional task notes
+            note: Optional task note
             area_id: Optional area ID the task belongs to
             status: Task status (default: "open")
             priority: Optional task priority level
-            tags: Optional list of task tags
 
         Returns:
             dict[str, Any]: Response containing task creation result with task_id
@@ -306,11 +311,10 @@ class TaskTools:
             # Create TaskCreate object from parameters
             task_data = TaskCreate(
                 name=name,
-                notes=notes,
+                note=note,
                 area_id=area_id,
                 status=status,
                 priority=priority,
-                tags=tags or [],
             )
 
             # Use LunaTask client to create the task
@@ -416,12 +420,11 @@ class TaskTools:
         ctx: Context,
         id: str,  # noqa: A002
         name: str | None = None,
-        notes: str | None = None,
+        note: str | None = None,
         area_id: str | None = None,
         status: str | None = None,
         priority: int | None = None,
         due_date: str | None = None,
-        tags: list[str] | None = None,
     ) -> dict[str, Any]:
         """Update an existing task in LunaTask.
 
@@ -432,12 +435,11 @@ class TaskTools:
             ctx: MCP context for logging and communication
             id: Task ID to update (required)
             name: Updated task name (optional)
-            notes: Updated task notes (optional)
+            note: Updated task note (optional)
             area_id: Updated area ID the task belongs to (optional)
             status: Updated task status (optional)
             priority: Updated task priority level (optional)
             due_date: Updated due date as ISO 8601 string (optional)
-            tags: Updated list of task tags (optional)
 
         Returns:
             dict[str, Any]: Response containing task update result with updated task data
@@ -463,7 +465,7 @@ class TaskTools:
             return result
 
         # Validate that at least one field is provided for update
-        update_fields = [name, notes, area_id, status, priority, due_date, tags]
+        update_fields = [name, note, area_id, status, priority, due_date]
         if all(field is None for field in update_fields):
             error_msg = "At least one field must be provided for update"
             result = {
@@ -497,12 +499,11 @@ class TaskTools:
             # Create TaskUpdate object from provided parameters
             task_update = TaskUpdate(
                 name=name,
-                notes=notes,
+                note=note,
                 area_id=area_id,
                 status=status,
                 priority=priority,
                 due_date=parsed_due_date,
-                tags=tags,
             )
 
             # Use LunaTask client to update the task

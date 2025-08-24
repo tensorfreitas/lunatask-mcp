@@ -98,13 +98,28 @@ class TestTaskResourceRetrieval:
         sample_task = TaskResponse(
             id="task-1",
             status="open",
-            created_at=datetime(2025, 8, 20, 10, 0, 0, tzinfo=UTC),
+            created_at=datetime(
+                2025,
+                8,
+                20,
+                10,
+                0,
+                0,
+                tzinfo=UTC,
+            ),
             updated_at=datetime(2025, 8, 20, 10, 30, 0, tzinfo=UTC),
             priority=1,
             due_date=datetime(2025, 8, 25, 18, 0, 0, tzinfo=UTC),
             area_id="area-1",
             source=Source(type="manual", value="user_created"),
-            tags=["work", "urgent"],
+            goal_id=None,
+            estimate=None,
+            motivation=None,
+            eisenhower=None,
+            previous_status=None,
+            progress=None,
+            scheduled_on=None,
+            completed_at=None,
         )
 
         # Mock the client's get_tasks method
@@ -130,7 +145,6 @@ class TestTaskResourceRetrieval:
         assert task_data["area_id"] == "area-1"
         assert task_data["source"]["type"] == "manual"
         assert task_data["source"]["value"] == "user_created"
-        assert task_data["tags"] == ["work", "urgent"]
 
         # Verify metadata
         metadata = result["metadata"]
@@ -245,13 +259,28 @@ class TestTaskResourceRetrieval:
         sample_task = TaskResponse(
             id="task-2",
             status="completed",
-            created_at=datetime(2025, 8, 18, 10, 0, 0, tzinfo=UTC),
+            created_at=datetime(
+                2025,
+                8,
+                18,
+                10,
+                0,
+                0,
+                tzinfo=UTC,
+            ),
             updated_at=datetime(2025, 8, 19, 9, 0, 0, tzinfo=UTC),
             priority=None,
             due_date=None,
             area_id=None,
             source=None,
-            tags=[],
+            goal_id=None,
+            estimate=None,
+            motivation=None,
+            eisenhower=None,
+            previous_status=None,
+            progress=None,
+            scheduled_on=None,
+            completed_at=None,
         )
 
         mocker.patch.object(client, "get_tasks", return_value=[sample_task])
@@ -267,7 +296,6 @@ class TestTaskResourceRetrieval:
         assert task_data["due_date"] is None
         assert task_data["area_id"] is None
         assert task_data["source"] is None
-        assert task_data["tags"] == []
 
 
 class TestTaskResourceErrorHandling:
@@ -475,7 +503,7 @@ class TestTaskToolsPaginationAndFiltering:
         client = LunaTaskClient(config)
 
         # Mock the make_request method to verify parameter forwarding
-        mock_make_request = mocker.patch.object(client, "make_request", return_value=[])
+        mock_make_request = mocker.patch.object(client, "make_request", return_value={"tasks": []})
 
         # Test pagination parameter forwarding
         await client.get_tasks(limit=50, offset=100, status="open")
@@ -495,7 +523,7 @@ class TestTaskToolsPaginationAndFiltering:
         client = LunaTaskClient(config)
 
         # Mock the make_request method
-        mock_make_request = mocker.patch.object(client, "make_request", return_value=[])
+        mock_make_request = mocker.patch.object(client, "make_request", return_value={"tasks": []})
 
         # Test with mixed parameters including None values
         await client.get_tasks(limit=25, offset=None, status="completed", priority=None)
@@ -569,13 +597,28 @@ class TestSingleTaskResource:
         sample_task = TaskResponse(
             id="task-123",
             status="open",
-            created_at=datetime(2025, 8, 20, 10, 0, 0, tzinfo=UTC),
+            created_at=datetime(
+                2025,
+                8,
+                20,
+                10,
+                0,
+                0,
+                tzinfo=UTC,
+            ),
             updated_at=datetime(2025, 8, 20, 10, 30, 0, tzinfo=UTC),
             priority=2,
             due_date=datetime(2025, 8, 25, 14, 30, 0, tzinfo=UTC),
             area_id="area-456",
             source=Source(type="manual", value="user_created"),
-            tags=["work", "important"],
+            goal_id=None,
+            estimate=None,
+            motivation=None,
+            eisenhower=None,
+            previous_status=None,
+            progress=None,
+            scheduled_on=None,
+            completed_at=None,
         )
 
         # Mock the client's get_task method
@@ -601,7 +644,6 @@ class TestSingleTaskResource:
         assert task_data["area_id"] == "area-456"
         assert task_data["source"]["type"] == "manual"
         assert task_data["source"]["value"] == "user_created"
-        assert task_data["tags"] == ["work", "important"]
 
         # Verify metadata
         metadata = result["metadata"]
@@ -631,13 +673,28 @@ class TestSingleTaskResource:
         minimal_task = TaskResponse(
             id="task-minimal",
             status="completed",
-            created_at=datetime(2025, 8, 18, 10, 0, 0, tzinfo=UTC),
+            created_at=datetime(
+                2025,
+                8,
+                18,
+                10,
+                0,
+                0,
+                tzinfo=UTC,
+            ),
             updated_at=datetime(2025, 8, 19, 9, 0, 0, tzinfo=UTC),
             priority=None,
             due_date=None,
             area_id=None,
             source=None,
-            tags=[],
+            goal_id=None,
+            estimate=None,
+            motivation=None,
+            eisenhower=None,
+            previous_status=None,
+            progress=None,
+            scheduled_on=None,
+            completed_at=None,
         )
 
         mocker.patch.object(client, "get_task", return_value=minimal_task)
@@ -653,7 +710,6 @@ class TestSingleTaskResource:
         assert task_data["due_date"] is None
         assert task_data["area_id"] is None
         assert task_data["source"] is None
-        assert task_data["tags"] == []
 
     @pytest.mark.asyncio
     async def test_get_task_resource_not_found_error(self, mocker: MockerFixture) -> None:
@@ -885,13 +941,28 @@ class TestSingleTaskResource:
         special_task = TaskResponse(
             id="task-with-special/chars",
             status="open",
-            created_at=datetime(2025, 8, 20, 10, 0, 0, tzinfo=UTC),
+            created_at=datetime(
+                2025,
+                8,
+                20,
+                10,
+                0,
+                0,
+                tzinfo=UTC,
+            ),
             updated_at=datetime(2025, 8, 20, 10, 30, 0, tzinfo=UTC),
             area_id=None,
             priority=None,
             due_date=None,
             source=None,
-            tags=[],
+            goal_id=None,
+            estimate=None,
+            motivation=None,
+            eisenhower=None,
+            previous_status=None,
+            progress=None,
+            scheduled_on=None,
+            completed_at=None,
         )
 
         mocker.patch.object(client, "get_task", return_value=special_task)
@@ -923,14 +994,29 @@ class TestSingleTaskResource:
         encrypted_task = TaskResponse(
             id="task-encrypted",
             status="open",
-            created_at=datetime(2025, 8, 20, 10, 0, 0, tzinfo=UTC),
+            created_at=datetime(
+                2025,
+                8,
+                20,
+                10,
+                0,
+                0,
+                tzinfo=UTC,
+            ),
             updated_at=datetime(2025, 8, 20, 10, 30, 0, tzinfo=UTC),
             area_id=None,
             priority=None,
             due_date=None,
             source=None,
-            tags=[],
-            # Note: name and notes fields intentionally missing
+            goal_id=None,
+            estimate=None,
+            motivation=None,
+            eisenhower=None,
+            previous_status=None,
+            progress=None,
+            scheduled_on=None,
+            completed_at=None,
+            # Note: name and note fields intentionally missing
         )
 
         mocker.patch.object(client, "get_task", return_value=encrypted_task)
@@ -944,7 +1030,7 @@ class TestSingleTaskResource:
         assert task_data["status"] == "open"
         # Encrypted fields should not be present
         assert "name" not in task_data
-        assert "notes" not in task_data
+        assert "note" not in task_data
 
         # Metadata should note encryption
         assert "E2E encryption" in result["metadata"]["encrypted_fields_note"]
@@ -1023,13 +1109,28 @@ class TestEndToEndResourceValidation:
         test_task = TaskResponse(
             id="e2e-test-task-456",
             status="in_progress",
-            created_at=datetime(2025, 8, 21, 9, 0, 0, tzinfo=UTC),
+            created_at=datetime(
+                2025,
+                8,
+                21,
+                9,
+                0,
+                0,
+                tzinfo=UTC,
+            ),
             updated_at=datetime(2025, 8, 21, 11, 30, 0, tzinfo=UTC),
             priority=3,
             due_date=datetime(2025, 8, 28, 17, 0, 0, tzinfo=UTC),
             area_id="work-area-789",
             source=Source(type="integration", value="github_issue"),
-            tags=["bug-fix", "high-priority", "backend"],
+            goal_id=None,
+            estimate=None,
+            motivation=None,
+            eisenhower=None,
+            previous_status=None,
+            progress=None,
+            scheduled_on=None,
+            completed_at=None,
         )
 
         # Mock the complete client flow
@@ -1055,7 +1156,6 @@ class TestEndToEndResourceValidation:
         assert task_data["area_id"] == "work-area-789"
         assert task_data["source"]["type"] == "integration"
         assert task_data["source"]["value"] == "github_issue"
-        assert task_data["tags"] == ["bug-fix", "high-priority", "backend"]
 
         # Validate metadata structure
         metadata = result["metadata"]
@@ -1229,13 +1329,28 @@ class TestEndToEndResourceValidation:
         test_task = TaskResponse(
             id=test_task_id,
             status="open",
-            created_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
+            created_at=datetime(
+                2025,
+                8,
+                21,
+                10,
+                0,
+                0,
+                tzinfo=UTC,
+            ),
             updated_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             priority=None,
             due_date=None,
             area_id=None,
             source=None,
-            tags=[],
+            goal_id=None,
+            estimate=None,
+            motivation=None,
+            eisenhower=None,
+            previous_status=None,
+            progress=None,
+            scheduled_on=None,
+            completed_at=None,
         )
 
         mock_get_task = mocker.patch.object(client, "get_task", return_value=test_task)
@@ -1267,18 +1382,33 @@ class TestEndToEndResourceValidation:
 
         mock_ctx = mocker.AsyncMock()
 
-        # Create task that simulates E2E encryption (missing name/notes fields)
+        # Create task that simulates E2E encryption (missing name/note fields)
         encrypted_task = TaskResponse(
             id="encrypted-task-e2e",
             status="open",
-            created_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
+            created_at=datetime(
+                2025,
+                8,
+                21,
+                10,
+                0,
+                0,
+                tzinfo=UTC,
+            ),
             updated_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             priority=1,
             due_date=datetime(2025, 8, 30, 16, 0, 0, tzinfo=UTC),
             area_id="secure-area",
             source=Source(type="secure", value="encrypted_source"),
-            tags=["confidential"],
-            # Importantly: name and notes fields are not present due to E2E encryption
+            goal_id=None,
+            estimate=None,
+            motivation=None,
+            eisenhower=None,
+            previous_status=None,
+            progress=None,
+            scheduled_on=None,
+            completed_at=None,
+            # Importantly: name and note fields are not present due to E2E encryption
         )
 
         mocker.patch.object(client, "get_task", return_value=encrypted_task)
@@ -1291,14 +1421,13 @@ class TestEndToEndResourceValidation:
         # Validate that encrypted fields are properly absent
         task_data = result["task"]
         assert "name" not in task_data
-        assert "notes" not in task_data
+        assert "note" not in task_data
 
         # Validate that other fields are present
         assert task_data["id"] == "encrypted-task-e2e"
         assert task_data["status"] == "open"
         assert task_data["priority"] == 1
         assert task_data["area_id"] == "secure-area"
-        assert task_data["tags"] == ["confidential"]
 
         # Validate metadata indicates encryption
         assert "E2E encryption" in result["metadata"]["encrypted_fields_note"]
@@ -1324,13 +1453,28 @@ class TestCreateTaskTool:
         created_task = TaskResponse(
             id="new-task-123",
             status="open",
-            created_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
+            created_at=datetime(
+                2025,
+                8,
+                21,
+                10,
+                0,
+                0,
+                tzinfo=UTC,
+            ),
             updated_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             area_id=None,
             priority=None,
             due_date=None,
             source=None,
-            tags=[],
+            goal_id=None,
+            estimate=None,
+            motivation=None,
+            eisenhower=None,
+            previous_status=None,
+            progress=None,
+            scheduled_on=None,
+            completed_at=None,
         )
 
         mocker.patch.object(client, "create_task", return_value=created_task)
@@ -1370,11 +1514,26 @@ class TestCreateTaskTool:
             area_id="area-123",
             status="open",
             priority=1,
-            created_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
+            created_at=datetime(
+                2025,
+                8,
+                21,
+                10,
+                0,
+                0,
+                tzinfo=UTC,
+            ),
             updated_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             due_date=None,
             source=None,
-            tags=["urgent", "test"],
+            goal_id=None,
+            estimate=None,
+            motivation=None,
+            eisenhower=None,
+            previous_status=None,
+            progress=None,
+            scheduled_on=None,
+            completed_at=None,
         )
 
         mocker.patch.object(client, "create_task", return_value=created_task)
@@ -1385,11 +1544,10 @@ class TestCreateTaskTool:
         result = await task_tools.create_task_tool(
             mock_ctx,
             name="Full Test Task",
-            notes="These are test notes",
+            note="These are test note",
             area_id="area-123",
             status="open",
             priority=1,
-            tags=["urgent", "test"],
         )
 
         # Verify the result
@@ -1402,11 +1560,10 @@ class TestCreateTaskTool:
         call_args = client.create_task.call_args[0][0]  # type: ignore[attr-defined] # Mock attribute added by mocker.patch.object
         assert isinstance(call_args, TaskCreate)
         assert call_args.name == "Full Test Task"
-        assert call_args.notes == "These are test notes"
+        assert call_args.note == "These are test note"
         assert call_args.area_id == "area-123"
         assert call_args.status == "open"
         assert call_args.priority == 1
-        assert call_args.tags == ["urgent", "test"]
 
     @pytest.mark.asyncio
     async def test_create_task_tool_validation_error_422(self, mocker: MockerFixture) -> None:
@@ -1597,13 +1754,28 @@ class TestCreateTaskTool:
         created_task = TaskResponse(
             id="param-test-789",
             status="open",
-            created_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
+            created_at=datetime(
+                2025,
+                8,
+                21,
+                10,
+                0,
+                0,
+                tzinfo=UTC,
+            ),
             updated_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             area_id=None,
             priority=None,
             due_date=None,
             source=None,
-            tags=[],
+            goal_id=None,
+            estimate=None,
+            motivation=None,
+            eisenhower=None,
+            previous_status=None,
+            progress=None,
+            scheduled_on=None,
+            completed_at=None,
         )
 
         mocker.patch.object(client, "create_task", return_value=created_task)
@@ -1619,7 +1791,7 @@ class TestCreateTaskTool:
 
         # Test with optional parameters as None (should be excluded)
         result = await task_tools.create_task_tool(
-            mock_ctx, name="Test with Nones", notes=None, area_id=None, priority=None
+            mock_ctx, name="Test with Nones", note=None, area_id=None, priority=None
         )
         assert result["success"] is True
 
@@ -1666,7 +1838,7 @@ class TestCreateTaskToolEndToEnd:
                     assert "name" in properties
 
                     # Optional parameters
-                    expected_optional_params = {"notes", "area_id", "status", "priority", "tags"}
+                    expected_optional_params = {"note", "area_id", "status", "priority"}
                     for param in expected_optional_params:
                         assert param in properties, f"Missing expected parameter: {param}"
         except (AttributeError, KeyError, TypeError):
@@ -1689,13 +1861,28 @@ class TestCreateTaskToolEndToEnd:
         created_task = TaskResponse(
             id="e2e-task-123",
             status="open",
-            created_at=datetime(2025, 8, 22, 10, 0, 0, tzinfo=UTC),
+            created_at=datetime(
+                2025,
+                8,
+                22,
+                10,
+                0,
+                0,
+                tzinfo=UTC,
+            ),
             updated_at=datetime(2025, 8, 22, 10, 0, 0, tzinfo=UTC),
             area_id="work-area",
             priority=3,
             due_date=None,
             source=None,
-            tags=["urgent", "development"],
+            goal_id=None,
+            estimate=None,
+            motivation=None,
+            eisenhower=None,
+            previous_status=None,
+            progress=None,
+            scheduled_on=None,
+            completed_at=None,
         )
 
         mocker.patch.object(client, "create_task", return_value=created_task)
@@ -1709,11 +1896,10 @@ class TestCreateTaskToolEndToEnd:
         result = await task_tools.create_task_tool(
             ctx=mock_ctx,
             name="E2E Test Task",
-            notes="This is an end-to-end test task",
+            note="This is an end-to-end test task",
             area_id="work-area",
             status="open",
             priority=3,
-            tags=["urgent", "development"],
         )
 
         # Verify successful response structure
@@ -1726,12 +1912,11 @@ class TestCreateTaskToolEndToEnd:
         call_args = client.create_task.call_args[0][0]  # type: ignore[attr-defined] # Mock attribute added by mocker.patch.object
 
         assert call_args.name == "E2E Test Task"  # type: ignore[attr-defined] # TaskCreate field access on mock call args
-        assert call_args.notes == "This is an end-to-end test task"  # type: ignore[attr-defined] # TaskCreate field access on mock call args
+        assert call_args.note == "This is an end-to-end test task"  # type: ignore[attr-defined] # TaskCreate field access on mock call args
         assert call_args.area_id == "work-area"  # type: ignore[attr-defined] # TaskCreate field access on mock call args
         assert call_args.status == "open"  # type: ignore[attr-defined] # TaskCreate field access on mock call args
         expected_priority = 3
         assert call_args.priority == expected_priority  # type: ignore[attr-defined] # TaskCreate field access on mock call args
-        assert call_args.tags == ["urgent", "development"]  # type: ignore[attr-defined] # TaskCreate field access on mock call args
 
         # Verify logging calls
         mock_ctx.info.assert_any_call("Creating new task: E2E Test Task")
@@ -1807,7 +1992,7 @@ class TestCreateTaskToolEndToEnd:
         assert "name" in param_names
 
         # Optional parameters with defaults
-        expected_optional = {"notes", "area_id", "status", "priority", "tags"}
+        expected_optional = {"note", "area_id", "status", "priority"}
         for param in expected_optional:
             assert param in param_names, f"Missing parameter: {param}"
 
@@ -1817,11 +2002,11 @@ class TestCreateTaskToolEndToEnd:
         assert name_param.default == inspect.Parameter.empty  # Required parameter
 
         status_param = sig.parameters["status"]
-        assert status_param.default == "open"  # Default status
+        assert status_param.default == "later"  # Default status
 
         # Verify optional parameters have proper defaults
-        notes_param = sig.parameters["notes"]
-        assert notes_param.default is None
+        note_param = sig.parameters["note"]
+        assert note_param.default is None
 
 
 class TestUpdateTaskTool:
@@ -1844,13 +2029,28 @@ class TestUpdateTaskTool:
         updated_task = TaskResponse(
             id="update-task-123",
             status="completed",  # Changed from open to completed
-            created_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
+            created_at=datetime(
+                2025,
+                8,
+                21,
+                10,
+                0,
+                0,
+                tzinfo=UTC,
+            ),
             updated_at=datetime(2025, 8, 22, 14, 30, 0, tzinfo=UTC),
             area_id=None,
             priority=None,
             due_date=None,
             source=None,
-            tags=[],
+            goal_id=None,
+            estimate=None,
+            motivation=None,
+            eisenhower=None,
+            previous_status=None,
+            progress=None,
+            scheduled_on=None,
+            completed_at=None,
         )
 
         mocker.patch.object(client, "update_task", return_value=updated_task)
@@ -1883,12 +2083,11 @@ class TestUpdateTaskTool:
         # Verify call arguments using assert_called_with for type safety
         expected_update = TaskUpdate(
             name=None,
-            notes=None,
+            note=None,
             area_id=None,
             status="completed",
             priority=None,
             due_date=None,
-            tags=None,
         )
         # Mock method added by pytest-mock, type system doesn't recognize it
         mock_update_task.assert_called_with("update-task-123", expected_update)  # type: ignore[attr-defined]
@@ -1912,14 +2111,29 @@ class TestUpdateTaskTool:
         expected_due_date = datetime(2025, 12, 25, 14, 30, 0, tzinfo=UTC)
         updated_task = TaskResponse(
             id="date-task-789",
-            status="open",
-            created_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
+            status="later",
+            created_at=datetime(
+                2025,
+                8,
+                21,
+                10,
+                0,
+                0,
+                tzinfo=UTC,
+            ),
             updated_at=datetime(2025, 8, 22, 15, 30, 0, tzinfo=UTC),
             area_id=None,
             priority=None,
             due_date=expected_due_date,
             source=None,
-            tags=[],
+            goal_id=None,
+            estimate=None,
+            motivation=None,
+            eisenhower=None,
+            previous_status=None,
+            progress=None,
+            scheduled_on=None,
+            completed_at=None,
         )
 
         mocker.patch.object(client, "update_task", return_value=updated_task)
@@ -1942,12 +2156,11 @@ class TestUpdateTaskTool:
         mock_update_task = client.update_task  # type: ignore[attr-defined]
         expected_update = TaskUpdate(
             name=None,
-            notes=None,
+            note=None,
             area_id=None,
             status=None,
             priority=None,
             due_date=expected_due_date,
-            tags=None,
         )
         # Mock method added by pytest-mock, type system doesn't recognize it
         mock_update_task.assert_called_with("date-task-789", expected_update)  # type: ignore[attr-defined]

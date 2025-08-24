@@ -11,7 +11,7 @@ This project has one critical external dependency: the LunaTask API. All core fu
 *   **Base URL**: `https://api.lunatask.app/v1/`
 *   **Authentication**: Bearer Token sent in the `Authorization` header.
 *   **Rate Limits**: Undocumented. Our server must implement a conservative, configurable rate limiter to act as a good citizen.
-*   **Integration Notes**: The API enforces end-to-end encryption, meaning response payloads for `GET` requests will not contain sensitive, encrypted fields like `name` or `notes`. Our `TaskResponse` model is designed to handle this.
+*   **Integration Notes**: The API enforces end-to-end encryption, meaning response payloads for `GET` requests will not contain sensitive, encrypted fields like `name` or `note`. Our `TaskResponse` model is designed to handle this.
 
 ## API Endpoint Coverage
 
@@ -41,7 +41,7 @@ This project has one critical external dependency: the LunaTask API. All core fu
    - **MCP Tool**: `create_task` tool
    - **Request Model**: `TaskCreate` object with required/optional fields
    - **Response Model**: Task creation result with new task ID
-   - **Features**: Supports E2E encryption for `name` and `notes` fields
+   - **Features**: Supports E2E encryption for `name` and `note` fields
    - **Error Handling**: Validation errors (422), subscription limits (402), auth errors (401)
    - **Status**: ✅ Implemented (Story 2.3)
 
@@ -68,7 +68,7 @@ This project has one critical external dependency: the LunaTask API. All core fu
 ### Response Format Notes
 
 All implemented endpoints respect LunaTask's E2E encryption constraints:
-- Sensitive fields (`name`, `notes`) are absent from all responses
+- Sensitive fields (`name`, `note`) are absent from all responses
 - Only structural and metadata fields are available
 - Error responses are properly translated to MCP error format
 - Rate limiting is applied to all requests via `TokenBucketLimiter`

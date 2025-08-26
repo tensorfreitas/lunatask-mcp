@@ -50,3 +50,36 @@
 3. When a request is rate-limited, the server returns a specific, structured MCP error to the client.
 
 ---
+## Story 2.7: Enforce and Validate Task Attribute Domains
+
+As a developer, I want strict request-side validation and sensible defaults for core task attributes, so that our MCP tools only send valid states to LunaTask while remaining compatible with upstream responses.
+
+### Acceptance Criteria
+1. Request-side validation for TaskCreate and TaskUpdate:
+   - status: must be one of {"later", "next", "started", "waiting", "completed"}; default "later" on create.
+   - priority: integer in [-2, -1, 0, 1, 2]; default 0 on create.
+   - motivation: one of {"must", "should", "want", "unknown"}; default "unknown" on create.
+   - eisenhower: integer in [0, 1, 2, 3, 4] (0 = Uncategorized).
+2. TaskCreate and TaskUpdate include optional motivation and eisenhower fields (validated when present); MCP tools accept and forward these fields.
+3. Response handling is compatibility-first (permissive): TaskResponse accepts upstream values without normalization or rejection (e.g., "open" is passed through).
+4. create_task and update_task return structured MCP errors on validation failures that clearly indicate the invalid field and allowed values.
+5. Attribute evaluation tests cover presence/optionality and types for:
+   - id, area_id, goal_id, status, previous_status, estimate, priority, progress, motivation, eisenhower, source, scheduled_on, completed_at, created_at, updated_at.
+6. Boundary tests:
+   - priority accepts -2 and 2; rejects &lt; -2 or &gt; 2 on requests.
+   - eisenhower accepts 0 and 4; rejects &lt; 0 or &gt; 4 on requests.
+   - status accepts only the 5 allowed values; motivation accepts only the 4 allowed values.
+7. No cross-field invariants (e.g., completed ⇒ completed_at) are enforced in this story.
+8. No changes to rate limiting or encryption handling.
+
+### Development Approach (TDD)
+- Write tests first (failing), then implement minimal code, then refactor when all tests pass:
+  - tests/test_api_client.py: request model validation and defaults for TaskCreate/TaskUpdate (status/priority/motivation/eisenhower), boundary and rejection cases.
+  - tests/test_task_tools.py: tool-level behavior for create_task and update_task returning structured errors on invalid inputs; success on valid boundary inputs; schema exposes new optional fields.
+  - tests/test_task_tools.py: response attribute coverage for TaskResponse fields listed above (permissive handling, no normalization).
+- Implement:
+  - Add/augment request-side validation and defaults in Pydantic models in src/lunatask_mcp/api/models.py for TaskCreate and TaskUpdate.
+  - Extend MCP tools parameter schemas in src/lunatask_mcp/tools/tasks.py to accept motivation and eisenhower; forward validated values to the client.
+  - Keep TaskResponse permissive; do not map values like "open" → "later".
+- Refactor:
+  - Ensure consistent structured MCP error formatting across tools; keep logs secure and tokens redacted.

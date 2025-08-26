@@ -5,8 +5,19 @@ LunaTask API responses, particularly focusing on task data.
 """
 
 from datetime import date, datetime
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+# Enums for request validation
+TaskStatus = Literal["later", "next", "started", "waiting", "completed"]
+TaskMotivation = Literal["must", "should", "want", "unknown"]
+
+# Constants for validation bounds
+MIN_PRIORITY = -2
+MAX_PRIORITY = 2
+MIN_EISENHOWER = 0
+MAX_EISENHOWER = 4
 
 
 class Source(BaseModel):
@@ -59,10 +70,32 @@ class TaskCreate(BaseModel):
         default=None, description="Task note (optional, gets encrypted client-side)"
     )
     area_id: str | None = Field(default=None, description="Area ID the task belongs to")
-    status: str = Field(default="later", description="Task status (default: 'later')")
-    priority: int | None = Field(default=None, description="Task priority level")
+    status: TaskStatus = Field(default="later", description="Task status (default: 'later')")
+    priority: int = Field(default=0, description="Task priority level (default: 0)")
     due_date: datetime | None = Field(default=None, description="Task due date")
     source: Source | None = Field(default=None, description="Task source information")
+    motivation: TaskMotivation = Field(
+        default="unknown", description="Task motivation (default: 'unknown')"
+    )
+    eisenhower: int | None = Field(default=None, description="Eisenhower matrix quadrant (0-4)")
+
+    @field_validator("priority")
+    @classmethod
+    def validate_priority(cls, v: int) -> int:
+        """Validate priority is within bounds [-2, 2]."""
+        if v < MIN_PRIORITY or v > MAX_PRIORITY:
+            msg = f"Priority must be between {MIN_PRIORITY} and {MAX_PRIORITY}"
+            raise ValueError(msg)
+        return v
+
+    @field_validator("eisenhower")
+    @classmethod
+    def validate_eisenhower(cls, v: int | None) -> int | None:
+        """Validate eisenhower is within bounds [0, 4]."""
+        if v is not None and (v < MIN_EISENHOWER or v > MAX_EISENHOWER):
+            msg = f"Eisenhower must be between {MIN_EISENHOWER} and {MAX_EISENHOWER}"
+            raise ValueError(msg)
+        return v
 
 
 class TaskUpdate(BaseModel):
@@ -76,7 +109,27 @@ class TaskUpdate(BaseModel):
     name: str | None = Field(default=None, description="Task name (gets encrypted client-side)")
     note: str | None = Field(default=None, description="Task note (gets encrypted client-side)")
     area_id: str | None = Field(default=None, description="Area ID the task belongs to")
-    status: str | None = Field(default=None, description="Task status")
+    status: TaskStatus | None = Field(default=None, description="Task status")
     priority: int | None = Field(default=None, description="Task priority level")
     due_date: datetime | None = Field(default=None, description="Task due date")
     source: Source | None = Field(default=None, description="Task source information")
+    motivation: TaskMotivation | None = Field(default=None, description="Task motivation")
+    eisenhower: int | None = Field(default=None, description="Eisenhower matrix quadrant (0-4)")
+
+    @field_validator("priority")
+    @classmethod
+    def validate_priority(cls, v: int | None) -> int | None:
+        """Validate priority is within bounds [-2, 2]."""
+        if v is not None and (v < MIN_PRIORITY or v > MAX_PRIORITY):
+            msg = f"Priority must be between {MIN_PRIORITY} and {MAX_PRIORITY}"
+            raise ValueError(msg)
+        return v
+
+    @field_validator("eisenhower")
+    @classmethod
+    def validate_eisenhower(cls, v: int | None) -> int | None:
+        """Validate eisenhower is within bounds [0, 4]."""
+        if v is not None and (v < MIN_EISENHOWER or v > MAX_EISENHOWER):
+            msg = f"Eisenhower must be between {MIN_EISENHOWER} and {MAX_EISENHOWER}"
+            raise ValueError(msg)
+        return v

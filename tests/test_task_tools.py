@@ -24,7 +24,13 @@ from lunatask_mcp.api.exceptions import (
     LunaTaskTimeoutError,
     LunaTaskValidationError,
 )
-from lunatask_mcp.api.models import Source, TaskCreate, TaskResponse, TaskUpdate
+from lunatask_mcp.api.models import (
+    MAX_EISENHOWER,
+    Source,
+    TaskCreate,
+    TaskResponse,
+    TaskUpdate,
+)
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.tools.tasks import TaskTools
 
@@ -1546,7 +1552,7 @@ class TestCreateTaskTool:
             name="Full Test Task",
             note="These are test note",
             area_id="area-123",
-            status="open",
+            status="started",
             priority=1,
         )
 
@@ -1562,7 +1568,7 @@ class TestCreateTaskTool:
         assert call_args.name == "Full Test Task"
         assert call_args.note == "These are test note"
         assert call_args.area_id == "area-123"
-        assert call_args.status == "open"
+        assert call_args.status == "started"
         assert call_args.priority == 1
 
     @pytest.mark.asyncio
@@ -1791,7 +1797,7 @@ class TestCreateTaskTool:
 
         # Test with optional parameters as None (should be excluded)
         result = await task_tools.create_task_tool(
-            mock_ctx, name="Test with Nones", note=None, area_id=None, priority=None
+            mock_ctx, name="Test with Nones", note=None, area_id=None
         )
         assert result["success"] is True
 
@@ -1898,8 +1904,8 @@ class TestCreateTaskToolEndToEnd:
             name="E2E Test Task",
             note="This is an end-to-end test task",
             area_id="work-area",
-            status="open",
-            priority=3,
+            status="started",
+            priority=2,
         )
 
         # Verify successful response structure
@@ -1914,8 +1920,8 @@ class TestCreateTaskToolEndToEnd:
         assert call_args.name == "E2E Test Task"  # type: ignore[attr-defined] # TaskCreate field access on mock call args
         assert call_args.note == "This is an end-to-end test task"  # type: ignore[attr-defined] # TaskCreate field access on mock call args
         assert call_args.area_id == "work-area"  # type: ignore[attr-defined] # TaskCreate field access on mock call args
-        assert call_args.status == "open"  # type: ignore[attr-defined] # TaskCreate field access on mock call args
-        expected_priority = 3
+        assert call_args.status == "started"  # type: ignore[attr-defined] # TaskCreate field access on mock call args
+        expected_priority = 2
         assert call_args.priority == expected_priority  # type: ignore[attr-defined] # TaskCreate field access on mock call args
 
         # Verify logging calls
@@ -2008,6 +2014,163 @@ class TestCreateTaskToolEndToEnd:
         note_param = sig.parameters["note"]
         assert note_param.default is None
 
+    @pytest.mark.asyncio
+    async def test_create_task_tool_accepts_motivation_field(self, mocker: MockerFixture) -> None:
+        """Test create_task tool accepts and forwards motivation field."""
+        mcp = FastMCP("test-server")
+        config = ServerConfig(
+            lunatask_bearer_token="test_token",
+            lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
+        )
+        client = LunaTaskClient(config)
+        task_tools = TaskTools(mcp, client)
+
+        mock_ctx = mocker.AsyncMock()
+
+        # Mock successful task creation response
+        created_task = TaskResponse(
+            id="task-with-motivation",
+            area_id=None,
+            status="later",
+            priority=None,
+            due_date=None,
+            created_at=datetime(2025, 8, 26, 10, 0, 0, tzinfo=UTC),
+            updated_at=datetime(2025, 8, 26, 10, 0, 0, tzinfo=UTC),
+            source=None,
+            goal_id=None,
+            estimate=None,
+            motivation="must",
+            eisenhower=None,
+            previous_status=None,
+            progress=None,
+            scheduled_on=None,
+            completed_at=None,
+        )
+
+        mocker.patch.object(client, "create_task", return_value=created_task)
+        mocker.patch.object(client, "__aenter__", return_value=client)
+        mocker.patch.object(client, "__aexit__", return_value=None)
+
+        # Execute the create_task tool with motivation
+        result = await task_tools.create_task_tool(mock_ctx, name="Test Task", motivation="must")
+
+        # Verify success
+        assert result["success"] is True
+        assert result["task_id"] == "task-with-motivation"
+
+        # Verify the client was called with motivation field
+        client.create_task.assert_called_once()  # type: ignore[attr-defined] # Mock method added by mocker.patch.object
+        call_args = client.create_task.call_args[0][0]  # type: ignore[attr-defined] # Mock attribute added by mocker.patch.object
+        assert isinstance(call_args, TaskCreate)
+        assert call_args.name == "Test Task"
+        assert call_args.motivation == "must"
+
+    @pytest.mark.asyncio
+    async def test_create_task_tool_accepts_eisenhower_field(self, mocker: MockerFixture) -> None:
+        """Test create_task tool accepts and forwards eisenhower field."""
+        mcp = FastMCP("test-server")
+        config = ServerConfig(
+            lunatask_bearer_token="test_token",
+            lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
+        )
+        client = LunaTaskClient(config)
+        task_tools = TaskTools(mcp, client)
+
+        mock_ctx = mocker.AsyncMock()
+
+        # Mock successful task creation response
+        created_task = TaskResponse(
+            id="task-with-eisenhower",
+            area_id=None,
+            status="later",
+            priority=None,
+            due_date=None,
+            created_at=datetime(2025, 8, 26, 10, 0, 0, tzinfo=UTC),
+            updated_at=datetime(2025, 8, 26, 10, 0, 0, tzinfo=UTC),
+            source=None,
+            goal_id=None,
+            estimate=None,
+            motivation=None,
+            eisenhower=2,
+            previous_status=None,
+            progress=None,
+            scheduled_on=None,
+            completed_at=None,
+        )
+
+        mocker.patch.object(client, "create_task", return_value=created_task)
+        mocker.patch.object(client, "__aenter__", return_value=client)
+        mocker.patch.object(client, "__aexit__", return_value=None)
+
+        # Execute the create_task tool with eisenhower
+        result = await task_tools.create_task_tool(mock_ctx, name="Test Task", eisenhower=2)
+
+        # Verify success
+        assert result["success"] is True
+        assert result["task_id"] == "task-with-eisenhower"
+
+        # Verify the client was called with eisenhower field
+        client.create_task.assert_called_once()  # type: ignore[attr-defined] # Mock method added by mocker.patch.object
+        call_args = client.create_task.call_args[0][0]  # type: ignore[attr-defined] # Mock attribute added by mocker.patch.object
+        assert isinstance(call_args, TaskCreate)
+        assert call_args.name == "Test Task"
+        expected_eisenhower = 2
+        assert call_args.eisenhower == expected_eisenhower
+
+    @pytest.mark.asyncio
+    async def test_create_task_tool_invalid_motivation_enum_error(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test create_task tool returns structured MCP error for invalid motivation enum."""
+        mcp = FastMCP("test-server")
+        config = ServerConfig(
+            lunatask_bearer_token="test_token",
+            lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
+        )
+        client = LunaTaskClient(config)
+        task_tools = TaskTools(mcp, client)
+
+        mock_ctx = mocker.AsyncMock()
+
+        # Mock validation error from client
+        mocker.patch.object(
+            client, "create_task", side_effect=LunaTaskValidationError("Invalid motivation value")
+        )
+        mocker.patch.object(client, "__aenter__", return_value=client)
+        mocker.patch.object(client, "__aexit__", return_value=None)
+
+        # Execute with invalid motivation enum - this should fail with Pydantic validation error
+        result = await task_tools.create_task_tool(mock_ctx, name="Test Task", motivation="invalid")
+
+        # Verify structured MCP error response
+        assert result["success"] is False
+        assert result["error"] == "validation_error"
+        assert "Invalid motivation value" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_create_task_tool_invalid_eisenhower_range_error(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test create_task tool returns structured MCP error for invalid eisenhower range."""
+        mcp = FastMCP("test-server")
+        config = ServerConfig(
+            lunatask_bearer_token="test_token",
+            lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
+        )
+        client = LunaTaskClient(config)
+        task_tools = TaskTools(mcp, client)
+
+        mock_ctx = mocker.AsyncMock()
+
+        # Execute with invalid eisenhower range - this should fail with Pydantic validation error
+        result = await task_tools.create_task_tool(mock_ctx, name="Test Task", eisenhower=5)
+
+        # Verify structured MCP error response
+        assert result["success"] is False
+        assert result["error"] == "validation_error"
+        assert "eisenhower" in result["message"]
+        assert "between 0 and 4" in result["message"]
+
 
 class TestUpdateTaskTool:
     """Test suite for update_task MCP tool implementation."""
@@ -2076,9 +2239,9 @@ class TestUpdateTaskTool:
 
         # Verify the client was called correctly
         # Mock object dynamically added by pytest-mock, hence type ignore needed
-        mock_update_task = client.update_task  # type: ignore[attr-defined]
+        mock_update_task = client.update_task  # type: ignore[attr-defined] # Mock method reference added by mocker.patch.object
         # Mock method added by pytest-mock, type system doesn't recognize it
-        mock_update_task.assert_called_once()  # type: ignore[attr-defined]
+        mock_update_task.assert_called_once()  # type: ignore[attr-defined] # Mock method added by mocker.patch.object
 
         # Verify call arguments using assert_called_with for type safety
         expected_update = TaskUpdate(
@@ -2090,7 +2253,7 @@ class TestUpdateTaskTool:
             due_date=None,
         )
         # Mock method added by pytest-mock, type system doesn't recognize it
-        mock_update_task.assert_called_with("update-task-123", expected_update)  # type: ignore[attr-defined]
+        mock_update_task.assert_called_with("update-task-123", expected_update)  # type: ignore[attr-defined] # Mock method added by mocker.patch.object
 
     @pytest.mark.asyncio
     async def test_update_task_tool_due_date_parsing_valid_iso_8601(
@@ -2153,7 +2316,7 @@ class TestUpdateTaskTool:
 
         # Verify the parsed datetime was passed correctly to client
         # Mock object dynamically added by pytest-mock, hence type ignore needed
-        mock_update_task = client.update_task  # type: ignore[attr-defined]
+        mock_update_task = client.update_task  # type: ignore[attr-defined] # Mock method reference added by mocker.patch.object
         expected_update = TaskUpdate(
             name=None,
             note=None,
@@ -2163,7 +2326,7 @@ class TestUpdateTaskTool:
             due_date=expected_due_date,
         )
         # Mock method added by pytest-mock, type system doesn't recognize it
-        mock_update_task.assert_called_with("date-task-789", expected_update)  # type: ignore[attr-defined]
+        mock_update_task.assert_called_with("date-task-789", expected_update)  # type: ignore[attr-defined] # Mock method added by mocker.patch.object
 
     @pytest.mark.asyncio
     async def test_update_task_tool_due_date_parsing_invalid_format(
@@ -2251,9 +2414,7 @@ class TestUpdateTaskTool:
         mocker.patch.object(client, "__aexit__", return_value=None)
 
         # Execute the update_task tool
-        result = await task_tools.update_task_tool(
-            mock_ctx, id="validation-task", status="invalid_status"
-        )
+        result = await task_tools.update_task_tool(mock_ctx, id="validation-task", status="started")
 
         # Verify error response
         assert result["success"] is False
@@ -2319,6 +2480,164 @@ class TestUpdateTaskTool:
 
         # Verify client was not called due to validation error
         mock_update.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_update_task_tool_accepts_motivation_field(self, mocker: MockerFixture) -> None:
+        """Test update_task tool accepts and forwards motivation field."""
+        mcp = FastMCP("test-server")
+        config = ServerConfig(
+            lunatask_bearer_token="test_token",
+            lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
+        )
+        client = LunaTaskClient(config)
+        task_tools = TaskTools(mcp, client)
+
+        mock_ctx = mocker.AsyncMock()
+
+        # Mock successful task update response
+        updated_task = TaskResponse(
+            id="task-456",
+            area_id=None,
+            status="started",
+            priority=None,
+            due_date=None,
+            created_at=datetime(2025, 8, 26, 10, 0, 0, tzinfo=UTC),
+            updated_at=datetime(2025, 8, 26, 11, 0, 0, tzinfo=UTC),
+            source=None,
+            goal_id=None,
+            estimate=None,
+            motivation="must",
+            eisenhower=None,
+            previous_status=None,
+            progress=None,
+            scheduled_on=None,
+            completed_at=None,
+        )
+
+        mocker.patch.object(client, "update_task", return_value=updated_task)
+        mocker.patch.object(client, "__aenter__", return_value=client)
+        mocker.patch.object(client, "__aexit__", return_value=None)
+
+        # Execute the update_task tool with motivation
+        result = await task_tools.update_task_tool(mock_ctx, id="task-456", motivation="must")
+
+        # Verify success
+        assert result["success"] is True
+        assert result["task_id"] == "task-456"
+
+        # Verify the client was called with motivation field
+        client.update_task.assert_called_once()  # type: ignore[attr-defined] # Mock method added by mocker.patch.object
+        call_args = client.update_task.call_args  # type: ignore[attr-defined] # Mock attribute added by mocker.patch.object
+        task_update: TaskUpdate = call_args[0][1]  # type: ignore[misc] # Type annotation for test clarity, call_args is dynamic mock data
+        assert isinstance(task_update, TaskUpdate)
+        assert task_update.motivation == "must"
+
+    @pytest.mark.asyncio
+    async def test_update_task_tool_accepts_eisenhower_field(self, mocker: MockerFixture) -> None:
+        """Test update_task tool accepts and forwards eisenhower field."""
+        mcp = FastMCP("test-server")
+        config = ServerConfig(
+            lunatask_bearer_token="test_token",
+            lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
+        )
+        client = LunaTaskClient(config)
+        task_tools = TaskTools(mcp, client)
+
+        mock_ctx = mocker.AsyncMock()
+
+        # Mock successful task update response
+        updated_task = TaskResponse(
+            id="task-789",
+            area_id=None,
+            status="next",
+            priority=None,
+            due_date=None,
+            created_at=datetime(2025, 8, 26, 10, 0, 0, tzinfo=UTC),
+            updated_at=datetime(2025, 8, 26, 11, 0, 0, tzinfo=UTC),
+            source=None,
+            goal_id=None,
+            estimate=None,
+            motivation=None,
+            eisenhower=MAX_EISENHOWER - 1,
+            previous_status=None,
+            progress=None,
+            scheduled_on=None,
+            completed_at=None,
+        )
+
+        mocker.patch.object(client, "update_task", return_value=updated_task)
+        mocker.patch.object(client, "__aenter__", return_value=client)
+        mocker.patch.object(client, "__aexit__", return_value=None)
+
+        # Execute the update_task tool with eisenhower
+        result = await task_tools.update_task_tool(
+            mock_ctx, id="task-789", eisenhower=MAX_EISENHOWER - 1
+        )
+
+        # Verify success
+        assert result["success"] is True
+        assert result["task_id"] == "task-789"
+
+        # Verify the client was called with eisenhower field
+        client.update_task.assert_called_once()  # type: ignore[attr-defined] # Mock method added by mocker.patch.object
+        call_args = client.update_task.call_args  # type: ignore[attr-defined] # Mock attribute added by mocker.patch.object
+        task_update: TaskUpdate = call_args[0][1]  # type: ignore[misc] # Type annotation for test clarity, call_args is dynamic mock data
+        assert isinstance(task_update, TaskUpdate)
+        assert task_update.eisenhower == MAX_EISENHOWER - 1
+
+    @pytest.mark.asyncio
+    async def test_update_task_tool_invalid_motivation_enum_error(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test update_task tool returns structured MCP error for invalid motivation enum."""
+        mcp = FastMCP("test-server")
+        config = ServerConfig(
+            lunatask_bearer_token="test_token",
+            lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
+        )
+        client = LunaTaskClient(config)
+        task_tools = TaskTools(mcp, client)
+
+        mock_ctx = mocker.AsyncMock()
+
+        # Mock validation error from client
+        mocker.patch.object(
+            client, "update_task", side_effect=LunaTaskValidationError("Invalid motivation value")
+        )
+        mocker.patch.object(client, "__aenter__", return_value=client)
+        mocker.patch.object(client, "__aexit__", return_value=None)
+
+        # Execute with invalid motivation enum - this should fail with Pydantic validation error
+        result = await task_tools.update_task_tool(mock_ctx, id="task-123", motivation="invalid")
+
+        # Verify structured MCP error response
+        assert result["success"] is False
+        assert result["error"] == "validation_error"
+        assert "Invalid motivation value" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_update_task_tool_invalid_eisenhower_range_error(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test update_task tool returns structured MCP error for invalid eisenhower range."""
+        mcp = FastMCP("test-server")
+        config = ServerConfig(
+            lunatask_bearer_token="test_token",
+            lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
+        )
+        client = LunaTaskClient(config)
+        task_tools = TaskTools(mcp, client)
+
+        mock_ctx = mocker.AsyncMock()
+
+        # Execute with invalid eisenhower range - this should fail with Pydantic validation error
+        result = await task_tools.update_task_tool(mock_ctx, id="task-123", eisenhower=-1)
+
+        # Verify structured MCP error response
+        assert result["success"] is False
+        assert result["error"] == "validation_error"
+        assert "eisenhower" in result["message"]
+        assert "between 0 and 4" in result["message"]
 
 
 class TestDeleteTaskTool:

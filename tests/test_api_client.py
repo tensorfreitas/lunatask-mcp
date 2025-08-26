@@ -10,7 +10,7 @@ from typing import Any
 
 import httpx
 import pytest
-from pydantic import HttpUrl
+from pydantic import HttpUrl, ValidationError
 from pytest_mock import MockerFixture
 
 from lunatask_mcp.api.client import LunaTaskClient
@@ -27,7 +27,17 @@ from lunatask_mcp.api.exceptions import (
     LunaTaskTimeoutError,
     LunaTaskValidationError,
 )
-from lunatask_mcp.api.models import TaskCreate, TaskResponse, TaskUpdate
+from lunatask_mcp.api.models import (
+    MAX_EISENHOWER,
+    MAX_PRIORITY,
+    MIN_EISENHOWER,
+    MIN_PRIORITY,
+    TaskCreate,
+    TaskMotivation,
+    TaskResponse,
+    TaskStatus,
+    TaskUpdate,
+)
 from lunatask_mcp.config import ServerConfig
 
 # Test constants
@@ -1459,7 +1469,9 @@ class TestLunaTaskClientCreateTask:
         assert result.id == "task-123"
         assert result.status == "open"
         mock_request.assert_called_once_with(
-            "POST", "tasks", data={"name": "Test Task", "status": "later"}
+            "POST",
+            "tasks",
+            data={"name": "Test Task", "status": "later", "priority": 0, "motivation": "unknown"},
         )
 
     @pytest.mark.asyncio
@@ -1508,6 +1520,7 @@ class TestLunaTaskClientCreateTask:
                 "area_id": "area-456",
                 "status": "later",
                 "priority": 1,
+                "motivation": "unknown",
             },
         )
 
@@ -1692,7 +1705,14 @@ class TestLunaTaskClientCreateTask:
 
         # Verify make_request was called (which applies rate limiting)
         mock_request.assert_called_once_with(
-            "POST", "tasks", data={"name": "Rate Limited Task", "status": "later"}
+            "POST",
+            "tasks",
+            data={
+                "name": "Rate Limited Task",
+                "status": "later",
+                "priority": 0,
+                "motivation": "unknown",
+            },
         )
         assert result.id == "rate-limited-task"
 
@@ -1742,7 +1762,7 @@ class TestLunaTaskClientUpdateTask:
         due_date = datetime(2025, 8, 30, 14, 30, 0, tzinfo=UTC)
         update_data = TaskUpdate(
             name="Updated Task Name",
-            status="in_progress",
+            status="started",
             priority=2,
             due_date=due_date,
         )
@@ -1750,7 +1770,7 @@ class TestLunaTaskClientUpdateTask:
         mock_response_data: dict[str, Any] = {
             "task": {
                 "id": "task-456",
-                "status": "in_progress",
+                "status": "started",
                 "priority": 2,
                 "due_date": "2025-08-30T14:30:00Z",
                 "created_at": "2025-08-21T10:00:00Z",
@@ -1767,7 +1787,7 @@ class TestLunaTaskClientUpdateTask:
         result = await client.update_task(task_id, update_data)
 
         assert result.id == "task-456"
-        assert result.status == "in_progress"
+        assert result.status == "started"
         expected_priority = 2
         assert result.priority == expected_priority
         mock_request.assert_called_once_with(
@@ -1775,7 +1795,7 @@ class TestLunaTaskClientUpdateTask:
             "tasks/task-456",
             data={
                 "name": "Updated Task Name",
-                "status": "in_progress",
+                "status": "started",
                 "priority": 2,
                 "due_date": due_date,
             },
@@ -1866,24 +1886,11 @@ class TestLunaTaskClientUpdateTask:
         mock_request.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_update_task_validation_error_400(self, mocker: MockerFixture) -> None:
-        """Test update_task raises LunaTaskBadRequestError on 400 response."""
-        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
-        client = LunaTaskClient(config)
-
-        task_id = "task-invalid"
-        update_data = TaskUpdate(status="invalid_status")
-
-        mock_request = mocker.patch.object(
-            client,
-            "make_request",
-            side_effect=LunaTaskBadRequestError("Invalid task status"),
-        )
-
-        with pytest.raises(LunaTaskBadRequestError, match="Invalid task status"):
-            await client.update_task(task_id, update_data)
-
-        mock_request.assert_called_once()
+    async def test_update_task_validation_error_400(self) -> None:
+        """Test update_task model validation rejects invalid status values."""
+        # Test that validation error occurs at model creation time
+        with pytest.raises(ValidationError):
+            TaskUpdate(status="invalid_status")  # type: ignore[arg-type] # Intentionally invalid for error testing
 
     @pytest.mark.asyncio
     async def test_update_task_authentication_error_401(self, mocker: MockerFixture) -> None:
@@ -2379,3 +2386,178 @@ class TestLunaTaskClientDeleteTask:
 
         with pytest.raises(LunaTaskNotFoundError):
             await client.delete_task(task_id)
+
+
+class TestTaskModelValidationAndDefaults:
+    """Test model validation and defaults for Task 1 of Story 2.7.
+
+    These tests follow TDD methodology and must fail first to drive implementation.
+    Testing AC: 1, 2, 3 - Request-side validation, field addition, response permissiveness.
+    """
+
+    def test_task_create_defaults_on_creation(self) -> None:
+        """Test TaskCreate applies correct defaults on creation (AC: 1)."""
+        # Test defaults: status="later", priority=0, motivation="unknown"
+        task = TaskCreate(name="Test Task")
+
+        assert task.status == "later"
+        assert task.priority == 0
+        assert task.motivation == "unknown"
+
+    def test_task_create_status_enum_validation(self) -> None:
+        """Test TaskCreate validates status enum values (AC: 1)."""
+        # Valid values should pass
+        valid_statuses: list[TaskStatus] = ["later", "next", "started", "waiting", "completed"]
+        for status in valid_statuses:
+            task = TaskCreate(name="Test Task", status=status)
+            assert task.status == status
+
+        # Invalid values should raise ValidationError
+        with pytest.raises(ValidationError, match="Input should be"):
+            TaskCreate(name="Test Task", status="invalid_status")  # type: ignore[arg-type] # Intentionally invalid for error testing
+
+    def test_task_create_motivation_enum_validation(self) -> None:
+        """Test TaskCreate validates motivation enum values (AC: 1, 2)."""
+        # Valid values should pass
+        valid_motivations: list[TaskMotivation] = ["must", "should", "want", "unknown"]
+        for motivation in valid_motivations:
+            task = TaskCreate(name="Test Task", motivation=motivation)
+            assert task.motivation == motivation
+
+        # Invalid values should raise ValidationError
+        with pytest.raises(ValidationError, match="Input should be"):
+            TaskCreate(name="Test Task", motivation="invalid_motivation")  # type: ignore[arg-type] # Intentionally invalid for error testing
+
+    def test_task_create_priority_bounds_validation(self) -> None:
+        """Test TaskCreate validates priority bounds (AC: 1)."""
+        # Valid boundary values should pass
+        valid_priorities = [MIN_PRIORITY, -1, 0, 1, MAX_PRIORITY]
+        for priority in valid_priorities:
+            task = TaskCreate(name="Test Task", priority=priority)
+            assert task.priority == priority
+
+        # Invalid values should raise ValidationError
+        with pytest.raises(ValueError, match=f"Priority must be between {MIN_PRIORITY}"):
+            TaskCreate(name="Test Task", priority=MIN_PRIORITY - 1)
+        with pytest.raises(ValueError, match=f"Priority must be between {MIN_PRIORITY}"):
+            TaskCreate(name="Test Task", priority=MAX_PRIORITY + 1)
+
+    def test_task_create_eisenhower_bounds_validation(self) -> None:
+        """Test TaskCreate validates eisenhower bounds (AC: 1, 2)."""
+        # Valid boundary values should pass
+        valid_eisenhower = [MIN_EISENHOWER, 1, 2, 3, MAX_EISENHOWER]
+        for eisenhower in valid_eisenhower:
+            task = TaskCreate(name="Test Task", eisenhower=eisenhower)
+            assert task.eisenhower == eisenhower
+
+        # Invalid values should raise ValidationError
+        with pytest.raises(ValueError, match=f"Eisenhower must be between {MIN_EISENHOWER}"):
+            TaskCreate(name="Test Task", eisenhower=MIN_EISENHOWER - 1)
+        with pytest.raises(ValueError, match=f"Eisenhower must be between {MIN_EISENHOWER}"):
+            TaskCreate(name="Test Task", eisenhower=MAX_EISENHOWER + 1)
+
+    def test_task_create_optional_fields_motivation_eisenhower(self) -> None:
+        """Test TaskCreate accepts optional motivation and eisenhower fields (AC: 2)."""
+        # Should accept both fields as optional
+        task = TaskCreate(name="Test Task", motivation="must", eisenhower=MAX_EISENHOWER)
+        assert task.motivation == "must"
+        assert task.eisenhower == MAX_EISENHOWER
+
+        # Should work without these fields
+        task_minimal = TaskCreate(name="Test Task")
+        assert task_minimal.motivation == "unknown"  # default
+        assert task_minimal.eisenhower is None  # no default
+
+    def test_task_update_status_enum_validation(self) -> None:
+        """Test TaskUpdate validates status enum values (AC: 1)."""
+        # Valid values should pass
+        valid_statuses: list[TaskStatus] = ["later", "next", "started", "waiting", "completed"]
+        for status in valid_statuses:
+            task = TaskUpdate(status=status)
+            assert task.status == status
+
+        # Invalid values should raise ValidationError
+        with pytest.raises(ValidationError, match="Input should be"):
+            TaskUpdate(status="invalid_status")  # type: ignore[arg-type] # Intentionally invalid for error testing
+
+    def test_task_update_motivation_enum_validation(self) -> None:
+        """Test TaskUpdate validates motivation enum values (AC: 1, 2)."""
+        # Valid values should pass
+        valid_motivations: list[TaskMotivation] = ["must", "should", "want", "unknown"]
+        for motivation in valid_motivations:
+            task = TaskUpdate(motivation=motivation)
+            assert task.motivation == motivation
+
+        # Invalid values should raise ValidationError
+        with pytest.raises(ValidationError, match="Input should be"):
+            TaskUpdate(motivation="invalid_motivation")  # type: ignore[arg-type] # Intentionally invalid for error testing
+
+    def test_task_update_priority_bounds_validation(self) -> None:
+        """Test TaskUpdate validates priority bounds (AC: 1)."""
+        # Valid boundary values should pass
+        valid_priorities = [MIN_PRIORITY, -1, 0, 1, MAX_PRIORITY]
+        for priority in valid_priorities:
+            task = TaskUpdate(priority=priority)
+            assert task.priority == priority
+
+        # Invalid values should raise ValidationError
+        with pytest.raises(ValueError, match=f"Priority must be between {MIN_PRIORITY}"):
+            TaskUpdate(priority=MIN_PRIORITY - 1)
+        with pytest.raises(ValueError, match=f"Priority must be between {MIN_PRIORITY}"):
+            TaskUpdate(priority=MAX_PRIORITY + 1)
+
+    def test_task_update_eisenhower_bounds_validation(self) -> None:
+        """Test TaskUpdate validates eisenhower bounds (AC: 1, 2)."""
+        # Valid boundary values should pass
+        valid_eisenhower = [MIN_EISENHOWER, 1, 2, 3, MAX_EISENHOWER]
+        for eisenhower in valid_eisenhower:
+            task = TaskUpdate(eisenhower=eisenhower)
+            assert task.eisenhower == eisenhower
+
+        # Invalid values should raise ValidationError
+        with pytest.raises(ValueError, match=f"Eisenhower must be between {MIN_EISENHOWER}"):
+            TaskUpdate(eisenhower=MIN_EISENHOWER - 1)
+        with pytest.raises(ValueError, match=f"Eisenhower must be between {MIN_EISENHOWER}"):
+            TaskUpdate(eisenhower=MAX_EISENHOWER + 1)
+
+    def test_task_update_optional_fields_motivation_eisenhower(self) -> None:
+        """Test TaskUpdate accepts optional motivation and eisenhower fields (AC: 2)."""
+        # Should accept both fields as optional
+        task = TaskUpdate(motivation="should", eisenhower=MAX_EISENHOWER - 1)
+        assert task.motivation == "should"
+        assert task.eisenhower == MAX_EISENHOWER - 1
+
+        # Should work without these fields (all None)
+        task_empty = TaskUpdate()
+        assert task_empty.motivation is None
+        assert task_empty.eisenhower is None
+
+    def test_task_response_permissive_handling(self) -> None:
+        """Test TaskResponse remains permissive with upstream values (AC: 3)."""
+        # TaskResponse should accept upstream values like "open" without normalization
+        # This should NOT raise validation error - response model is permissive
+        try:
+            task_response = TaskResponse(
+                id="test-task",
+                area_id=None,
+                status="open",  # upstream value not in request enum
+                priority=None,
+                due_date=None,
+                created_at=datetime(2025, 8, 26, 10, 0, 0, tzinfo=UTC),
+                updated_at=datetime(2025, 8, 26, 10, 0, 0, tzinfo=UTC),
+                source=None,
+                goal_id=None,
+                estimate=None,
+                motivation="high",  # upstream value not in request enum
+                eisenhower=MAX_EISENHOWER + 6,  # upstream value outside request bounds
+                previous_status=None,
+                progress=None,
+                scheduled_on=None,
+                completed_at=None,
+            )
+            # Should parse successfully without normalization
+            assert task_response.status == "open"
+            assert task_response.motivation == "high"
+            assert task_response.eisenhower == MAX_EISENHOWER + 6
+        except ValidationError:
+            pytest.fail("TaskResponse should be permissive and not reject upstream values")

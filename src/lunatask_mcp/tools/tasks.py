@@ -272,14 +272,16 @@ class TaskTools:
             await ctx.info(f"Successfully retrieved task {task_id} from LunaTask")
             return resource_data
 
-    async def create_task_tool(  # noqa: PLR0913, PLR0911
+    async def create_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
         self,
         ctx: Context,
         name: str,
         note: str | None = None,
         area_id: str | None = None,
         status: str = "later",
-        priority: int | None = None,
+        priority: int = 0,
+        motivation: str = "unknown",
+        eisenhower: int | None = None,
     ) -> dict[str, Any]:
         """Create a new task in LunaTask.
 
@@ -291,8 +293,10 @@ class TaskTools:
             name: Task name (required)
             note: Optional task note
             area_id: Optional area ID the task belongs to
-            status: Task status (default: "open")
+            status: Task status (default: "later")
             priority: Optional task priority level
+            motivation: Optional task motivation (must, should, want, unknown)
+            eisenhower: Optional eisenhower matrix quadrant (0-4)
 
         Returns:
             dict[str, Any]: Response containing task creation result with task_id
@@ -309,12 +313,24 @@ class TaskTools:
 
         try:
             # Create TaskCreate object from parameters
+            # Cast string parameters to proper Literal types
+            task_status = (
+                status
+                if status in ("later", "next", "started", "waiting", "completed")
+                else "later"
+            )
+            task_motivation = (
+                motivation if motivation in ("must", "should", "want", "unknown") else "unknown"
+            )
+
             task_data = TaskCreate(
                 name=name,
                 note=note,
                 area_id=area_id,
-                status=status,
+                status=task_status,  # type: ignore[arg-type]
                 priority=priority,
+                motivation=task_motivation,  # type: ignore[arg-type]
+                eisenhower=eisenhower,
             )
 
             # Use LunaTask client to create the task
@@ -401,6 +417,32 @@ class TaskTools:
             return result
 
         except Exception as e:
+            # Handle Pydantic validation errors specifically
+            if "ValidationError" in str(type(e)) and hasattr(e, "errors"):
+                # Handle Pydantic validation errors with structured MCP response
+                error_details: list[str] = []
+                for error in e.errors():  # type: ignore[attr-defined]
+                    field = error.get("loc", ["unknown"])[0] if error.get("loc") else "unknown"  # type: ignore[misc]
+                    msg = error.get("msg", "Invalid value")  # type: ignore[misc]
+                    if field == "motivation":
+                        msg = "Must be one of: must, should, want, unknown"
+                    elif field == "eisenhower":
+                        msg = "Must be between 0 and 4"
+                    elif field == "priority":
+                        msg = "Must be between -2 and 2"
+                    elif field == "status":
+                        msg = "Must be one of: later, next, started, waiting, completed"
+                    error_details.append(f"{field}: {msg}")
+
+                error_msg = f"Validation failed for {', '.join(error_details)}"
+                result = {
+                    "success": False,
+                    "error": "validation_error",
+                    "message": error_msg,
+                }
+                await ctx.error(error_msg)
+                logger.warning("Task validation error: %s", error_msg)
+                return result
             # Handle unexpected errors
             error_msg = f"Unexpected error creating task: {e}"
             result = {
@@ -415,7 +457,7 @@ class TaskTools:
             await ctx.info(f"Successfully created task {created_task.id}")
             return result
 
-    async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, C901
+    async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
         self,
         ctx: Context,
         id: str,  # noqa: A002
@@ -425,6 +467,8 @@ class TaskTools:
         status: str | None = None,
         priority: int | None = None,
         due_date: str | None = None,
+        motivation: str | None = None,
+        eisenhower: int | None = None,
     ) -> dict[str, Any]:
         """Update an existing task in LunaTask.
 
@@ -440,6 +484,8 @@ class TaskTools:
             status: Updated task status (optional)
             priority: Updated task priority level (optional)
             due_date: Updated due date as ISO 8601 string (optional)
+            motivation: Updated task motivation (must, should, want, unknown) (optional)
+            eisenhower: Updated eisenhower matrix quadrant (0-4) (optional)
 
         Returns:
             dict[str, Any]: Response containing task update result with updated task data
@@ -465,7 +511,7 @@ class TaskTools:
             return result
 
         # Validate that at least one field is provided for update
-        update_fields = [name, note, area_id, status, priority, due_date]
+        update_fields = [name, note, area_id, status, priority, due_date, motivation, eisenhower]
         if all(field is None for field in update_fields):
             error_msg = "At least one field must be provided for update"
             result = {
@@ -497,13 +543,30 @@ class TaskTools:
 
         try:
             # Create TaskUpdate object from provided parameters
+            # Cast string parameters to proper Literal types for optional fields
+            task_status = None
+            if status is not None:
+                task_status = (
+                    status
+                    if status in ("later", "next", "started", "waiting", "completed")
+                    else None
+                )
+
+            task_motivation = None
+            if motivation is not None:
+                task_motivation = (
+                    motivation if motivation in ("must", "should", "want", "unknown") else None
+                )
+
             task_update = TaskUpdate(
                 name=name,
                 note=note,
                 area_id=area_id,
-                status=status,
+                status=task_status,  # type: ignore[arg-type]
                 priority=priority,
                 due_date=parsed_due_date,
+                motivation=task_motivation,  # type: ignore[arg-type]
+                eisenhower=eisenhower,
             )
 
             # Use LunaTask client to update the task
@@ -591,6 +654,32 @@ class TaskTools:
             return result
 
         except Exception as e:
+            # Handle Pydantic validation errors specifically
+            if "ValidationError" in str(type(e)) and hasattr(e, "errors"):
+                # Handle Pydantic validation errors with structured MCP response
+                error_details: list[str] = []
+                for error in e.errors():  # type: ignore[attr-defined]
+                    field = error.get("loc", ["unknown"])[0] if error.get("loc") else "unknown"  # type: ignore[misc]
+                    msg = error.get("msg", "Invalid value")  # type: ignore[misc]
+                    if field == "motivation":
+                        msg = "Must be one of: must, should, want, unknown"
+                    elif field == "eisenhower":
+                        msg = "Must be between 0 and 4"
+                    elif field == "priority":
+                        msg = "Must be between -2 and 2"
+                    elif field == "status":
+                        msg = "Must be one of: later, next, started, waiting, completed"
+                    error_details.append(f"{field}: {msg}")
+
+                error_msg = f"Validation failed for {', '.join(error_details)}"
+                result = {
+                    "success": False,
+                    "error": "validation_error",
+                    "message": error_msg,
+                }
+                await ctx.error(error_msg)
+                logger.warning("Task validation error during update: %s", error_msg)
+                return result
             # Handle unexpected errors
             error_msg = f"Unexpected error updating task: {e}"
             result = {

@@ -24,11 +24,27 @@ The project will be organized using a standard, installable Python package layou
 │           └── tasks.py      # Defines the TaskTools
 ├── tests/                    # Tests for the application
 │   ├── __init__.py
-│   ├── conftest.py           # Pytest fixtures and hooks
-│   └── test_tasks.py         # Tests for the task tools
+│   ├── conftest.py           # Pytest fixtures and hooks (function-scoped; avoid autouse)
+│   ├── factories.py          # Simple builders to reduce duplication
+│   ├── test_api_client.py    # Client unit tests incl. pagination param handling
+│   ├── test_task_tools_init_and_registration.py
+│   ├── test_task_tools_resource_list.py
+│   ├── test_task_tools_resource_single.py
+│   ├── test_task_tools_resource_e2e.py
+│   ├── test_task_tools_create_tool.py
+│   ├── test_task_tools_create_tool_e2e.py
+│   ├── test_task_tools_pagination.py
+│   ├── test_task_tools_update_tool.py
+│   └── test_task_tools_delete_tool.py
 ├── pyproject.toml            # Project metadata and dependencies (for uv)
 ├── README.md                 # Project documentation
 └── uv.lock                   # Pinned dependency versions
 ```
+
+Notes:
+- Tests are kept flat and split by concern. Large modules should be split well before 500 lines.
+- Use [tests/factories.py](tests/factories.py) sparingly to remove duplication; prefer explicit construction.
+- Prefer function-scoped fixtures in [tests/conftest.py](tests/conftest.py); avoid autouse fixtures unless essential.
+- Use pytest markers to separate unit vs integration/E2E and register them in [pytest.ini](pytest.ini).
 
 ---

@@ -89,6 +89,37 @@ docs/                       # Architecture and PRD documentation
 - **500 lines max per file** - refactor if approaching this limit
 - **Pre-commit hooks** run ruff and pyright automatically
 
+## Test Organization Guidelines
+- Split large test modules by concern before approaching 500 lines. Keep tests flat under `tests/`. Each test file should remain under 500 lines.
+- Prefer explicit construction; use [tests/factories.py](tests/factories.py) only to reduce duplication.
+- Keep fixtures minimal and function-scoped in [tests/conftest.py](tests/conftest.py); avoid `autouse` unless essential.
+- Use pytest markers to separate unit vs integration/E2E (e.g., `@pytest.mark.integration`); register markers in [pytest.ini](pytest.ini) to avoid unknown-marker warnings.
+- Assertions for logging must attach to `stderr` only.
+- Coverage baseline is maintained at 87% minimum via `--cov-fail-under=87` in pytest configuration.
+
+## Test Module Splitting Guidance
+When test modules grow large, **split by concern before 500 lines**:
+
+### Splitting Strategy
+- **By functional concern**: initialization, resource listing, single resource access, create operations, update operations, delete operations, end-to-end workflows
+- **By test type**: unit tests, integration tests, end-to-end tests
+- **By feature area**: separate major features into focused test files
+
+### Construction Patterns
+- **Prefer explicit construction**: Create test objects directly in tests rather than abstracting into factories
+- **Use factories only to reduce duplication**: Move to [tests/factories.py](tests/factories.py) only when same construction pattern is used 3+ times
+- **Keep factories simple**: Basic builders, not complex object graphs
+
+### Fixture Guidelines  
+- **Keep fixtures minimal and function-scoped** in [tests/conftest.py](tests/conftest.py)
+- **Avoid `autouse` fixtures** unless absolutely essential for test isolation
+- **Prefer dependency injection** over global fixtures where possible
+
+### Naming Conventions
+- Use descriptive names that clearly indicate the test focus (e.g., `test_task_tools_init_and_registration.py`)
+- Group related test classes within files by shared setup or concern
+- Use consistent prefixes for related test modules (`test_task_tools_*`)
+
 ## Development Guidelines
 
 - **Python Version**: 3.12 (strict requirement)

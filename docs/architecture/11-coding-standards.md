@@ -19,7 +19,7 @@
 
 ## Code Structure & Modularity
 
-*   **File and Function Limits**: No file should exceed 500 lines of code. If approaching this limit, the code must be refactored into smaller, more focused modules.
+*   **File and Function Limits**: No file should exceed 500 lines of code. If approaching this limit, refactor into smaller, focused modules. This limit applies to both source files and test files. Test modules should be split by concern well before the limit.
 *   **Line Length**: The maximum line length is **100 characters**, as enforced by `ruff`.
 *   **Modularity**: Code must be organized into clearly separated modules, grouped by feature or responsibility as defined in the project's source tree.
 
@@ -42,6 +42,14 @@
 4.  **Refactor**: Improve the implementation while ensuring all tests remain green.
 5.  **Repeat**: Continue this cycle for all new functionality.
 
+### Test Organization and Conventions
+- Tests live in the top-level `tests/` directory and follow the `test_*.py` naming.
+- Prefer function-scoped fixtures; avoid `autouse` fixtures unless essential.
+- Use `pytest` markers to separate unit vs integration/E2E tests (e.g., `@pytest.mark.integration`); register markers in `pytest.ini` to avoid unknown-marker warnings.
+- Keep tests flat by concern; split large modules before reaching 500 lines and favor explicit construction. Use `tests/factories.py` only to reduce duplication. Each test file should remain under 500 lines.
+- Ensure logging assertions attach to `stderr` only (never `stdout`).
+- CI must run `ruff` and `pyright` against `tests/`, and maintain or improve the current coverage baseline.
+
 ## Critical Rules for AI Agents
 
 1.  **Log to `stderr` Only**: All logging operations **must** be directed to `sys.stderr`.
@@ -52,5 +60,4 @@
 6.  **Type Everything**: All function signatures must have explicit type hints.
 
 ## Development Workflow
-c
-*   **Pre-commit Hooks**: The `.pre-commit-config.yaml` file will run `ruff` and `pyright` before each commit. Commits that fail these checks will be rejected.
+*   **Pre-commit Hooks**: The `.pre-commit-config.yaml` file will run `ruff` and `pyright` before each commit across `src/` and `tests/`. Commits that fail these checks will be rejected.

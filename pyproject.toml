@@ -49,6 +49,13 @@ filterwarnings = [
     # when properly managing async resources with mocks
     "ignore::pytest.PytestUnraisableExceptionWarning"
 ]
+# Register markers to avoid unknown-marker warnings
+markers = [
+    "integration: marks tests as integration tests",
+    "e2e: marks tests as end-to-end tests"
+]
+# Coverage configuration
+addopts = "--cov=src/lunatask_mcp --cov-report=term-missing --cov-fail-under=87"
 
 [tool.pyright]
 include = ["src", "tests"]
@@ -68,6 +75,7 @@ dev = [
     "pyright>=1.1.404",
     "pytest>=8.4.1",
     "pytest-asyncio>=1.1.0",
+    "pytest-cov>=6.2.1",
     "pytest-mock>=3.14.1",
     "ruff>=0.12.9",
 ]

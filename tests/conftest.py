@@ -1,9 +1,13 @@
 """Pytest fixtures and configuration for the test suite."""
 
 import pytest
+from fastmcp import FastMCP
 from pydantic import HttpUrl
+from pytest_mock import AsyncMockType, MockerFixture
 
+from lunatask_mcp.api.client import LunaTaskClient
 from lunatask_mcp.config import ServerConfig
+from lunatask_mcp.tools.tasks import TaskTools
 
 
 @pytest.fixture
@@ -20,3 +24,68 @@ def default_config() -> ServerConfig:
         log_level="INFO",
         config_file=None,
     )
+
+
+@pytest.fixture
+def mcp() -> FastMCP:
+    """Provide a FastMCP instance for testing.
+
+    Returns:
+        FastMCP: A FastMCP instance with a test server name.
+    """
+    return FastMCP("test-server")
+
+
+@pytest.fixture
+def config() -> ServerConfig:
+    """Provide a ServerConfig instance for testing.
+
+    Returns:
+        ServerConfig: A ServerConfig instance with test values.
+    """
+    return ServerConfig(
+        lunatask_bearer_token="test_token",
+        lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
+    )
+
+
+@pytest.fixture
+def client(config: ServerConfig) -> LunaTaskClient:
+    """Provide a LunaTaskClient instance for testing.
+
+    Args:
+        config: A ServerConfig fixture.
+
+    Returns:
+        LunaTaskClient: A LunaTaskClient instance.
+    """
+    return LunaTaskClient(config)
+
+
+@pytest.fixture
+def task_tools(mcp: FastMCP, client: LunaTaskClient) -> TaskTools:
+    """Provide a TaskTools instance for testing.
+
+    Args:
+        mcp: A FastMCP fixture.
+        client: A LunaTaskClient fixture.
+
+    Returns:
+        TaskTools: A TaskTools instance.
+    """
+    return TaskTools(mcp, client)
+
+
+@pytest.fixture
+def async_ctx(mocker: MockerFixture) -> AsyncMockType:
+    """Provide an async context mock for testing.
+
+    Args:
+        mocker: Pytest mocker fixture.
+
+    Returns:
+        AsyncMock: An async context mock with a test session ID.
+    """
+    mock_ctx = mocker.AsyncMock()
+    mock_ctx.session_id = "test-session-123"
+    return mock_ctx

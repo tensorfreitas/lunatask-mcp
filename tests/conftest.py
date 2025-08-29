@@ -1,5 +1,9 @@
 """Pytest fixtures and configuration for the test suite."""
 
+import tempfile
+from collections.abc import Generator
+from pathlib import Path
+
 import pytest
 from fastmcp import FastMCP
 from pydantic import HttpUrl
@@ -89,3 +93,25 @@ def async_ctx(mocker: MockerFixture) -> AsyncMockType:
     mock_ctx = mocker.AsyncMock()
     mock_ctx.session_id = "test-session-123"
     return mock_ctx
+
+
+@pytest.fixture
+def temp_config_file() -> Generator[str, None, None]:
+    """Create a temporary config file for integration tests.
+
+    Yields:
+        str: Path to a temporary TOML config file used by stdio integration tests.
+    """
+    config_content = """
+lunatask_bearer_token = "test_integration_token"
+port = 8080
+log_level = "INFO"
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        f.write(config_content)
+        temp_path = f.name
+
+    try:
+        yield temp_path
+    finally:
+        Path(temp_path).unlink(missing_ok=True)

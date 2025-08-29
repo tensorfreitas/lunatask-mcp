@@ -1,4 +1,4 @@
-# ruff: noqa: S105, PLR2004
+# ruff: noqa: S105, PLR2004 - Magic values and test tokens are acceptable in test files
 """Tests for the configuration module.
 
 This module contains comprehensive tests for the ServerConfig Pydantic model

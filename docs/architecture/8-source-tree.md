@@ -26,7 +26,17 @@ The project will be organized using a standard, installable Python package layou
 │   ├── __init__.py
 │   ├── conftest.py           # Pytest fixtures and hooks (function-scoped; avoid autouse)
 │   ├── factories.py          # Simple builders to reduce duplication
-│   ├── test_api_client.py    # Client unit tests incl. pagination param handling
+│   ├── test_api_client_common.py           # Shared test helpers/constants (only for tests)
+│   ├── test_api_client_init_and_http.py    # Client init and HTTP setup
+│   ├── test_api_client_auth_and_connectivity.py
+│   ├── test_api_client_security.py
+│   ├── test_api_client_get_tasks.py
+│   ├── test_api_client_rate_limiting.py
+│   ├── test_api_client_get_task.py
+│   ├── test_api_client_create_task.py
+│   ├── test_api_client_update_task.py
+│   ├── test_api_client_delete_task.py
+│   ├── test_api_client_model_validation.py
 │   ├── test_task_tools_init_and_registration.py
 │   ├── test_task_tools_resource_list.py
 │   ├── test_task_tools_resource_single.py

@@ -20,8 +20,13 @@ The project will be organized using a standard, installable Python package layou
 │       │   └── task.py       # Task related models
 │       └── tools/            # Components defining MCP tools
 │           ├── __init__.py
-│           ├── habits.py     # Defines the HabitTools
-│           └── tasks.py      # Defines the TaskTools
+│           ├── habits.py               # Habit-related tools (future)
+│           ├── tasks.py                # TaskTools delegator/registration
+│           ├── tasks_common.py         # Shared task helpers (serialization)
+│           ├── tasks_resources.py      # Task list/single MCP resources
+│           ├── tasks_create.py         # create_task MCP tool
+│           ├── tasks_update.py         # update_task MCP tool
+│           └── tasks_delete.py         # delete_task MCP tool
 ├── tests/                    # Tests for the application
 │   ├── __init__.py
 │   ├── conftest.py           # Pytest fixtures and hooks (function-scoped; avoid autouse)

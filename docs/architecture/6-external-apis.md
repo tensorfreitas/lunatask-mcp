@@ -21,7 +21,7 @@ This project has one critical external dependency: the LunaTask API. All core fu
 
 1. **GET /v1/tasks** - Retrieve All Tasks
    - **Purpose**: Get a list of all tasks for the authenticated user
-   - **Implementation**: `LunaTaskClient.get_tasks()` method
+   - **Implementation**: `LunaTaskClient.get_tasks()` method; MCP resource handler in `tools/tasks_resources.py:get_tasks_resource`
    - **MCP Resource**: `lunatask://tasks`
    - **Response Model**: Array of `TaskResponse` objects
    - **Features**: Supports pagination and filtering parameters
@@ -29,7 +29,7 @@ This project has one critical external dependency: the LunaTask API. All core fu
 
 2. **GET /v1/tasks/{id}** - Retrieve Single Task
    - **Purpose**: Get details of a specific task by its unique ID  
-   - **Implementation**: `LunaTaskClient.get_task(task_id: str)` method
+   - **Implementation**: `LunaTaskClient.get_task(task_id: str)` method; MCP resource handler in `tools/tasks_resources.py:get_task_resource`
    - **MCP Resource**: `lunatask://tasks/{task_id}` (URI template)
    - **Response Model**: Single `TaskResponse` object
    - **Error Handling**: Returns `TaskNotFoundError` for non-existent tasks (404)
@@ -38,7 +38,7 @@ This project has one critical external dependency: the LunaTask API. All core fu
 3. **POST /v1/tasks** - Create Task
    - **Purpose**: Create a new task with specified parameters
    - **Implementation**: `LunaTaskClient.create_task(task: TaskCreate)` method
-   - **MCP Tool**: `create_task` tool
+   - **MCP Tool**: `create_task` tool (handler in `tools/tasks_create.py`)
    - **Request Model**: `TaskCreate` object with required/optional fields
    - **Response Model**: Task creation result with new task ID
    - **Features**: Supports E2E encryption for `name` and `note` fields
@@ -48,7 +48,7 @@ This project has one critical external dependency: the LunaTask API. All core fu
 4. **PATCH /v1/tasks/{id}** - Update Task
    - **Purpose**: Update an existing task with partial field updates
    - **Implementation**: `LunaTaskClient.update_task(task_id: str, update: TaskUpdate)` method
-   - **MCP Tool**: `update_task` tool
+   - **MCP Tool**: `update_task` tool (handler in `tools/tasks_update.py`)
    - **Request Model**: `TaskUpdate` object with all optional fields (partial updates)
    - **Response Model**: `TaskResponse` object with updated task data
    - **Features**: Supports partial updates (only provided fields are modified)
@@ -58,7 +58,7 @@ This project has one critical external dependency: the LunaTask API. All core fu
 
 5. **DELETE /v1/tasks/{id}** - Delete Task
    - **Purpose**: Delete a task by ID
-   - **Implementation**: `delete_task` MCP tool
+   - **Implementation**: `delete_task` MCP tool (handler in `tools/tasks_delete.py`)
    - **Response**: 204 No Content on success, 404 if not found
    - **Behavior**: Non-idempotent (repeated deletion returns 404)
    - **Status**: ✅ Implemented (Story 2.5)

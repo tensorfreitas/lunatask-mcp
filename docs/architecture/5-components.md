@@ -19,10 +19,37 @@ The application will be structured around a few key logical components, each wit
 
 ## 2. `TaskTools` (MCP Interface Component)
 
-**Responsibility**: This component will expose the Task-related functionality to clients by defining MCP **`resources`** for read operations and **`tools`** for write operations.
-*   The `get_tasks` and `get_task` methods will be exposed as `resources` with URI templates like `lunatask://tasks` and `lunatask://tasks/{task_id}`.
-*   The `create_task`, `update_task`, and `delete_task` methods will be exposed as `tools`.
-This component will use the `LunaTaskClient` to perform the actual API calls and will translate the results and errors into MCP-compliant responses.
+**Responsibility**: This component exposes Task functionality to clients by defining MCP **resources** for reads and **tools** for writes.
+- Resources: `lunatask://tasks`, `lunatask://tasks/{task_id}`.
+- Tools: `create_task`, `update_task`, `delete_task`.
+
+**Implementation Layout**:
+- `src/lunatask_mcp/tools/tasks.py`: TaskTools class and FastMCP registration (delegator).
+- `src/lunatask_mcp/tools/tasks_resources.py`: `get_tasks_resource`, `get_task_resource` handlers.
+- `src/lunatask_mcp/tools/tasks_create.py`: `create_task` tool handler.
+- `src/lunatask_mcp/tools/tasks_update.py`: `update_task` tool handler.
+- `src/lunatask_mcp/tools/tasks_delete.py`: `delete_task` tool handler.
+
+**Architecture Pattern**: This component implements a **delegation pattern with dependency injection** to achieve modular separation of concerns:
+
+1. **Delegator Role** (`tasks.py`): The `TaskTools` class acts as a delegator that:
+   - Registers MCP resources and tools with the FastMCP instance
+   - Holds a reference to the `LunaTaskClient` instance
+   - Creates wrapper functions that inject the client into standalone handlers
+   - Maintains public API methods for backward compatibility with existing tests
+
+2. **Standalone Handler Functions**: Each handler file contains pure functions that:
+   - Accept `LunaTaskClient` as their first parameter (dependency injection)
+   - Perform specific business logic (create, update, delete, resource access)
+   - Have no dependencies on class instances or global state
+   - Are easily testable in isolation
+
+3. **Dependency Flow**: 
+   ```
+   FastMCP → TaskTools(lunatask_client) → Wrapper Functions → Handler Functions(lunatask_client, ...)
+   ```
+
+This architecture aligns with the stated dependency injection and repository patterns, ensuring clean separation between MCP protocol handling and LunaTask API communication.
 
 **Dependencies**: `LunaTaskClient`, `fastmcp`.
 

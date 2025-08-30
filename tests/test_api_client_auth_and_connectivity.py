@@ -7,6 +7,7 @@ import httpx
 import pytest
 from pytest_mock import MockerFixture
 
+from lunatask_mcp.api import client as api_client
 from lunatask_mcp.api.client import LunaTaskClient
 from lunatask_mcp.api.exceptions import (
     LunaTaskAuthenticationError,
@@ -23,6 +24,7 @@ from lunatask_mcp.api.exceptions import (
 from lunatask_mcp.config import ServerConfig
 from tests.test_api_client_common import (
     DEFAULT_API_URL,
+    HTTP_BAD_GATEWAY,
     HTTP_BAD_REQUEST,
     HTTP_INTERNAL_SERVER_ERROR,
     HTTP_NOT_FOUND,
@@ -36,6 +38,11 @@ from tests.test_api_client_common import (
     INVALID_TOKEN,
     VALID_TOKEN,
 )
+
+
+def test_http_bad_gateway_constant_value() -> None:
+    """Ensure BAD_GATEWAY constant matches HTTP 502."""
+    assert api_client._HTTP_BAD_GATEWAY == HTTP_BAD_GATEWAY  # pyright: ignore[reportPrivateUsage]
 
 
 class TestLunaTaskClientAuthenticatedRequests:
@@ -194,6 +201,36 @@ class TestLunaTaskClientAuthenticatedRequests:
             await client.make_request("GET", "ping")
 
         assert exc_info.value.status_code == HTTP_INTERNAL_SERVER_ERROR
+
+    @pytest.mark.asyncio
+    async def test_make_request_bad_gateway_error(self, mocker: MockerFixture) -> None:
+        """Test handling of 502 Bad Gateway server error."""
+        config = ServerConfig(
+            lunatask_bearer_token=VALID_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+        )
+        client = LunaTaskClient(config)
+
+        mock_response = mocker.Mock()
+        mock_response.status_code = HTTP_BAD_GATEWAY
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "502 Bad Gateway",
+            request=mocker.Mock(),
+            response=mock_response,
+        )
+
+        mock_http_client = mocker.AsyncMock()
+        mock_http_client.request.return_value = mock_response
+        mocker.patch.object(
+            client,
+            "_get_http_client",
+            return_value=mock_http_client,
+        )
+
+        with pytest.raises(LunaTaskServerError) as exc_info:
+            await client.make_request("GET", "ping")
+
+        assert exc_info.value.status_code == HTTP_BAD_GATEWAY
 
     @pytest.mark.asyncio
     async def test_make_request_network_error(self, mocker: MockerFixture) -> None:

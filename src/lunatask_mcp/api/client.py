@@ -38,7 +38,8 @@ _HTTP_TOO_MANY_REQUESTS = 429
 _HTTP_INTERNAL_SERVER_ERROR = 500
 _HTTP_SERVICE_UNAVAILABLE = 503
 _HTTP_TIMEOUT = 524
-_HTTP_BAD_GATEWAY = 600
+_HTTP_BAD_GATEWAY = 502
+_HTTP_MAX_SERVER_ERROR = 600
 
 # Configure logger to write to stderr
 logger = logging.getLogger(__name__)
@@ -185,7 +186,7 @@ class LunaTaskClient:
         if status_code == _HTTP_TIMEOUT:
             logger.error("LunaTask API request timed out")
             raise LunaTaskTimeoutError(status_code=status_code) from error
-        if _HTTP_INTERNAL_SERVER_ERROR <= status_code < _HTTP_BAD_GATEWAY:
+        if _HTTP_INTERNAL_SERVER_ERROR <= status_code < _HTTP_MAX_SERVER_ERROR:
             logger.error("LunaTask API server error: %s", status_code)
             raise LunaTaskServerError("", status_code) from error
         logger.error("LunaTask API error: %s", status_code)
@@ -201,7 +202,7 @@ class LunaTaskClient:
         """Make an authenticated request to the LunaTask API.
 
         Args:
-            method: HTTP method (GET, POST, PUT, DELETE)
+            method: HTTP method (GET, POST, PUT, PATCH, DELETE)
             endpoint: API endpoint (without base URL)
             data: JSON data for request body
             params: Query parameters

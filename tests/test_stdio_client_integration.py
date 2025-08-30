@@ -82,9 +82,13 @@ log_level = "INFO"
         await update_rate.test_update_task_rate_limiter_application()
         logger.info("✓ update_task rate limiter application test passed")
 
-        logger.info("Running update_task timezone handling test...")
-        await update_tz.test_update_task_timezone_handling()
-        logger.info("✓ update_task timezone handling test passed")
+        logger.info("Running update_task timezone handling tests...")
+        await update_tz.test_timezone_offset_handling(temp_config_path)
+        await update_tz.test_utc_timezone_handling(temp_config_path)
+        await update_tz.test_naive_datetime_handling(temp_config_path)
+        await update_tz.test_invalid_datetime_validation(temp_config_path)
+        await update_tz.test_microseconds_datetime_handling(temp_config_path)
+        logger.info("✓ update_task timezone handling tests passed")
 
         logger.info("🎉 All integration tests passed!")
 

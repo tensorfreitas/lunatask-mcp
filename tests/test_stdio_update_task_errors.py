@@ -2,13 +2,13 @@
 
 import logging
 import tempfile
-from collections.abc import Sequence
 from pathlib import Path
-from typing import cast
 
 import pytest
 from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
+
+from tests.conftest import extract_tool_response_text
 
 
 class TestStdioUpdateTaskErrors:
@@ -46,7 +46,7 @@ log_level = "INFO"
                     "update_task", {"id": "nonexistent-task-404", "name": "This Should Fail"}
                 )
 
-                response_text = self._extract_tool_response_text(result)
+                response_text = extract_tool_response_text(result)
                 logger.info("404 error response: %s", response_text)
 
                 if response_text and (
@@ -70,7 +70,7 @@ log_level = "INFO"
                     },
                 )
 
-                response_text = self._extract_tool_response_text(result)
+                response_text = extract_tool_response_text(result)
                 logger.info("Validation error response: %s", response_text)
 
                 if response_text and (
@@ -106,7 +106,7 @@ log_level = "INFO"
                             "update_task", {"id": "test-auth-error", "name": "Auth Test"}
                         )
 
-                        response_text = self._extract_tool_response_text(result)
+                        response_text = extract_tool_response_text(result)
                         logger.info("Authentication error response: %s", response_text)
 
                         if response_text and (
@@ -131,24 +131,3 @@ log_level = "INFO"
 
         finally:
             Path(mock_config_path).unlink()
-
-    def _extract_tool_response_text(self, result: object) -> str | None:
-        """Extract text content from a FastMCP tool call result.
-
-        Uses duck typing to avoid depending on internal FastMCP classes.
-        """
-        try:
-            contents = getattr(result, "content", None)
-            if contents:
-                for content_item in contents:
-                    text = getattr(content_item, "text", None)
-                    if text is not None:
-                        return str(text)
-                try:
-                    seq = cast(Sequence[object], contents)
-                    return str(seq[0])
-                except Exception:
-                    return str(contents)
-            return str(result)
-        except Exception:
-            return None

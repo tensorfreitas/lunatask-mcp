@@ -1,8 +1,9 @@
 """Pytest fixtures and configuration for the test suite."""
 
 import tempfile
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from pathlib import Path
+from typing import cast
 
 import pytest
 from fastmcp import FastMCP
@@ -115,3 +116,32 @@ log_level = "INFO"
         yield temp_path
     finally:
         Path(temp_path).unlink(missing_ok=True)
+
+
+def extract_tool_response_text(result: object) -> str | None:
+    """Extract text content from a FastMCP tool call result.
+
+    Uses duck typing to avoid depending on internal FastMCP classes.
+
+    Args:
+        result: The FastMCP tool call result object.
+
+    Returns:
+        str | None: The extracted text content, or None if extraction fails.
+    """
+
+    try:
+        contents = getattr(result, "content", None)
+        if contents:
+            for content_item in contents:
+                text = getattr(content_item, "text", None)
+                if text is not None:
+                    return str(text)
+            try:
+                seq = cast(Sequence[object], contents)
+                return str(seq[0])
+            except Exception:
+                return str(contents)
+        return str(result)
+    except Exception:
+        return None

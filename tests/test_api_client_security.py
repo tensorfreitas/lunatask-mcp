@@ -8,6 +8,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from lunatask_mcp.api.client import LunaTaskClient
+from lunatask_mcp.api.exceptions import LunaTaskAPIError
 from lunatask_mcp.config import ServerConfig
 from tests.test_api_client_common import (
     DEFAULT_API_URL,
@@ -102,3 +103,27 @@ class TestLunaTaskClientSecurityFeatures:
         # Ensure the actual token is not present anywhere in the serialized headers
         serialized = str(redacted)
         assert token not in serialized
+
+    @pytest.mark.asyncio
+    async def test_unexpected_error_path_has_safe_context(self, mocker: MockerFixture) -> None:
+        """AC:2 — Catch-all except produces safe, contextual LunaTaskAPIError.
+
+        Ensures the error message includes method and endpoint, and never leaks the bearer token.
+        """
+        config = ServerConfig(
+            lunatask_bearer_token=TEST_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+        )
+        client = LunaTaskClient(config)
+
+        mock_http_client = mocker.AsyncMock()
+        mock_http_client.request.side_effect = ValueError("boom")
+        mocker.patch.object(client, "_get_http_client", return_value=mock_http_client)
+
+        with pytest.raises(LunaTaskAPIError) as exc_info:
+            await client.make_request("GET", "ping")
+
+        message = str(exc_info.value)
+        assert "method=GET" in message
+        assert "endpoint=ping" in message
+        assert TEST_TOKEN not in message

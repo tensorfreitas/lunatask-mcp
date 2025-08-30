@@ -2,8 +2,9 @@
 
 import logging
 import tempfile
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import cast
 
 import pytest
 from fastmcp import Client
@@ -108,18 +109,24 @@ log_level = "INFO"
         finally:
             Path(mock_config_path).unlink()
 
-    def _extract_tool_response_text(self, result: Any) -> str | None:  # noqa: ANN401
-        """Extract text content from FastMCP tool call result.
+    def _extract_tool_response_text(self, result: object) -> str | None:
+        """Extract text content from a FastMCP tool call result.
 
-        ANN401: Using Any type is necessary here because FastMCP's CallToolResult
-        has complex internal types that are not publicly exposed in their API.
+        Uses duck typing to avoid depending on internal FastMCP classes.
+        Accesses ``.content`` via ``getattr`` and falls back to ``str(result)``.
         """
         try:
-            if hasattr(result, "content") and result.content:
-                for content_item in result.content:
-                    if hasattr(content_item, "text"):
-                        return str(content_item.text)
-                return str(result.content[0])
+            contents = getattr(result, "content", None)
+            if contents:
+                for content_item in contents:
+                    text = getattr(content_item, "text", None)
+                    if text is not None:
+                        return str(text)
+                try:
+                    seq = cast(Sequence[object], contents)
+                    return str(seq[0])
+                except Exception:
+                    return str(contents)
             return str(result)
         except Exception:
             return None

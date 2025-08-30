@@ -10,6 +10,7 @@ import pytest
 from fastmcp import Client
 from mcp.types import TextContent
 
+import lunatask_mcp
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.main import CoreServer
 
@@ -111,3 +112,12 @@ class TestProtocolMetadata:
                 f"First content should be TextContent: {type(first_content)}"
             )
             assert first_content.text == "pong", f"Expected 'pong', got '{first_content.text}'"
+
+    def test_package_version_matches_server_version(self, default_config: ServerConfig) -> None:
+        """AC: 14 — __version__ equals FastMCP server version configured."""
+        core_server = CoreServer(default_config)
+        # FastMCP is initialized with a version; assert it matches package __version__
+        assert getattr(core_server.app, "version", None) == lunatask_mcp.__version__, (
+            f"Server version {getattr(core_server.app, 'version', None)}"
+            f" != package version {lunatask_mcp.__version__}"
+        )

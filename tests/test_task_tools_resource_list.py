@@ -5,9 +5,10 @@ MCP resource for retrieving lists of LunaTask tasks.
 """
 
 from datetime import UTC, datetime
+from typing import cast
 
 import pytest
-from fastmcp import FastMCP
+from fastmcp import Context, FastMCP
 from pydantic import HttpUrl
 from pytest_mock import MockerFixture
 
@@ -244,6 +245,39 @@ class TestTaskResourceRetrieval:
         assert task_data["due_date"] is None
         assert task_data["area_id"] is None
         assert task_data["source"] is None
+
+    @pytest.mark.asyncio
+    async def test_get_tasks_resource_metadata_defaults_without_session_id(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Metadata 'retrieved_at' defaults to 'unknown' without session_id (AC: 10)."""
+        mcp = FastMCP("test-server")
+        config = ServerConfig(
+            lunatask_bearer_token="test_token",
+            lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
+        )
+        client = LunaTaskClient(config)
+        task_tools = TaskTools(mcp, client)
+
+        # Context without a session_id attribute; info/error remain awaitable
+        class Ctx:
+            async def info(self, _: str) -> None:
+                """Stub."""
+                return
+
+            async def error(self, _: str) -> None:
+                """Stub."""
+                return
+
+        mock_ctx = Ctx()
+
+        # Return an empty task list; focus is on metadata default
+        mocker.patch.object(client, "get_tasks", return_value=[])
+        mocker.patch.object(client, "__aenter__", return_value=client)
+        mocker.patch.object(client, "__aexit__", return_value=None)
+
+        result = await task_tools.get_tasks_resource(cast(Context, mock_ctx))
+        assert result["metadata"]["retrieved_at"] == "unknown"
 
 
 class TestTaskResourceErrorHandling:

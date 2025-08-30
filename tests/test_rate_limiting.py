@@ -4,10 +4,13 @@ Rate limiting tests for token bucket implementation.
 Test cases for burst behavior, steady-state rate enforcement, and token exhaustion.
 """
 
+# pyright: reportPrivateUsage=false
+
 import asyncio
 import time
 
 import pytest
+from pytest_mock import MockerFixture
 
 from lunatask_mcp.rate_limiter import InvalidBurstError, InvalidRPMError, TokenBucketLimiter
 
@@ -109,6 +112,19 @@ class TestTokenBucketLimiter:
 
         # Should have a token now
         assert limiter.try_acquire() is True
+
+    def test_repr_does_not_modify_state(self, mocker: MockerFixture) -> None:
+        """__repr__ should not refill tokens or alter state."""
+        limiter = TokenBucketLimiter(rpm=60, burst=2)
+        limiter.try_acquire()
+
+        mock_refill = mocker.patch.object(limiter, "_refill_tokens")
+        tokens_before = limiter._tokens
+
+        repr(limiter)
+
+        mock_refill.assert_not_called()
+        assert limiter._tokens == tokens_before
 
     @pytest.mark.asyncio
     async def test_concurrent_requests_respect_limits(self) -> None:

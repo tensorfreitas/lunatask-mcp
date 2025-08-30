@@ -68,15 +68,7 @@ class TestLunaTaskClientRateLimiting:
     @pytest.mark.asyncio
     async def test_rate_limiter_respects_burst_limits(self, mocker: MockerFixture) -> None:
         """Test that rate limiter prevents bursts beyond configured limits."""
-        config = ServerConfig(
-            lunatask_bearer_token=VALID_TOKEN,
-            lunatask_base_url=DEFAULT_API_URL,
-            rate_limit_rpm=60,  # 1 request per second
-            rate_limit_burst=2,  # 2 request burst max
-        )
-        client = LunaTaskClient(config)
-
-        # Mock time to control timing
+        # Mock time BEFORE creating the client to avoid real time in _last_refill
         mock_time = mocker.patch("time.time")
 
         # Start at time 0
@@ -87,20 +79,44 @@ class TestLunaTaskClientRateLimiting:
 
         mock_time.side_effect = time_side_effect
 
-        # Mock successful API response
-        mocker.patch.object(client, "make_request", return_value={"tasks": []})
+        # Now create client with mocked time active
+        config = ServerConfig(
+            lunatask_bearer_token=VALID_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+            rate_limit_rpm=60,  # 1 request per second
+            rate_limit_burst=2,  # 2 request burst max
+        )
+        client = LunaTaskClient(config)
+
+        # Mock HTTP client and response
+        mock_response = mocker.Mock()
+        mock_response.status_code = HTTP_OK
+        mock_response.json.return_value = {"tasks": []}
+        mock_response.raise_for_status.return_value = None
+        mock_http_client = mocker.AsyncMock()
+        mock_http_client.request.return_value = mock_response
+        mocker.patch.object(client, "_get_http_client", return_value=mock_http_client)
 
         # Make first two requests (should succeed due to burst)
         await client.get_tasks()
         await client.get_tasks()
 
+        # Verify burst tokens are exhausted
+        assert client._rate_limiter._tokens == 0.0
+
         # Third request should be delayed (no immediate burst tokens left)
-        # Advance time by 1 second to replenish one token
-        current_time[0] = 1.0
+        async def sleep_side_effect(duration: float) -> None:
+            current_time[0] += duration
+
+        mock_sleep = mocker.patch("asyncio.sleep", side_effect=sleep_side_effect)
+
         await client.get_tasks()
 
-        # Verify all requests succeeded
-        assert True  # If we reach here, rate limiter is working correctly
+        # Verify that sleep was called once with expected duration
+        mock_sleep.assert_awaited_once_with(1.0)
+
+        # Verify token was consumed after refill
+        assert client._rate_limiter._tokens == 0.0
 
     @pytest.mark.asyncio
     async def test_rate_limiter_token_replenishment(self, mocker: MockerFixture) -> None:

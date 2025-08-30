@@ -133,8 +133,7 @@ class TokenBucketLimiter:
     def __repr__(self) -> str:
         """String representation for debugging."""
         return (
-            f"TokenBucketLimiter(rpm={self._rpm}, burst={self._burst}, "
-            f"tokens={self.current_tokens:.2f})"
+            f"TokenBucketLimiter(rpm={self._rpm}, burst={self._burst}, tokens={self._tokens:.2f})"
         )
 
 

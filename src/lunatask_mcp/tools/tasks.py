@@ -133,6 +133,7 @@ class TaskTools:
             motivation: str = "unknown",
             eisenhower: int | None = None,
         ) -> dict[str, Any]:
+            """Create a new task in LunaTask."""
             return await create_task_tool_fn(
                 self.lunatask_client,
                 ctx,
@@ -147,7 +148,7 @@ class TaskTools:
 
         async def _update_task_tool(  # noqa: PLR0913
             ctx: ServerContext,
-            task_id: str,  # renamed from id to avoid builtin shadow
+            id: str,  # noqa: A002
             name: str | None = None,
             note: str | None = None,
             area_id: str | None = None,
@@ -157,10 +158,11 @@ class TaskTools:
             motivation: str | None = None,
             eisenhower: int | None = None,
         ) -> dict[str, Any]:
+            """Update an existing task in LunaTask."""
             return await update_task_tool_fn(
                 self.lunatask_client,
                 ctx,
-                task_id,
+                id,
                 name,
                 note,
                 area_id,
@@ -171,8 +173,9 @@ class TaskTools:
                 eisenhower,
             )
 
-        async def _delete_task_tool(ctx: ServerContext, task_id: str) -> dict[str, Any]:
-            return await delete_task_tool_fn(self.lunatask_client, ctx, task_id)
+        async def _delete_task_tool(ctx: ServerContext, id: str) -> dict[str, Any]:  # noqa: A002
+            """Delete an existing task in LunaTask."""
+            return await delete_task_tool_fn(self.lunatask_client, ctx, id)
 
         self.mcp.resource("lunatask://tasks")(_tasks_list_resource)
         self.mcp.resource("lunatask://tasks/{task_id}")(_task_single_resource)

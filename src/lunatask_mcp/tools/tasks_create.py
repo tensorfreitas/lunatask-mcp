@@ -1,0 +1,203 @@
+"""Task creation tool handler for LunaTask MCP integration."""
+
+import logging
+from typing import Any
+
+from fastmcp import Context
+
+from lunatask_mcp.api.client import LunaTaskClient
+from lunatask_mcp.api.exceptions import (
+    LunaTaskAPIError,
+    LunaTaskAuthenticationError,
+    LunaTaskRateLimitError,
+    LunaTaskServerError,
+    LunaTaskSubscriptionRequiredError,
+    LunaTaskValidationError,
+)
+from lunatask_mcp.api.models import TaskCreate
+
+logger = logging.getLogger(__name__)
+
+
+async def create_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
+    lunatask_client: LunaTaskClient,
+    ctx: Context,
+    name: str,
+    note: str | None = None,
+    area_id: str | None = None,
+    status: str = "later",
+    priority: int = 0,
+    motivation: str = "unknown",
+    eisenhower: int | None = None,
+) -> dict[str, Any]:
+    """Create a new task in LunaTask.
+
+    This MCP tool creates a new task using the LunaTask API. All task fields
+    are supported, with only the name being required.
+
+    Args:
+        ctx: MCP context for logging and communication
+        name: Task name (required)
+        note: Optional task note
+        area_id: Optional area ID the task belongs to
+        status: Task status (default: "later")
+        priority: Optional task priority level
+        motivation: Optional task motivation (must, should, want, unknown)
+        eisenhower: Optional eisenhower matrix quadrant (0-4)
+
+    Returns:
+        dict[str, Any]: Response containing task creation result with task_id
+
+    Raises:
+        LunaTaskValidationError: When task validation fails (422)
+        LunaTaskSubscriptionRequiredError: When subscription required (402)
+        LunaTaskAuthenticationError: When authentication fails (401)
+        LunaTaskRateLimitError: When rate limit exceeded (429)
+        LunaTaskServerError: When server error occurs (5xx)
+        LunaTaskAPIError: For other API errors
+    """
+    await ctx.info(f"Creating new task: {name}")
+
+    try:
+        # Create TaskCreate object from parameters
+        # Cast string parameters to proper Literal types
+        task_status = (
+            status if status in ("later", "next", "started", "waiting", "completed") else "later"
+        )
+        task_motivation = (
+            motivation if motivation in ("must", "should", "want", "unknown") else "unknown"
+        )
+
+        task_data = TaskCreate(
+            name=name,
+            note=note,
+            area_id=area_id,
+            status=task_status,  # type: ignore[arg-type]
+            priority=priority,
+            motivation=task_motivation,  # type: ignore[arg-type]
+            eisenhower=eisenhower,
+        )
+
+        # Use LunaTask client to create the task
+        async with lunatask_client as client:
+            created_task = await client.create_task(task_data)
+
+        # Return success response with task ID
+        result = {
+            "success": True,
+            "task_id": created_task.id,
+            "message": "Task created successfully",
+        }
+
+    except LunaTaskValidationError as e:
+        # Handle validation errors (422)
+        error_msg = f"Task validation failed: {e}"
+        result = {
+            "success": False,
+            "error": "validation_error",
+            "message": error_msg,
+        }
+        await ctx.error(error_msg)
+        logger.warning("Task validation error: %s", e)
+        return result
+
+    except LunaTaskSubscriptionRequiredError as e:
+        # Handle subscription required errors (402)
+        error_msg = f"Subscription required: {e}"
+        result = {
+            "success": False,
+            "error": "subscription_required",
+            "message": error_msg,
+        }
+        await ctx.error(error_msg)
+        logger.warning("Subscription required for task creation: %s", e)
+        return result
+
+    except LunaTaskAuthenticationError as e:
+        # Handle authentication errors (401)
+        error_msg = f"Authentication failed: {e}"
+        result = {
+            "success": False,
+            "error": "authentication_error",
+            "message": error_msg,
+        }
+        await ctx.error(error_msg)
+        logger.warning("Authentication error during task creation: %s", e)
+        return result
+
+    except LunaTaskRateLimitError as e:
+        # Handle rate limit errors (429)
+        error_msg = f"Rate limit exceeded: {e}"
+        result = {
+            "success": False,
+            "error": "rate_limit_error",
+            "message": error_msg,
+        }
+        await ctx.error(error_msg)
+        logger.warning("Rate limit exceeded during task creation: %s", e)
+        return result
+
+    except LunaTaskServerError as e:
+        # Handle server errors (5xx)
+        error_msg = f"Server error: {e}"
+        result = {
+            "success": False,
+            "error": "server_error",
+            "message": error_msg,
+        }
+        await ctx.error(error_msg)
+        logger.warning("Server error during task creation: %s", e)
+        return result
+
+    except LunaTaskAPIError as e:
+        # Handle other API errors
+        error_msg = f"API error: {e}"
+        result = {
+            "success": False,
+            "error": "api_error",
+            "message": error_msg,
+        }
+        await ctx.error(error_msg)
+        logger.warning("API error during task creation: %s", e)
+        return result
+
+    except Exception as e:
+        # Handle Pydantic validation errors specifically
+        if "ValidationError" in str(type(e)) and hasattr(e, "errors"):
+            # Handle Pydantic validation errors with structured MCP response
+            error_details: list[str] = []
+            for error in e.errors():  # type: ignore[attr-defined]
+                field = error.get("loc", ["unknown"])[0] if error.get("loc") else "unknown"  # type: ignore[misc]
+                msg = error.get("msg", "Invalid value")  # type: ignore[misc]
+                if field == "motivation":
+                    msg = "Must be one of: must, should, want, unknown"
+                elif field == "eisenhower":
+                    msg = "Must be between 0 and 4"
+                elif field == "priority":
+                    msg = "Must be between -2 and 2"
+                elif field == "status":
+                    msg = "Must be one of: later, next, started, waiting, completed"
+                error_details.append(f"{field}: {msg}")
+
+            error_msg = f"Validation failed for {', '.join(error_details)}"
+            result = {
+                "success": False,
+                "error": "validation_error",
+                "message": error_msg,
+            }
+            await ctx.error(error_msg)
+            logger.warning("Task validation error: %s", error_msg)
+            return result
+        # Handle unexpected errors
+        error_msg = f"Unexpected error creating task: {e}"
+        result = {
+            "success": False,
+            "error": "unexpected_error",
+            "message": error_msg,
+        }
+        await ctx.error(error_msg)
+        logger.exception("Unexpected error during task creation")
+        return result
+    else:
+        await ctx.info(f"Successfully created task {created_task.id}")
+        return result

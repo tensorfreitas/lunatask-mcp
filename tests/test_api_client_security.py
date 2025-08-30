@@ -16,6 +16,7 @@ from tests.test_api_client_common import (
     SUPER_SECRET_TOKEN_456,
     TEST_TOKEN,
     get_http_client,
+    get_redacted_headers,
 )
 
 
@@ -82,3 +83,22 @@ class TestLunaTaskClientSecurityFeatures:
 
         # After context exit, client should be closed
         # This would be tested by checking if the client's close method was called
+
+    def test_redacted_headers_structure_and_values(self) -> None:
+        """AC:16 — Only Authorization (redacted) and Content-Type returned."""
+        token = SUPER_SECRET_TOKEN
+        config = ServerConfig(lunatask_bearer_token=token, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        redacted = get_redacted_headers(client)
+
+        # Assert only the expected keys are present
+        assert set(redacted.keys()) == {"Authorization", "Content-Type"}
+
+        # Assert Authorization is redacted and Content-Type is application/json
+        assert redacted["Authorization"] == "Bearer ***redacted***"
+        assert redacted["Content-Type"] == "application/json"
+
+        # Ensure the actual token is not present anywhere in the serialized headers
+        serialized = str(redacted)
+        assert token not in serialized

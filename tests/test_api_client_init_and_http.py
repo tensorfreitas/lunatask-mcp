@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import httpx
 import pytest
+from pytest_mock import MockerFixture
 
 from lunatask_mcp.api.client import LunaTaskClient
 from lunatask_mcp.config import ServerConfig
@@ -28,6 +29,10 @@ from tests.test_api_client_common import (
     get_http_client,
     get_redacted_headers,
 )
+
+# Expected HTTP connection limits
+MAX_KEEPALIVE_CONNECTIONS = 5
+MAX_CONNECTIONS = 10
 
 
 class TestLunaTaskClientInitialization:
@@ -114,6 +119,64 @@ class TestLunaTaskClientHTTPSetup:
         assert http_client.timeout.pool == POOL_TIMEOUT
 
     @pytest.mark.asyncio
+    async def test_follow_redirects_enabled(self) -> None:
+        """Client enables automatic redirect following."""
+        config = ServerConfig(
+            lunatask_bearer_token=VALID_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+        )
+        client = LunaTaskClient(config)
+
+        http_client: httpx.AsyncClient = get_http_client(client)
+
+        # Prefer public attribute; fall back to private if needed.
+        follow_redirects_attr = (
+            getattr(http_client, "follow_redirects", None)
+            if hasattr(http_client, "follow_redirects")
+            else getattr(http_client, "_follow_redirects", None)
+        )
+        assert follow_redirects_attr is True
+
+    @pytest.mark.asyncio
+    async def test_connection_limits_configuration(self) -> None:
+        """Client configures connection limits as expected."""
+        config = ServerConfig(
+            lunatask_bearer_token=VALID_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+        )
+        client = LunaTaskClient(config)
+
+        http_client: httpx.AsyncClient = get_http_client(client)
+
+        # Access limits via multiple potential locations, preferring public attrs.
+        limits = getattr(http_client, "limits", None)
+        if limits is None:
+            limits = getattr(http_client, "_limits", None)
+
+        max_keepalive_connections = (
+            getattr(limits, "max_keepalive_connections", None) if limits else None
+        )
+        max_connections = getattr(limits, "max_connections", None) if limits else None
+
+        # If not available on client, inspect the underlying transport pool (private API).
+        if max_keepalive_connections is None or max_connections is None:
+            transport = getattr(http_client, "_transport", None)
+            pool = getattr(transport, "_pool", None) if transport is not None else None
+            if pool is not None:
+                # httpcore pools typically expose underscored attributes.
+                max_keepalive_connections = getattr(
+                    pool,
+                    "_max_keepalive_connections",
+                    getattr(pool, "max_keepalive_connections", None),
+                )
+                max_connections = getattr(
+                    pool, "_max_connections", getattr(pool, "max_connections", None)
+                )
+
+        assert max_keepalive_connections == MAX_KEEPALIVE_CONNECTIONS
+        assert max_connections == MAX_CONNECTIONS
+
+    @pytest.mark.asyncio
     async def test_authentication_headers(self) -> None:
         """Test that authentication headers are set correctly."""
         config = ServerConfig(
@@ -140,3 +203,27 @@ class TestLunaTaskClientHTTPSetup:
 
         assert redacted_headers["Authorization"] == "Bearer ***redacted***"
         assert redacted_headers["Content-Type"] == "application/json"
+
+
+class TestLunaTaskClientConnectivity:
+    """Connectivity negative-path tests for `test_connectivity`."""
+
+    @pytest.mark.asyncio
+    async def test_returns_false_on_non_pong_response(self, mocker: MockerFixture) -> None:
+        """`test_connectivity` returns False when response message is not 'pong'."""
+        config = ServerConfig(
+            lunatask_bearer_token=VALID_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+        )
+        client = LunaTaskClient(config)
+
+        mock_make_request = mocker.patch.object(
+            client,
+            "make_request",
+            return_value={"message": "not-pong"},
+        )
+
+        result: bool = await client.test_connectivity()
+
+        assert result is False
+        mock_make_request.assert_called_once_with("GET", "ping")

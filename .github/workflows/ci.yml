@@ -15,6 +15,6 @@ jobs:
         with:
           python-version: '3.12'
       - uses: astral-sh/setup-uv@v1
-      - run: uv sync
+      - run: uv sync --group dev
       - run: uv run pre-commit run --all-files
       - run: uv run pytest

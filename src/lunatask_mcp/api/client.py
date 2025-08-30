@@ -449,7 +449,7 @@ class LunaTaskClient:
             task_id: The unique identifier for the task to delete
 
         Returns:
-            bool: True if deletion successful (204 response)
+            bool: True if deletion successful
 
         Raises:
             LunaTaskNotFoundError: Task not found (404)
@@ -459,17 +459,15 @@ class LunaTaskClient:
             LunaTaskNetworkError: Network connectivity error
             LunaTaskAPIError: Other API errors
         """
-        # Make authenticated request to DELETE /v1/tasks/{task_id} endpoint
-        result = await self.make_request("DELETE", f"tasks/{task_id}")
+        # Make authenticated request to DELETE /v1/tasks/{task_id} endpoint.
+        # Any 2xx response is considered a successful deletion. The underlying
+        # make_request() will raise for non-2xx, so reaching here implies success
+        # regardless of whether the server returns 204 No Content or a 200 with
+        # a JSON body.
+        await self.make_request("DELETE", f"tasks/{task_id}")
 
-        # For 204 No Content, make_request returns empty dict, which means success
-        if result == {}:
-            logger.debug("Successfully deleted task: %s", task_id)
-            return True
-
-        # This shouldn't happen for DELETE operations, but handle gracefully
-        logger.warning("Unexpected non-empty response for DELETE operation: %s", result)
-        return False
+        logger.debug("Successfully deleted task: %s", task_id)
+        return True
 
     async def test_connectivity(self) -> bool:
         """Test connectivity to the LunaTask API.

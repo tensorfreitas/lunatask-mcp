@@ -18,7 +18,7 @@ from lunatask_mcp.api.exceptions import (
 logger = logging.getLogger(__name__)
 
 
-async def delete_task_tool(  # noqa: PLR0911, PLR0915, C901
+async def delete_task_tool(  # noqa: PLR0911
     lunatask_client: LunaTaskClient,
     ctx: Context,
     id: str,  # noqa: A002
@@ -58,27 +58,17 @@ async def delete_task_tool(  # noqa: PLR0911, PLR0915, C901
     await ctx.info(f"Deleting task {id}")
 
     try:
-        # Use LunaTask client to delete the task
+        # Use LunaTask client to delete the task. Any successful call (no exception)
+        # indicates the task was deleted.
         async with lunatask_client as client:
-            deletion_success = await client.delete_task(id)
+            await client.delete_task(id)
 
-        if deletion_success:
-            # Return success response with task ID for confirmation
-            result = {
-                "success": True,
-                "task_id": id,
-                "message": "Task deleted successfully",
-            }
-        else:
-            # This shouldn't happen with current implementation, but handle gracefully
-            result = {
-                "success": False,
-                "error": "unexpected_error",
-                "message": "Task deletion returned unexpected result",
-            }
-            await ctx.error("Task deletion returned unexpected result")
-            logger.warning("Unexpected deletion result for task %s", id)
-            return result
+        # Return success response with task ID for confirmation
+        result = {
+            "success": True,
+            "task_id": id,
+            "message": "Task deleted successfully",
+        }
 
     except LunaTaskNotFoundError as e:
         # Handle task not found errors (404)

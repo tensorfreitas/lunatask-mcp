@@ -12,7 +12,7 @@ The application will be structured around a few key logical components, each wit
 *   `async def get_task(task_id: str) -> TaskResponse`
 *   `async def create_task(task_data: TaskCreate) -> TaskResponse`
 *   `async def update_task(task_id: str, task_data: TaskUpdate) -> TaskResponse`
-*   `async def delete_task(task_id: str) -> None`
+*   `async def delete_task(task_id: str) -> bool`
 *   `async def track_habit(habit_id: str, track_data: HabitTrackRequest) -> None`
 
 **Dependencies**: `httpx`, `pydantic` models.

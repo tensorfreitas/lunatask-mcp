@@ -44,6 +44,26 @@ class TestLunaTaskClientDeleteTask:
         mock_request.assert_called_once_with("DELETE", "tasks/task-to-delete")
 
     @pytest.mark.asyncio
+    async def test_delete_task_success_200_response_with_body(self, mocker: MockerFixture) -> None:
+        """Test successful task deletion when API returns 200 with a JSON body."""
+        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        task_id = "task-to-delete-200"
+
+        # Mock 200 response with a simple JSON body
+        mock_request = mocker.patch.object(
+            client,
+            "make_request",
+            return_value={"message": "deleted"},
+        )
+
+        result = await client.delete_task(task_id)
+
+        assert result is True
+        mock_request.assert_called_once_with("DELETE", "tasks/task-to-delete-200")
+
+    @pytest.mark.asyncio
     async def test_delete_task_not_found_error_404(self, mocker: MockerFixture) -> None:
         """Test delete_task raises LunaTaskNotFoundError on 404 response."""
         config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)

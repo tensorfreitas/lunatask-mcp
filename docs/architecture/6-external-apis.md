@@ -58,8 +58,12 @@ This project has one critical external dependency: the LunaTask API. All core fu
 
 5. **DELETE /v1/tasks/{id}** - Delete Task
    - **Purpose**: Delete a task by ID
-   - **Implementation**: `delete_task` MCP tool (handler in `tools/tasks_delete.py`)
+   - **Implementation**: `LunaTaskClient.delete_task(task_id: str)` and `delete_task` MCP tool
+     (handler in `tools/tasks_delete.py`)
    - **Response**: 204 No Content on success, 404 if not found
+   - **Client Handling**: The client treats any 2xx status as a successful deletion to accommodate
+     provider variations (e.g., some deployments may return 200 OK with a JSON body). The MCP tool
+     reports success when no exception is raised by the client.
    - **Behavior**: Non-idempotent (repeated deletion returns 404)
    - **Status**: ✅ Implemented (Story 2.5)
 

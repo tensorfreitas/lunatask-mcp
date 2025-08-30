@@ -482,15 +482,15 @@ class LunaTaskClient:
         """
         try:
             result = await self.make_request("GET", "ping")
-            if result.get("message") == "pong":
-                logger.info("LunaTask API connectivity test successful")
-                return True
-            # Early return pattern is clearer here than else block
-            logger.warning("LunaTask API connectivity test failed: unexpected response")
-            return False  # noqa: TRY300
         except LunaTaskAPIError as e:
             logger.warning("LunaTask API connectivity test failed: %s", e)
             return False
         except Exception:
             logger.exception("LunaTask API connectivity test failed with unexpected error")
+            return False
+        else:
+            if result.get("message") == "pong":
+                logger.info("LunaTask API connectivity test successful")
+                return True
+            logger.warning("LunaTask API connectivity test failed: unexpected response")
             return False

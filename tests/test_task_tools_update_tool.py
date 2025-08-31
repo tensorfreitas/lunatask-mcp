@@ -18,11 +18,11 @@ from lunatask_mcp.api.exceptions import (
 )
 from lunatask_mcp.api.models import (
     MAX_EISENHOWER,
-    TaskResponse,
     TaskUpdate,
 )
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.tools.tasks import TaskTools
+from tests.factories import create_task_response
 
 
 class TestUpdateTaskTool:
@@ -42,31 +42,11 @@ class TestUpdateTaskTool:
         mock_ctx = mocker.AsyncMock()
 
         # Mock successful task update response
-        updated_task = TaskResponse(
-            id="update-task-123",
+        updated_task = create_task_response(
+            task_id="update-task-123",
             status="completed",  # Changed from open to completed
-            created_at=datetime(
-                2025,
-                8,
-                21,
-                10,
-                0,
-                0,
-                tzinfo=UTC,
-            ),
+            created_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 22, 14, 30, 0, tzinfo=UTC),
-            area_id=None,
-            priority=None,
-            due_date=None,
-            source=None,
-            goal_id=None,
-            estimate=None,
-            motivation=None,
-            eisenhower=None,
-            previous_status=None,
-            progress=None,
-            scheduled_on=None,
-            completed_at=None,
         )
 
         mocker.patch.object(client, "update_task", return_value=updated_task)
@@ -125,31 +105,12 @@ class TestUpdateTaskTool:
 
         # Mock successful task update response
         expected_due_date = datetime(2025, 12, 25, 14, 30, 0, tzinfo=UTC)
-        updated_task = TaskResponse(
-            id="date-task-789",
+        updated_task = create_task_response(
+            task_id="date-task-789",
             status="later",
-            created_at=datetime(
-                2025,
-                8,
-                21,
-                10,
-                0,
-                0,
-                tzinfo=UTC,
-            ),
+            created_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 22, 15, 30, 0, tzinfo=UTC),
-            area_id=None,
-            priority=None,
             due_date=expected_due_date,
-            source=None,
-            goal_id=None,
-            estimate=None,
-            motivation=None,
-            eisenhower=None,
-            previous_status=None,
-            progress=None,
-            scheduled_on=None,
-            completed_at=None,
         )
 
         mocker.patch.object(client, "update_task", return_value=updated_task)
@@ -348,23 +309,12 @@ class TestUpdateTaskTool:
         mock_ctx = mocker.AsyncMock()
 
         # Mock successful task update response
-        updated_task = TaskResponse(
-            id="task-456",
-            area_id=None,
+        updated_task = create_task_response(
+            task_id="task-456",
             status="started",
-            priority=None,
-            due_date=None,
             created_at=datetime(2025, 8, 26, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 26, 11, 0, 0, tzinfo=UTC),
-            source=None,
-            goal_id=None,
-            estimate=None,
             motivation="must",
-            eisenhower=None,
-            previous_status=None,
-            progress=None,
-            scheduled_on=None,
-            completed_at=None,
         )
 
         mocker.patch.object(client, "update_task", return_value=updated_task)
@@ -399,23 +349,12 @@ class TestUpdateTaskTool:
         mock_ctx = mocker.AsyncMock()
 
         # Mock successful task update response
-        updated_task = TaskResponse(
-            id="task-789",
-            area_id=None,
+        updated_task = create_task_response(
+            task_id="task-789",
             status="next",
-            priority=None,
-            due_date=None,
             created_at=datetime(2025, 8, 26, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 26, 11, 0, 0, tzinfo=UTC),
-            source=None,
-            goal_id=None,
-            estimate=None,
-            motivation=None,
             eisenhower=MAX_EISENHOWER - 1,
-            previous_status=None,
-            progress=None,
-            scheduled_on=None,
-            completed_at=None,
         )
 
         mocker.patch.object(client, "update_task", return_value=updated_task)

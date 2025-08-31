@@ -21,9 +21,9 @@ from lunatask_mcp.api.exceptions import (
     LunaTaskServerError,
     LunaTaskTimeoutError,
 )
-from lunatask_mcp.api.models import Source, TaskResponse
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.tools.tasks import TaskTools
+from tests.factories import create_source, create_task_response
 
 
 class TestSingleTaskResource:
@@ -65,23 +65,15 @@ class TestSingleTaskResource:
         mock_ctx.session_id = "test-session-456"
 
         # Create sample task data
-        sample_task = TaskResponse(
-            id="task-123",
+        sample_task = create_task_response(
+            task_id="task-123",
             status="open",
             created_at=datetime(2025, 8, 20, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 20, 10, 30, 0, tzinfo=UTC),
             priority=2,
             due_date=datetime(2025, 8, 25, 14, 30, 0, tzinfo=UTC),
             area_id="area-456",
-            source=Source(type="manual", value="user_created"),
-            goal_id=None,
-            estimate=None,
-            motivation=None,
-            eisenhower=None,
-            previous_status=None,
-            progress=None,
-            scheduled_on=None,
-            completed_at=None,
+            source=create_source("manual", "user_created"),
         )
 
         # Mock the client's get_task method
@@ -133,23 +125,11 @@ class TestSingleTaskResource:
         mock_ctx = mocker.AsyncMock()
 
         # Create task with minimal data
-        minimal_task = TaskResponse(
-            id="task-minimal",
+        minimal_task = create_task_response(
+            task_id="task-minimal",
             status="completed",
             created_at=datetime(2025, 8, 18, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 19, 9, 0, 0, tzinfo=UTC),
-            priority=None,
-            due_date=None,
-            area_id=None,
-            source=None,
-            goal_id=None,
-            estimate=None,
-            motivation=None,
-            eisenhower=None,
-            previous_status=None,
-            progress=None,
-            scheduled_on=None,
-            completed_at=None,
         )
 
         mocker.patch.object(client, "get_task", return_value=minimal_task)
@@ -393,31 +373,11 @@ class TestSingleTaskResource:
         mock_ctx = mocker.AsyncMock()
 
         # Create task with special characters in ID
-        special_task = TaskResponse(
-            id="task-with-special/chars",
+        special_task = create_task_response(
+            task_id="task-with-special/chars",
             status="open",
-            created_at=datetime(
-                2025,
-                8,
-                20,
-                10,
-                0,
-                0,
-                tzinfo=UTC,
-            ),
+            created_at=datetime(2025, 8, 20, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 20, 10, 30, 0, tzinfo=UTC),
-            area_id=None,
-            priority=None,
-            due_date=None,
-            source=None,
-            goal_id=None,
-            estimate=None,
-            motivation=None,
-            eisenhower=None,
-            previous_status=None,
-            progress=None,
-            scheduled_on=None,
-            completed_at=None,
         )
 
         mocker.patch.object(client, "get_task", return_value=special_task)
@@ -446,24 +406,11 @@ class TestSingleTaskResource:
         mock_ctx = mocker.AsyncMock()
 
         # Create task without encrypted fields (as expected from E2E encryption)
-        encrypted_task = TaskResponse(
-            id="task-encrypted",
+        encrypted_task = create_task_response(
+            task_id="task-encrypted",
             status="open",
             created_at=datetime(2025, 8, 20, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 20, 10, 30, 0, tzinfo=UTC),
-            area_id=None,
-            priority=None,
-            due_date=None,
-            source=None,
-            goal_id=None,
-            estimate=None,
-            motivation=None,
-            eisenhower=None,
-            previous_status=None,
-            progress=None,
-            scheduled_on=None,
-            completed_at=None,
-            # Note: name and note fields intentionally missing
         )
 
         mocker.patch.object(client, "get_task", return_value=encrypted_task)

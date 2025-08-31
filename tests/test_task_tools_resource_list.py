@@ -20,9 +20,9 @@ from lunatask_mcp.api.exceptions import (
     LunaTaskServerError,
     LunaTaskTimeoutError,
 )
-from lunatask_mcp.api.models import Source, TaskResponse
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.tools.tasks import TaskTools
+from tests.factories import create_source, create_task_response
 
 
 class TestTaskResourceRetrieval:
@@ -44,31 +44,15 @@ class TestTaskResourceRetrieval:
         mock_ctx.session_id = "test-session-123"
 
         # Create sample task data
-        sample_task = TaskResponse(
-            id="task-1",
+        sample_task = create_task_response(
+            task_id="task-1",
             status="open",
-            created_at=datetime(
-                2025,
-                8,
-                20,
-                10,
-                0,
-                0,
-                tzinfo=UTC,
-            ),
+            created_at=datetime(2025, 8, 20, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 20, 10, 30, 0, tzinfo=UTC),
             priority=1,
             due_date=datetime(2025, 8, 25, 18, 0, 0, tzinfo=UTC),
             area_id="area-1",
-            source=Source(type="manual", value="user_created"),
-            goal_id=None,
-            estimate=None,
-            motivation=None,
-            eisenhower=None,
-            previous_status=None,
-            progress=None,
-            scheduled_on=None,
-            completed_at=None,
+            source=create_source("manual", "user_created"),
         )
 
         # Mock the client's get_tasks method
@@ -205,31 +189,11 @@ class TestTaskResourceRetrieval:
         mock_ctx = mocker.AsyncMock()
 
         # Create task with null optional fields
-        sample_task = TaskResponse(
-            id="task-2",
+        sample_task = create_task_response(
+            task_id="task-2",
             status="completed",
-            created_at=datetime(
-                2025,
-                8,
-                18,
-                10,
-                0,
-                0,
-                tzinfo=UTC,
-            ),
+            created_at=datetime(2025, 8, 18, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 19, 9, 0, 0, tzinfo=UTC),
-            priority=None,
-            due_date=None,
-            area_id=None,
-            source=None,
-            goal_id=None,
-            estimate=None,
-            motivation=None,
-            eisenhower=None,
-            previous_status=None,
-            progress=None,
-            scheduled_on=None,
-            completed_at=None,
         )
 
         mocker.patch.object(client, "get_tasks", return_value=[sample_task])

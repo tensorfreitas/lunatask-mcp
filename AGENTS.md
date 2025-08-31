@@ -28,7 +28,7 @@ uv run pyright
 uv run pytest
 
 # Run pre-commit hooks manually
-pre-commit run --all-files
+uv run pre-commit run --all-files
 ```
 
 ### Running the Application

@@ -15,10 +15,10 @@ from lunatask_mcp.api.models import (
     MIN_PRIORITY,
     TaskCreate,
     TaskMotivation,
-    TaskResponse,
     TaskStatus,
     TaskUpdate,
 )
+from tests.factories import create_task_response
 
 
 class TestTaskModelValidationAndDefaults:
@@ -170,23 +170,13 @@ class TestTaskModelValidationAndDefaults:
         # TaskResponse should accept upstream values like "open" without normalization
         # This should NOT raise validation error - response model is permissive
         try:
-            task_response = TaskResponse(
-                id="test-task",
-                area_id=None,
+            task_response = create_task_response(
+                task_id="test-task",
                 status="open",  # upstream value not in request enum
-                priority=None,
-                due_date=None,
                 created_at=datetime(2025, 8, 26, 10, 0, 0, tzinfo=UTC),
                 updated_at=datetime(2025, 8, 26, 10, 0, 0, tzinfo=UTC),
-                source=None,
-                goal_id=None,
-                estimate=None,
                 motivation="high",  # upstream value not in request enum
                 eisenhower=MAX_EISENHOWER + 6,  # upstream value outside request bounds
-                previous_status=None,
-                progress=None,
-                scheduled_on=None,
-                completed_at=None,
             )
             # Should parse successfully without normalization
             assert task_response.status == "open"

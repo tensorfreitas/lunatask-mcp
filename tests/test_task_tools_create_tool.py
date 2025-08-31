@@ -20,12 +20,10 @@ from lunatask_mcp.api.exceptions import (
     LunaTaskSubscriptionRequiredError,
     LunaTaskValidationError,
 )
-from lunatask_mcp.api.models import (
-    TaskCreate,
-    TaskResponse,
-)
+from lunatask_mcp.api.models import TaskCreate
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.tools.tasks import TaskTools
+from tests.factories import create_task_response
 
 
 class TestCreateTaskTool:
@@ -44,23 +42,11 @@ class TestCreateTaskTool:
 
         mock_ctx = mocker.AsyncMock()
 
-        created_task = TaskResponse(
-            id="new-task-123",
+        created_task = create_task_response(
+            task_id="new-task-123",
             status="open",
             created_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
-            area_id=None,
-            priority=None,
-            due_date=None,
-            source=None,
-            goal_id=None,
-            estimate=None,
-            motivation=None,
-            eisenhower=None,
-            previous_status=None,
-            progress=None,
-            scheduled_on=None,
-            completed_at=None,
         )
 
         mocker.patch.object(client, "create_task", return_value=created_task)
@@ -95,23 +81,13 @@ class TestCreateTaskTool:
         mock_ctx = mocker.AsyncMock()
 
         # Mock successful task creation response
-        created_task = TaskResponse(
-            id="full-task-456",
+        created_task = create_task_response(
+            task_id="full-task-456",
             area_id="area-123",
             status="open",
             priority=1,
             created_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
-            due_date=None,
-            source=None,
-            goal_id=None,
-            estimate=None,
-            motivation=None,
-            eisenhower=None,
-            previous_status=None,
-            progress=None,
-            scheduled_on=None,
-            completed_at=None,
         )
 
         mocker.patch.object(client, "create_task", return_value=created_task)
@@ -329,23 +305,11 @@ class TestCreateTaskTool:
         mock_ctx = mocker.AsyncMock()
 
         # Mock successful task creation response
-        created_task = TaskResponse(
-            id="param-test-789",
+        created_task = create_task_response(
+            task_id="param-test-789",
             status="open",
             created_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
-            area_id=None,
-            priority=None,
-            due_date=None,
-            source=None,
-            goal_id=None,
-            estimate=None,
-            motivation=None,
-            eisenhower=None,
-            previous_status=None,
-            progress=None,
-            scheduled_on=None,
-            completed_at=None,
         )
 
         mocker.patch.object(client, "create_task", return_value=created_task)
@@ -383,23 +347,12 @@ class TestCreateTaskTool:
         mock_ctx = mocker.AsyncMock()
 
         # Mock successful task creation response
-        created_task = TaskResponse(
-            id="task-with-motivation",
-            area_id=None,
+        created_task = create_task_response(
+            task_id="task-with-motivation",
             status="later",
-            priority=None,
-            due_date=None,
             created_at=datetime(2025, 8, 26, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 26, 10, 0, 0, tzinfo=UTC),
-            source=None,
-            goal_id=None,
-            estimate=None,
             motivation="must",
-            eisenhower=None,
-            previous_status=None,
-            progress=None,
-            scheduled_on=None,
-            completed_at=None,
         )
 
         mocker.patch.object(client, "create_task", return_value=created_task)
@@ -434,23 +387,12 @@ class TestCreateTaskTool:
         mock_ctx = mocker.AsyncMock()
 
         # Mock successful task creation response
-        created_task = TaskResponse(
-            id="task-with-eisenhower",
-            area_id=None,
+        created_task = create_task_response(
+            task_id="task-with-eisenhower",
             status="later",
-            priority=None,
-            due_date=None,
             created_at=datetime(2025, 8, 26, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 26, 10, 0, 0, tzinfo=UTC),
-            source=None,
-            goal_id=None,
-            estimate=None,
-            motivation=None,
             eisenhower=2,
-            previous_status=None,
-            progress=None,
-            scheduled_on=None,
-            completed_at=None,
         )
 
         mocker.patch.object(client, "create_task", return_value=created_task)

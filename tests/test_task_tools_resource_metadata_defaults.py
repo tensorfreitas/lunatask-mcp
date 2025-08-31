@@ -12,9 +12,9 @@ from pydantic import HttpUrl
 from pytest_mock import MockerFixture
 
 from lunatask_mcp.api.client import LunaTaskClient
-from lunatask_mcp.api.models import TaskResponse
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.tools.tasks import TaskTools
+from tests.factories import create_task_response
 
 
 @pytest.mark.asyncio
@@ -43,23 +43,11 @@ async def test_get_task_resource_metadata_defaults_without_session_id(
     mock_ctx = Ctx()
 
     # Minimal task response
-    sample_task = TaskResponse(
-        id="task-unknown-meta",
+    sample_task = create_task_response(
+        task_id="task-unknown-meta",
         status="open",
         created_at=datetime(2025, 8, 20, 10, 0, 0, tzinfo=UTC),
         updated_at=datetime(2025, 8, 20, 10, 30, 0, tzinfo=UTC),
-        area_id=None,
-        priority=None,
-        due_date=None,
-        source=None,
-        goal_id=None,
-        estimate=None,
-        motivation=None,
-        eisenhower=None,
-        previous_status=None,
-        progress=None,
-        scheduled_on=None,
-        completed_at=None,
     )
 
     mocker.patch.object(client, "get_task", return_value=sample_task)

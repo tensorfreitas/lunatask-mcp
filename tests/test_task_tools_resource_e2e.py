@@ -17,9 +17,9 @@ from lunatask_mcp.api.exceptions import (
     LunaTaskNotFoundError,
     LunaTaskRateLimitError,
 )
-from lunatask_mcp.api.models import Source, TaskResponse
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.tools.tasks import TaskTools
+from tests.factories import create_source, create_task_response
 
 
 class TestEndToEndResourceValidation:
@@ -92,31 +92,15 @@ class TestEndToEndResourceValidation:
         mock_ctx.session_id = "e2e-test-session"
 
         # Create realistic task data that would come from LunaTask API
-        test_task = TaskResponse(
-            id="e2e-test-task-456",
+        test_task = create_task_response(
+            task_id="e2e-test-task-456",
             status="in_progress",
-            created_at=datetime(
-                2025,
-                8,
-                21,
-                9,
-                0,
-                0,
-                tzinfo=UTC,
-            ),
+            created_at=datetime(2025, 8, 21, 9, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 21, 11, 30, 0, tzinfo=UTC),
             priority=3,
             due_date=datetime(2025, 8, 28, 17, 0, 0, tzinfo=UTC),
             area_id="work-area-789",
-            source=Source(type="integration", value="github_issue"),
-            goal_id=None,
-            estimate=None,
-            motivation=None,
-            eisenhower=None,
-            previous_status=None,
-            progress=None,
-            scheduled_on=None,
-            completed_at=None,
+            source=create_source("integration", "github_issue"),
         )
 
         # Mock the complete client flow
@@ -312,31 +296,11 @@ class TestEndToEndResourceValidation:
 
         # Create test task with a complex ID that tests parameter extraction
         test_task_id = "complex-task-id-with-dashes-123"
-        test_task = TaskResponse(
-            id=test_task_id,
+        test_task = create_task_response(
+            task_id=test_task_id,
             status="open",
-            created_at=datetime(
-                2025,
-                8,
-                21,
-                10,
-                0,
-                0,
-                tzinfo=UTC,
-            ),
+            created_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
-            priority=None,
-            due_date=None,
-            area_id=None,
-            source=None,
-            goal_id=None,
-            estimate=None,
-            motivation=None,
-            eisenhower=None,
-            previous_status=None,
-            progress=None,
-            scheduled_on=None,
-            completed_at=None,
         )
 
         mock_get_task = mocker.patch.object(client, "get_task", return_value=test_task)
@@ -369,32 +333,15 @@ class TestEndToEndResourceValidation:
         mock_ctx = mocker.AsyncMock()
 
         # Create task that simulates E2E encryption (missing name/note fields)
-        encrypted_task = TaskResponse(
-            id="encrypted-task-e2e",
+        encrypted_task = create_task_response(
+            task_id="encrypted-task-e2e",
             status="open",
-            created_at=datetime(
-                2025,
-                8,
-                21,
-                10,
-                0,
-                0,
-                tzinfo=UTC,
-            ),
+            created_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             priority=1,
             due_date=datetime(2025, 8, 30, 16, 0, 0, tzinfo=UTC),
             area_id="secure-area",
-            source=Source(type="secure", value="encrypted_source"),
-            goal_id=None,
-            estimate=None,
-            motivation=None,
-            eisenhower=None,
-            previous_status=None,
-            progress=None,
-            scheduled_on=None,
-            completed_at=None,
-            # Importantly: name and note fields are not present due to E2E encryption
+            source=create_source("secure", "encrypted_source"),
         )
 
         mocker.patch.object(client, "get_task", return_value=encrypted_task)

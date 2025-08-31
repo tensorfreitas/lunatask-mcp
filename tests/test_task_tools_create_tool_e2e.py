@@ -14,11 +14,9 @@ from pytest_mock import MockerFixture
 
 from lunatask_mcp.api.client import LunaTaskClient
 from lunatask_mcp.api.exceptions import LunaTaskValidationError
-from lunatask_mcp.api.models import (
-    TaskResponse,
-)
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.tools.tasks import TaskTools
+from tests.factories import create_task_response
 
 
 class TestCreateTaskToolEndToEnd:
@@ -79,31 +77,13 @@ class TestCreateTaskToolEndToEnd:
 
         # Mock context and successful API response
         mock_ctx = mocker.AsyncMock()
-        created_task = TaskResponse(
-            id="e2e-task-123",
+        created_task = create_task_response(
+            task_id="e2e-task-123",
             status="open",
-            created_at=datetime(
-                2025,
-                8,
-                22,
-                10,
-                0,
-                0,
-                tzinfo=UTC,
-            ),
+            created_at=datetime(2025, 8, 22, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 22, 10, 0, 0, tzinfo=UTC),
             area_id="work-area",
             priority=3,
-            due_date=None,
-            source=None,
-            goal_id=None,
-            estimate=None,
-            motivation=None,
-            eisenhower=None,
-            previous_status=None,
-            progress=None,
-            scheduled_on=None,
-            completed_at=None,
         )
 
         mocker.patch.object(client, "create_task", return_value=created_task)

@@ -227,3 +227,18 @@ class TestLunaTaskClientConnectivity:
 
         assert result is False
         mock_make_request.assert_called_once_with("GET", "ping")
+
+    @pytest.mark.asyncio
+    async def test_unexpected_exception_returns_false(self, mocker: MockerFixture) -> None:
+        """Unexpected exception in make_request is handled and returns False."""
+        config = ServerConfig(
+            lunatask_bearer_token=VALID_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+        )
+        client = LunaTaskClient(config)
+
+        mocker.patch.object(client, "make_request", side_effect=Exception("boom"))
+
+        result = await client.test_connectivity()
+
+        assert result is False

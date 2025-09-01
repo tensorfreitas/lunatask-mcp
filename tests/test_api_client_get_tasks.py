@@ -10,6 +10,7 @@ from pytest_mock import MockerFixture
 
 from lunatask_mcp.api.client import LunaTaskClient
 from lunatask_mcp.api.exceptions import (
+    LunaTaskAPIError,
     LunaTaskAuthenticationError,
     LunaTaskRateLimitError,
 )
@@ -239,3 +240,52 @@ class TestLunaTaskClientGetTasks:
         assert result[0].estimate == expected_estimate_minutes
         assert result[0].motivation == "must"
         assert result[0].eisenhower == expected_eisenhower_quadrant
+
+    @pytest.mark.asyncio
+    async def test_get_tasks_key_error_during_item_parse(self, mocker: MockerFixture) -> None:
+        """Force KeyError inside item parsing to hit KeyError branch."""
+        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        mock_response_data: dict[str, list[dict[str, Any]]] = {
+            "tasks": [
+                {
+                    "id": "task-1",
+                    "status": "open",
+                    "created_at": "2025-08-21T10:00:00Z",
+                    "updated_at": "2025-08-21T10:00:00Z",
+                }
+            ]
+        }
+
+        mocker.patch.object(client, "make_request", return_value=mock_response_data)
+        # Patch constructor used in client module to raise KeyError
+        mocker.patch("lunatask_mcp.api.client.TaskResponse", side_effect=KeyError("boom"))
+
+        with pytest.raises(LunaTaskAPIError):
+            await client.get_tasks()
+
+    @pytest.mark.asyncio
+    async def test_get_tasks_general_exception_during_item_parse(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Invalid items cause validation failure -> general Exception branch."""
+        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        mock_response_data: dict[str, list[dict[str, Any]]] = {
+            "tasks": [
+                {
+                    "id": "task-2",
+                    "status": "open",
+                    # created_at / updated_at missing intentionally
+                }
+            ]
+        }
+
+        mocker.patch.object(client, "make_request", return_value=mock_response_data)
+
+        with pytest.raises(LunaTaskAPIError) as exc_info:
+            await client.get_tasks()
+
+        assert "endpoint=tasks" in str(exc_info.value)

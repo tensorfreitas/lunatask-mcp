@@ -10,6 +10,7 @@ from pytest_mock import MockerFixture
 
 from lunatask_mcp.api.client import LunaTaskClient
 from lunatask_mcp.api.exceptions import (
+    LunaTaskAPIError,
     LunaTaskAuthenticationError,
     LunaTaskRateLimitError,
     LunaTaskServerError,
@@ -304,3 +305,38 @@ class TestLunaTaskClientCreateTask:
             },
         )
         assert result.id == "rate-limited-task"
+
+    @pytest.mark.asyncio
+    async def test_create_task_missing_task_key_raises_parse_error(
+        self, mocker: MockerFixture
+    ) -> None:
+        """No 'task' key -> parse error (KeyError branch)."""
+        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        task_data = TaskCreate(name="Sample")
+
+        mocker.patch.object(client, "make_request", return_value={"message": "ok"})
+
+        with pytest.raises(LunaTaskAPIError) as exc_info:
+            await client.create_task(task_data)
+
+        assert "endpoint=tasks" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_create_task_invalid_task_payload_raises_parse_error(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Invalid 'task' content -> validation failure -> general Exception branch."""
+        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        task_data = TaskCreate(name="Another")
+
+        mock_response_data: dict[str, Any] = {"task": {"id": "x", "status": "open"}}
+        mocker.patch.object(client, "make_request", return_value=mock_response_data)
+
+        with pytest.raises(LunaTaskAPIError) as exc_info:
+            await client.create_task(task_data)
+
+        assert "endpoint=tasks" in str(exc_info.value)

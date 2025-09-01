@@ -475,3 +475,21 @@ class TestLunaTaskClientUpdateTask:
         mock_request.assert_called_once_with(
             "PATCH", "tasks/task-with-special/chars", data={"status": "completed"}
         )
+
+    @pytest.mark.asyncio
+    async def test_update_task_parsing_validation_error_compact(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Malformed 'task' payload triggers general Exception branch (parsing failure)."""
+        config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+        task_id = "task-update-parse-error"
+        update_data = TaskUpdate(status="completed")
+
+        mock_response_data: dict[str, Any] = {"task": {"id": task_id, "status": "completed"}}
+        mocker.patch.object(client, "make_request", return_value=mock_response_data)
+
+        with pytest.raises(LunaTaskAPIError) as exc_info:
+            await client.update_task(task_id, update_data)
+
+        assert f"endpoint=tasks/{task_id}" in str(exc_info.value)

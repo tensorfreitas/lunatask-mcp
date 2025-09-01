@@ -369,3 +369,28 @@ class TestLunaTaskClientGetTask:
 
         assert result.id == "task-with-special/chars"
         mock_request.assert_called_once_with("GET", "tasks/task-with-special/chars")
+
+    @pytest.mark.asyncio
+    async def test_get_task_parsing_validation_error(self, mocker: MockerFixture) -> None:
+        """Provide malformed 'task' payload to trigger general parse error path."""
+        config = ServerConfig(
+            lunatask_bearer_token=VALID_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+        )
+        client = LunaTaskClient(config)
+        task_id = "task-parse-error"
+
+        mock_response_data: dict[str, Any] = {
+            "task": {
+                "id": task_id,
+                "status": "open",
+                # missing created_at / updated_at
+            }
+        }
+
+        mocker.patch.object(client, "make_request", return_value=mock_response_data)
+
+        with pytest.raises(LunaTaskAPIError) as exc_info:
+            await client.get_task(task_id)
+
+        assert f"endpoint=tasks/{task_id}" in str(exc_info.value)

@@ -49,3 +49,23 @@ class TestLunaTaskClientUnmappedStatus:
         err_str = str(err)
         assert TEST_TOKEN not in err_str
         assert "Bearer" not in err_str
+
+    @pytest.mark.asyncio
+    async def test_make_request_handles_204_no_content(self, mocker: MockerFixture) -> None:
+        """204 No Content returns empty dict and skips JSON parsing."""
+        config = ServerConfig(lunatask_bearer_token=TEST_TOKEN, lunatask_base_url=DEFAULT_API_URL)
+        client = LunaTaskClient(config)
+
+        mock_response = mocker.Mock()
+        mock_response.status_code = 204
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.side_effect = AssertionError("JSON should not be parsed for 204")
+
+        mock_http_client = mocker.AsyncMock()
+        mock_http_client.request.return_value = mock_response
+        mocker.patch.object(client, "_get_http_client", return_value=mock_http_client)
+
+        result = await client.make_request("DELETE", "tasks/some-id")
+
+        assert result == {}
+        mock_http_client.request.assert_called_once()

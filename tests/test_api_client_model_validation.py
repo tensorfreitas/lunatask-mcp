@@ -22,7 +22,7 @@ from tests.factories import create_task_response
 
 
 class TestTaskModelValidationAndDefaults:
-    """Test model validation and defaults for Task 1 of Story 2.7.
+    """Test task model validation and defaults.
 
     These tests follow TDD methodology and must fail first to drive implementation.
     Testing AC: 1, 2, 3 - Request-side validation, field addition, response permissiveness.

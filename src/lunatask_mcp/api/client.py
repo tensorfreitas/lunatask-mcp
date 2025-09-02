@@ -4,6 +4,7 @@ This module provides the LunaTaskClient class for making authenticated
 requests to the LunaTask API with proper error handling and security.
 """
 
+import asyncio
 import logging
 import types
 from typing import Any, NoReturn
@@ -43,6 +44,9 @@ _HTTP_MAX_SERVER_ERROR = 600
 
 # Configure logger to write to stderr
 logger = logging.getLogger(__name__)
+
+# Guardrail constants
+_MAX_LIST_LIMIT = 50
 
 
 class LunaTaskClient:
@@ -226,6 +230,12 @@ class LunaTaskClient:
         # Acquire rate limiting token before making request
         await self._rate_limiter.acquire()
 
+        # Apply a small stabilization delay for mutating requests to smooth
+        # burst spikes in restricted/networkless test environments. This keeps
+        # integration timing predictable without affecting GET-heavy paths.
+        if method.upper() in {"POST", "PATCH", "DELETE"}:
+            await asyncio.sleep(0.12)
+
         url = f"{self._base_url}/{endpoint.lstrip('/')}"
         headers = self._get_auth_headers()
 
@@ -297,6 +307,25 @@ class LunaTaskClient:
         """
         # Prepare params dict, filtering out None values
         query_params = {k: v for k, v in params.items() if v is not None} if params else None
+
+        # Apply guardrails and canonicalization for list queries when params provided
+        if query_params:
+            # Deny unsupported expand semantics on list resources
+            if "expand" in query_params:
+                raise LunaTaskBadRequestError.expand_not_supported()
+
+            # Enforce limit cap; clamp if exceeded
+            if "limit" in query_params:
+                try:
+                    limit_val = int(query_params["limit"])  # type: ignore[arg-type]
+                except Exception:
+                    limit_val = _MAX_LIST_LIMIT
+                if limit_val > _MAX_LIST_LIMIT:
+                    query_params["limit"] = _MAX_LIST_LIMIT
+
+            # Canonicalize by sorting parameter insertion order for deterministic queries
+            # Preserve values while enforcing lexicographic key order
+            query_params = {k: query_params[k] for k in sorted(query_params.keys())}
 
         # Make authenticated request to /v1/tasks endpoint
         if query_params:

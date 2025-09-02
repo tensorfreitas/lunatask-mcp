@@ -199,7 +199,7 @@ class TestCoreServerLunaTaskIntegration:
 
 
 class TestCoreServerTaskToolsIntegration:
-    """Test CoreServer integration with TaskTools for Task 3 requirements."""
+    """Test CoreServer integration with TaskTools."""
 
     def test_task_tools_dependency_injection(self, default_config: ServerConfig) -> None:
         """Test that TaskTools receives LunaTaskClient via dependency injection."""

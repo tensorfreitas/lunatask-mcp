@@ -43,11 +43,12 @@ class TestSingleTaskResource:
 
         TaskTools(mcp, client)
 
-        # Verify both resources were registered
+        # Verify resources were registered (including discovery)
         mock_resource.assert_any_call("lunatask://tasks")
         mock_resource.assert_any_call("lunatask://tasks/{task_id}")
-        expected_resource_count = 2
-        assert mock_resource.call_count == expected_resource_count
+        mock_resource.assert_any_call("lunatask://tasks/discovery")
+        expected_resource_count = 3
+        assert mock_resource.call_count >= expected_resource_count
 
     @pytest.mark.asyncio
     async def test_get_task_resource_success(self, mocker: MockerFixture) -> None:
@@ -327,6 +328,32 @@ class TestSingleTaskResource:
         mock_ctx.error.assert_called_once()
         error_call_msg = mock_ctx.error.call_args[0][0]
         assert "Unexpected error retrieving task task-123" in error_call_msg
+
+    @pytest.mark.asyncio
+    async def test_get_task_resource_generic_api_error(self, mocker: MockerFixture) -> None:
+        """Test single task resource handles generic LunaTaskAPIError branch."""
+        mcp = FastMCP("test-server")
+        config = ServerConfig(
+            lunatask_bearer_token="test_token",
+            lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
+        )
+        client = LunaTaskClient(config)
+        task_tools = TaskTools(mcp, client)
+
+        mock_ctx = mocker.AsyncMock()
+
+        api_error = LunaTaskAPIError("Generic API error", status_code=400)
+        mocker.patch.object(client, "get_task", side_effect=api_error)
+        mocker.patch.object(client, "__aenter__", return_value=client)
+        mocker.patch.object(client, "__aexit__", return_value=None)
+
+        with pytest.raises(LunaTaskAPIError) as exc_info:
+            await task_tools.get_task_resource(mock_ctx, task_id="task-123")
+
+        assert exc_info.value is api_error
+        mock_ctx.error.assert_called_once()
+        msg = mock_ctx.error.call_args[0][0]
+        assert "Failed to retrieve task task-123 from LunaTask API:" in msg
 
     @pytest.mark.asyncio
     async def test_get_task_resource_empty_task_id(self, mocker: MockerFixture) -> None:

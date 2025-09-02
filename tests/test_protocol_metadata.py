@@ -1,4 +1,4 @@
-"""Test protocol metadata and capabilities for Task 8.
+"""Test protocol metadata and capabilities
 
 This module tests that the server correctly exposes metadata (name and version)
 and declares capabilities including the ping tool during MCP initialize.
@@ -82,10 +82,7 @@ class TestProtocolMetadata:
 
     @pytest.mark.asyncio
     async def test_complete_initialize_handshake(self, default_config: ServerConfig) -> None:
-        """Test complete initialize handshake with metadata and capabilities verification.
-
-        Comprehensive test combining all Task 8 requirements.
-        """
+        """Test complete initialize handshake with metadata and capabilities verification."""
         # Create CoreServer and get its FastMCP instance for in-memory testing
         core_server = CoreServer(default_config)
 

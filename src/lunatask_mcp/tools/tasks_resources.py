@@ -26,6 +26,98 @@ from lunatask_mcp.tools.tasks_common import serialize_task_response
 logger = logging.getLogger(__name__)
 
 
+async def tasks_discovery_resource(
+    _lunatask_client: LunaTaskClient, ctx: Context
+) -> dict[str, Any]:
+    """Return discovery metadata for task list resources.
+
+    Provides a read-only JSON description of supported parameters, defaults,
+    limits, canonical alias examples (area and global families), and guardrails.
+
+    Args:
+        lunatask_client: Injected LunaTaskClient (unused; reserved for parity)
+        ctx: MCP request context used for logging
+
+    Returns:
+        dict[str, Any]: Discovery document describing list resource behavior
+    """
+    # Log via MCP context; do not emit tokens or sensitive data
+    await ctx.info("Serving tasks discovery")
+
+    # Keep keys aligned with the proposal addendum; prefer explicit, minimal schema.
+    discovery: dict[str, Any] = {
+        "resource_type": "lunatask_tasks_discovery",
+        "params": {
+            "area_id": "string",
+            "scope": "global",
+            "window": "today|overdue|next_7_days|now",
+            "status": "open|completed|next|started|now",
+            "min_priority": "low|medium|high",
+            "priority": ["low", "medium", "high"],
+            "completed_since": "-72h|ISO8601",
+            "tz": "UTC",
+            "q": "string",
+            "limit": 50,
+            "cursor": "opaque",
+            "sort": "priority.desc,due_date.asc,id.asc",
+        },
+        "defaults": {
+            "status": "open",
+            "limit": 50,
+            "sort": "priority.desc,due_date.asc,id.asc",
+            "tz": "UTC",
+        },
+        "limits": {"max_limit": 50, "dense_cap": 25},
+        "projection": [
+            "id",
+            "due_date",
+            "priority",
+            "status",
+            "area_id",
+            "list_id",
+            "detail_uri",
+        ],
+        "sorts": {
+            "default": "priority.desc,due_date.asc,id.asc",
+            "overdue": "due_date.asc,priority.desc,id.asc",
+            "recent_completions": "completed_at.desc,id.asc",
+        },
+        "aliases": [
+            {
+                "family": "area",
+                "name": "now",
+                "uri": "lunatask://area/{area_id}/now",
+                # Canonical params sorted by key: area_id, limit, status, window
+                "canonical": ("lunatask://tasks?area_id={area_id}&limit=25&status=open&window=now"),
+            },
+            {
+                "family": "global",
+                "name": "overdue",
+                "uri": "lunatask://global/overdue",
+                # Canonical params sorted by key with explicit scope=global
+                "canonical": (
+                    "lunatask://tasks?limit=50&scope=global&sort=due_date.asc,priority.desc,id.asc"
+                    "&status=open&window=overdue"
+                ),
+            },
+        ],
+        "guardrails": {
+            "unscoped_error_code": "LUNA_TASKS/UNSCOPED_LIST",
+            "message": "Provide area_id or scope=global for list views.",
+            "examples": [
+                "lunatask://area/AREA123/today",
+                "lunatask://global/next-7-days",
+            ],
+        },
+        "examples": [
+            "lunatask://tasks",
+            "lunatask://area/{area_id}/now",
+            "lunatask://global/overdue",
+        ],
+    }
+    return discovery
+
+
 async def get_tasks_resource(lunatask_client: LunaTaskClient, ctx: Context) -> dict[str, Any]:
     """MCP resource providing access to all LunaTask tasks.
 
@@ -208,3 +300,133 @@ async def get_task_resource(
     else:
         await ctx.info(f"Successfully retrieved task {task_id} from LunaTask")
         return resource_data
+
+
+def _get_alias_params(alias: str) -> dict[str, Any] | None:
+    """Map an alias string to a dictionary of canonical query parameters."""
+    if alias in ("now", "today", "overdue", "next_7_days"):
+        return {"window": alias, "status": "open", "limit": 25 if alias == "now" else 50}
+    if alias == "high_priority":
+        return {"min_priority": "high", "status": "open", "limit": 50}
+    if alias == "recent_completions":
+        return {"status": "completed", "completed_since": "-72h", "limit": 50}
+    return None
+
+
+async def list_tasks_global_alias(
+    lunatask_client: LunaTaskClient,
+    ctx: Context,
+    *,
+    alias: str,
+) -> dict[str, Any]:
+    """List tasks for a global alias with deterministic ordering.
+
+    Args:
+        lunatask_client: Injected LunaTaskClient.
+        ctx: MCP context for stderr-only logging.
+        alias: One of "now", "today", "overdue", "next_7_days",
+               "high_priority", "recent_completions".
+
+    Returns:
+        dict[str, Any]: Minimal projection list with items and metadata.
+    """
+    params = _get_alias_params(alias)
+    if params is None:
+        await ctx.error(f"Unknown alias: {alias}")
+        raise LunaTaskBadRequestError
+
+    params["scope"] = "global"
+
+    await ctx.info(
+        f"Listing global tasks: alias={alias}, params={{'status': {params.get('status')}, "
+        f"'limit': {params.get('limit')}}}"
+    )
+
+    async with lunatask_client:
+        tasks = await lunatask_client.get_tasks(**params)
+
+    # Deterministic ordering client-side to ensure stability regardless of upstream
+    if alias == "overdue":
+        tasks.sort(
+            key=lambda t: (  # due_date.asc, priority.desc, id.asc
+                ((0, int(t.due_date.timestamp())) if t.due_date else (1, 0)),
+                -(t.priority if t.priority is not None else -10),
+                t.id,
+            )
+        )
+        sort = "due_date.asc,priority.desc,id.asc"
+    elif alias == "recent_completions":
+        tasks.sort(
+            key=lambda t: (
+                (0, -int(t.completed_at.timestamp())) if t.completed_at else (1, 0),
+                t.id,
+            )
+        )
+        sort = "completed_at.desc,id.asc"
+    else:
+        tasks.sort(
+            key=lambda t: (  # priority.desc, due_date.asc, id.asc
+                -(t.priority if t.priority is not None else -10),
+                ((0, int(t.due_date.timestamp())) if t.due_date else (1, 0)),
+                t.id,
+            )
+        )
+        sort = "priority.desc,due_date.asc,id.asc"
+
+    items = [
+        {**serialize_task_response(t), "detail_uri": f"lunatask://tasks/{t.id}"} for t in tasks
+    ]
+
+    return {"items": items, "limit": params.get("limit", 50), "sort": sort}
+
+
+async def list_tasks_area_alias(
+    lunatask_client: LunaTaskClient,
+    ctx: Context,
+    *,
+    area_id: str,
+    alias: str,
+) -> dict[str, Any]:
+    """List tasks for a specific area alias.
+
+    Args:
+        lunatask_client: Injected LunaTaskClient.
+        ctx: MCP context for stderr-only logging.
+        area_id: Area identifier to scope the query.
+        alias: One of "now", "today", "overdue", "next_7_days",
+               "high_priority", "recent_completions".
+
+    Returns:
+        dict[str, Any]: A minimal projection list with items and metadata.
+    """
+    if not area_id:
+        await ctx.error("Missing required parameter: area_id")
+        raise LunaTaskBadRequestError
+
+    params = _get_alias_params(alias)
+    if params is None:
+        await ctx.error(f"Unknown alias: {alias}")
+        raise LunaTaskBadRequestError
+
+    params["area_id"] = area_id
+
+    await ctx.info(
+        f"Listing tasks for area {area_id}: alias={alias}, params="
+        f"{{'status': {params.get('status')}, 'limit': {params.get('limit')}}}"
+    )
+
+    async with lunatask_client:
+        tasks = await lunatask_client.get_tasks(**params)
+
+    items = [
+        {**serialize_task_response(t), "detail_uri": f"lunatask://tasks/{t.id}"} for t in tasks
+    ]
+
+    # Provide minimal response shape with deterministic sort hint
+    sort = (
+        "due_date.asc,priority.desc,id.asc"
+        if alias == "overdue"
+        else "priority.desc,due_date.asc,id.asc"
+    )
+
+    return {"items": items, "limit": params.get("limit", 50), "sort": sort}

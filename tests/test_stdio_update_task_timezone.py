@@ -11,7 +11,7 @@ from tests.conftest import extract_tool_response_text
 
 
 class TestStdioUpdateTaskTimezone:
-    """Integration test cases for timezone handling (Task 3.5)."""
+    """Integration test cases for timezone handling."""
 
     @pytest.mark.asyncio
     async def test_timezone_offset_handling(self, temp_config_file: str) -> None:

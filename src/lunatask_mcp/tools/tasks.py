@@ -19,6 +19,15 @@ from lunatask_mcp.tools.tasks_resources import (
 from lunatask_mcp.tools.tasks_resources import (
     get_tasks_resource as get_tasks_resource_fn,
 )
+from lunatask_mcp.tools.tasks_resources import (
+    list_tasks_area_alias as list_tasks_area_alias_fn,
+)
+from lunatask_mcp.tools.tasks_resources import (
+    list_tasks_global_alias as list_tasks_global_alias_fn,
+)
+from lunatask_mcp.tools.tasks_resources import (
+    tasks_discovery_resource as tasks_discovery_resource_fn,
+)
 from lunatask_mcp.tools.tasks_update import update_task_tool as update_task_tool_fn
 
 # Configure logger to write to stderr
@@ -111,17 +120,49 @@ class TaskTools:
         """Delete an existing task in LunaTask."""
         return await delete_task_tool_fn(self.lunatask_client, ctx, id)
 
-    def _register_resources(self) -> None:
+    def _register_resources(self) -> None:  # noqa: C901
         """Register all task-related MCP resources and tools with the FastMCP instance."""
         # Wrap resource functions to satisfy FastMCP signature expectations
         # for static resources (no URI params) and parameterized resources.
 
         # Wrap functions to inject lunatask_client dependency
-        async def _tasks_list_resource(ctx: ServerContext) -> dict[str, Any]:
-            return await get_tasks_resource_fn(self.lunatask_client, ctx)
 
         async def _task_single_resource(task_id: str, ctx: ServerContext) -> dict[str, Any]:
             return await get_task_resource_fn(self.lunatask_client, ctx, task_id)
+
+        async def _tasks_discovery(ctx: ServerContext) -> dict[str, Any]:
+            return await tasks_discovery_resource_fn(self.lunatask_client, ctx)
+
+        # Area-scoped alias resources
+        async def _area_now(area_id: str, ctx: ServerContext) -> dict[str, Any]:
+            return await list_tasks_area_alias_fn(
+                self.lunatask_client, ctx, area_id=area_id, alias="now"
+            )
+
+        async def _area_today(area_id: str, ctx: ServerContext) -> dict[str, Any]:
+            return await list_tasks_area_alias_fn(
+                self.lunatask_client, ctx, area_id=area_id, alias="today"
+            )
+
+        async def _area_overdue(area_id: str, ctx: ServerContext) -> dict[str, Any]:
+            return await list_tasks_area_alias_fn(
+                self.lunatask_client, ctx, area_id=area_id, alias="overdue"
+            )
+
+        async def _area_next7(area_id: str, ctx: ServerContext) -> dict[str, Any]:
+            return await list_tasks_area_alias_fn(
+                self.lunatask_client, ctx, area_id=area_id, alias="next_7_days"
+            )
+
+        async def _area_high(area_id: str, ctx: ServerContext) -> dict[str, Any]:
+            return await list_tasks_area_alias_fn(
+                self.lunatask_client, ctx, area_id=area_id, alias="high_priority"
+            )
+
+        async def _area_recent(area_id: str, ctx: ServerContext) -> dict[str, Any]:
+            return await list_tasks_area_alias_fn(
+                self.lunatask_client, ctx, area_id=area_id, alias="recent_completions"
+            )
 
         async def _create_task_tool(  # noqa: PLR0913
             ctx: ServerContext,
@@ -177,8 +218,47 @@ class TaskTools:
             """Delete an existing task in LunaTask."""
             return await delete_task_tool_fn(self.lunatask_client, ctx, id)
 
-        self.mcp.resource("lunatask://tasks")(_tasks_list_resource)
+        # Keep a non-breaking explicit discovery URI that maps to the same handler.
+        self.mcp.resource("lunatask://tasks")(_tasks_discovery)
+        self.mcp.resource("lunatask://tasks/discovery")(_tasks_discovery)
         self.mcp.resource("lunatask://tasks/{task_id}")(_task_single_resource)
+        # Register area alias templates
+        self.mcp.resource("lunatask://area/{area_id}/now")(_area_now)
+        self.mcp.resource("lunatask://area/{area_id}/today")(_area_today)
+        self.mcp.resource("lunatask://area/{area_id}/overdue")(_area_overdue)
+        self.mcp.resource("lunatask://area/{area_id}/next-7-days")(_area_next7)
+        self.mcp.resource("lunatask://area/{area_id}/high-priority")(_area_high)
+        self.mcp.resource("lunatask://area/{area_id}/recent-completions")(_area_recent)
+
+        # Register global alias resources
+        async def _global_now(ctx: ServerContext) -> dict[str, Any]:
+            return await list_tasks_global_alias_fn(self.lunatask_client, ctx, alias="now")
+
+        async def _global_today(ctx: ServerContext) -> dict[str, Any]:
+            return await list_tasks_global_alias_fn(self.lunatask_client, ctx, alias="today")
+
+        async def _global_overdue(ctx: ServerContext) -> dict[str, Any]:
+            return await list_tasks_global_alias_fn(self.lunatask_client, ctx, alias="overdue")
+
+        async def _global_next7(ctx: ServerContext) -> dict[str, Any]:
+            return await list_tasks_global_alias_fn(self.lunatask_client, ctx, alias="next_7_days")
+
+        async def _global_high(ctx: ServerContext) -> dict[str, Any]:
+            return await list_tasks_global_alias_fn(
+                self.lunatask_client, ctx, alias="high_priority"
+            )
+
+        async def _global_recent(ctx: ServerContext) -> dict[str, Any]:
+            return await list_tasks_global_alias_fn(
+                self.lunatask_client, ctx, alias="recent_completions"
+            )
+
+        self.mcp.resource("lunatask://global/now")(_global_now)
+        self.mcp.resource("lunatask://global/today")(_global_today)
+        self.mcp.resource("lunatask://global/overdue")(_global_overdue)
+        self.mcp.resource("lunatask://global/next-7-days")(_global_next7)
+        self.mcp.resource("lunatask://global/high-priority")(_global_high)
+        self.mcp.resource("lunatask://global/recent-completions")(_global_recent)
         self.mcp.tool("create_task")(_create_task_tool)
         self.mcp.tool("update_task")(_update_task_tool)
         self.mcp.tool("delete_task")(_delete_task_tool)

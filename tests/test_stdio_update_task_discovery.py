@@ -9,11 +9,11 @@ from fastmcp.client.transports import StdioTransport
 
 
 class TestStdioUpdateTaskDiscovery:
-    """Integration test cases for update_task tool discovery (Task 3.1)."""
+    """Integration test cases for update_task tool discovery."""
 
     @pytest.mark.asyncio
     async def test_update_task_tool_discovery(self, temp_config_file: str) -> None:
-        """Test that update_task tool is discoverable by MCP clients (Task 3.1)."""
+        """Test that update_task tool is discoverable by MCP clients."""
         logger = logging.getLogger(__name__)
 
         transport = StdioTransport(

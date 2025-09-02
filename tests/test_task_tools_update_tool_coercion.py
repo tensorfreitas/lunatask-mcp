@@ -24,7 +24,7 @@ class TestUpdateTaskToolCoercion:
         async_ctx: AsyncMockType,
         mocker: MockerFixture,
     ) -> None:
-        """Invalid status input is coerced to None and not sent to API (Task 8)."""
+        """Invalid status input is coerced to None and not sent to API."""
         # Arrange
         updated_task = create_task_response(task_id="task-123", status="open")
         mocker.patch.object(client, "update_task", return_value=updated_task)
@@ -53,7 +53,7 @@ class TestUpdateTaskToolCoercion:
         async_ctx: AsyncMockType,
         mocker: MockerFixture,
     ) -> None:
-        """Invalid motivation input is coerced to None and not sent (Task 9)."""
+        """Invalid motivation input is coerced to None and not sent."""
         # Arrange
         updated_task = create_task_response(task_id="task-456", status="open")
         mocker.patch.object(client, "update_task", return_value=updated_task)

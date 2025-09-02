@@ -1,4 +1,4 @@
-"""Tests for Task 4: Configuration integration into CoreServer.
+"""Tests for configuration integration into CoreServer.
 
 This module tests the integration of configuration into the CoreServer class
 and verifies that configuration is properly used by the server components.

@@ -12,12 +12,12 @@ from tests.conftest import extract_tool_response_text
 
 
 class TestStdioUpdateTaskExecution:
-    """Integration test cases for update_task tool execution (Task 3.2)."""
+    """Integration test cases for update_task tool execution."""
 
     @pytest.mark.asyncio
     @pytest.mark.usefixtures("temp_config_file")
     async def test_update_task_tool_execution_flow(self) -> None:
-        """Test complete tool execution flow from MCP client perspective (Task 3.2)."""
+        """Test complete tool execution flow from MCP client perspective."""
         logger = logging.getLogger(__name__)
 
         test_config_content = """

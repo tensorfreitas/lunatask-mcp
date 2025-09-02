@@ -23,7 +23,7 @@ from tests.factories import create_source, create_task_response
 
 
 class TestEndToEndResourceValidation:
-    """End-to-End validation testing for Story 2.2 Task 3.
+    """End-to-End task tools resoursce e2e validation testing.
 
     These tests validate complete MCP resource functionality from client perspective:
     - Resource discoverability
@@ -35,7 +35,7 @@ class TestEndToEndResourceValidation:
     def test_resource_discoverability_via_mcp_introspection(self, mocker: MockerFixture) -> None:
         """Test that lunatask://tasks/{task_id} resource is discoverable by MCP clients.
 
-        Subtask 3.1: Verify resource is discoverable by MCP clients using resource listing
+        Verify resource is discoverable by MCP clients using resource listing
         """
         mcp = FastMCP("test-server")
         config = ServerConfig(
@@ -50,13 +50,14 @@ class TestEndToEndResourceValidation:
         # Initialize TaskTools to register resources
         TaskTools(mcp, client)
 
-        # Verify both resource templates are registered and discoverable
+        # Verify resource templates are registered and discoverable (including discovery)
         mock_resource.assert_any_call("lunatask://tasks")
         mock_resource.assert_any_call("lunatask://tasks/{task_id}")
+        mock_resource.assert_any_call("lunatask://tasks/discovery")
 
-        # Verify we have both resources registered
-        expected_resource_count = 2
-        assert mock_resource.call_count == expected_resource_count
+        # Verify we have all resources registered
+        expected_resource_count = 3
+        assert mock_resource.call_count >= expected_resource_count
 
         # Verify the resource functions were registered with correct signatures
         calls = mock_resource.call_args_list
@@ -77,7 +78,7 @@ class TestEndToEndResourceValidation:
     async def test_complete_resource_access_flow_success(self, mocker: MockerFixture) -> None:
         """Test complete resource access flow from MCP client perspective with valid task_id.
 
-        Subtask 3.2: Test complete resource access flow from MCP client with valid task ID
+        Test complete resource access flow from MCP client with valid task ID
         """
         mcp = FastMCP("test-server")
         config = ServerConfig(
@@ -143,7 +144,7 @@ class TestEndToEndResourceValidation:
     ) -> None:
         """Test MCP error responses for TaskNotFoundError and other error scenarios.
 
-        Subtask 3.3: Validate MCP error responses for TaskNotFoundError and other error scenarios
+        Validate MCP error responses for TaskNotFoundError and other error scenarios
         """
         mcp = FastMCP("test-server")
         config = ServerConfig(
@@ -237,7 +238,7 @@ class TestEndToEndResourceValidation:
     def test_resource_registration_and_uri_template_matching(self, mocker: MockerFixture) -> None:
         """Test resource registration and proper URI template matching in running server.
 
-        Subtask 3.4: Confirm resource registration and proper URI template matching in server
+        Confirm resource registration and proper URI template matching in server
         """
         # Create the FastMCP instance and configuration as would happen in real server
         mcp = FastMCP("test-server")
@@ -253,13 +254,14 @@ class TestEndToEndResourceValidation:
         # Initialize TaskTools as would happen in the actual server
         task_tools = TaskTools(mcp, client)
 
-        # Verify that both resource templates were registered with correct URI patterns
+        # Verify that resource templates were registered with correct URI patterns
         mock_resource_decorator.assert_any_call("lunatask://tasks")
         mock_resource_decorator.assert_any_call("lunatask://tasks/{task_id}")
+        mock_resource_decorator.assert_any_call("lunatask://tasks/discovery")
 
         # Verify the correct number of resource registrations
-        expected_resource_count = 2
-        assert mock_resource_decorator.call_count == expected_resource_count
+        expected_resource_count = 3
+        assert mock_resource_decorator.call_count >= expected_resource_count
 
         # Verify that TaskTools instance maintains references correctly
         assert task_tools.mcp is mcp

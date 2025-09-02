@@ -15,12 +15,12 @@ MAX_TIMING_VARIANCE = 10.0
 
 
 class TestStdioUpdateTaskRateLimiting:
-    """Integration test cases for rate limiter application (Task 3.4)."""
+    """Integration test cases for rate limiter application."""
 
     @pytest.mark.asyncio
     @pytest.mark.usefixtures("temp_config_file")
     async def test_update_task_rate_limiter_application(self) -> None:
-        """Test that rate limiter applies to PATCH requests (Task 3.4)."""
+        """Test that rate limiter applies to PATCH requests."""
         logger = logging.getLogger(__name__)
 
         test_config_content = """

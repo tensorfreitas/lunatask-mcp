@@ -12,12 +12,12 @@ from tests.conftest import extract_tool_response_text
 
 
 class TestStdioUpdateTaskErrors:
-    """Integration tests for MCP error responses (Task 3.3)."""
+    """Integration tests for MCP error responses."""
 
     @pytest.mark.asyncio
     @pytest.mark.usefixtures("temp_config_file")
     async def test_update_task_mcp_error_responses(self) -> None:
-        """Test MCP error responses for various failure scenarios (Task 3.3)."""
+        """Test MCP error responses for various failure scenarios."""
         logger = logging.getLogger(__name__)
 
         test_config_content = """

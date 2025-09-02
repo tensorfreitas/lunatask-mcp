@@ -2,14 +2,17 @@
 
 **Expanded Goal**: The objective of this epic is to implement the complete set of supported operations for the LunaTask Tasks API, exposing them as MCP tools and resources. This includes retrieving, creating, updating, and deleting tasks, while fully respecting LunaTask's end-to-end encryption constraints. This epic also includes implementing the core rate-limiting and error-handling features.
 
-## **Story 2.1: Retrieve All Tasks Resource**
-**As a** user, **I want** to retrieve a list of all my tasks via an MCP resource, **so that** my AI tools can have context on my existing to-dos.
+## **Story 2.1: Area‑Scoped & Global Task List Resources (Filtered & Paginated)**
+**As a** user, **I want** curated, paginated task lists as MCP resources (area‑scoped and all‑areas), **so that** my AI tools get small, relevant context slices.
 ### Acceptance Criteria
-1. An MCP `resource` is implemented that corresponds to the `GET /v1/tasks` endpoint.
-2. When accessed, the resource makes an authenticated `GET` request to the LunaTask API.
-3. A successful response returns a list of task objects.
-4. **Crucially**, the returned data respects LunaTask's E2E encryption: fields like `name` and `note` will not be present in the response, and the implementation must handle their absence gracefully.
-5. An error response from the LunaTask API results in a structured MCP error.
+1. Scope rule: list views require exactly one scope — `area_id` OR `scope=global`; unscoped attempts return a structured, actionable error with examples for both families.
+2. Aliases: provide canonical presets for both families with deterministic sorting and caps:
+   - Area: `lunatask://area/{area_id}/now|today|overdue|next-7-days|high-priority|recent-completions`.
+   - Global: `lunatask://global/now|today|overdue|next-7-days|high-priority|recent-completions`.
+3. Defaults and caps: `status=open`, minimal projection (`id,due_date,priority,status,area_id,list_id,detail_uri`), deterministic sort (`priority.desc,due.asc,id.asc`), `limit<=50` (default 25 for `now`), and `tz=UTC` by default.
+4. Sorting variants: Overdue uses `due.asc,priority.desc,id.asc`; Recent completions uses `completed_at.desc,id.asc`; null `due_date` placed last for non‑overdue; null priority treated as lowest.
+5. Discovery: `lunatask://tasks` becomes discovery‑only and returns params, defaults (including `tz`), limits, canonical examples for both families, sorts, projection, and guardrails.
+6. Backwards compatibility: `lunatask://tasks/{id}` unchanged; creation/update/delete tools unchanged; multi‑area CSV is not supported.
 
 ## **Story 2.2: Retrieve a Single Task Resource**
 **As a** user, **I want** to retrieve the details of a single task by its ID, **so that** my AI tools can get information about a specific to-do item.

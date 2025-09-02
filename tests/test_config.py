@@ -154,7 +154,7 @@ class TestServerConfigModel:
 
 
 class TestConfigurationLoading:
-    """Test suite for configuration file loading functionality (Task 3)."""
+    """Test suite for configuration file loading functionalitys."""
 
     def test_load_configuration_defaults_only(self, mocker: MockerFixture) -> None:
         """Test loading configuration with defaults only (no file, no CLI args)."""

@@ -73,6 +73,15 @@ class LunaTaskBadRequestError(LunaTaskAPIError):
         """
         return cls("Task ID cannot be empty")
 
+    @classmethod
+    def expand_not_supported(cls) -> "LunaTaskBadRequestError":
+        """Create an error for unsupported expand parameter on list resources.
+
+        Returns:
+            LunaTaskBadRequestError for unsupported expand parameter
+        """
+        return cls("Expand is not supported on task list resources")
+
 
 class LunaTaskAuthenticationError(LunaTaskAPIError):
     """Raised when authentication fails (401 Unauthorized)."""

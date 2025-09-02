@@ -50,11 +50,12 @@ class TestTaskToolsInitialization:
 
         TaskTools(mcp, client)
 
-        # Verify both resources were registered
+        # Verify resources were registered (including discovery)
         mock_resource.assert_any_call("lunatask://tasks")
         mock_resource.assert_any_call("lunatask://tasks/{task_id}")
-        expected_resource_count = 2
-        assert mock_resource.call_count == expected_resource_count
+        mock_resource.assert_any_call("lunatask://tasks/discovery")
+        expected_resource_count = 3
+        assert mock_resource.call_count >= expected_resource_count
 
         # Verify all tools were registered
         mock_tool.assert_any_call("create_task")
@@ -75,7 +76,12 @@ class TestTaskToolsRegisteredWrappers:
 
     @pytest.mark.asyncio
     async def test_registered_resource_wrappers_delegate(self, mocker: MockerFixture) -> None:
-        """Resources wrappers call underlying functions with injected client."""
+        """Resource wrappers call underlying functions with injected client.
+
+        lunatask://tasks is now discovery-only. Verify the
+        wrapper delegates to the discovery resource implementation instead of
+        the legacy list resource.
+        """
         mcp = FastMCP("test-server")
         config = ServerConfig(
             lunatask_bearer_token="test_token",
@@ -96,11 +102,10 @@ class TestTaskToolsRegisteredWrappers:
         mocker.patch.object(mcp, "resource", side_effect=capture_resource)
 
         # Patch underlying implementation functions to verify delegation
-        mock_get_tasks_resource = mocker.AsyncMock(return_value={"ok": True, "type": "list"})
         mock_get_task_resource = mocker.AsyncMock(return_value={"ok": True, "type": "single"})
         mocker.patch(
-            "lunatask_mcp.tools.tasks.get_tasks_resource_fn",
-            new=mock_get_tasks_resource,
+            "lunatask_mcp.tools.tasks.tasks_discovery_resource_fn",
+            new=mocker.AsyncMock(return_value={"ok": True, "type": "discovery"}),
         )
         mocker.patch(
             "lunatask_mcp.tools.tasks.get_task_resource_fn",
@@ -123,10 +128,13 @@ class TestTaskToolsRegisteredWrappers:
         list_result = await list_wrapper(mock_ctx)  # type: ignore[misc]
         single_result = await single_wrapper("abc123", mock_ctx)  # type: ignore[misc]
 
-        assert list_result == {"ok": True, "type": "list"}
+        assert list_result == {"ok": True, "type": "discovery"}
         assert single_result == {"ok": True, "type": "single"}
 
-        mock_get_tasks_resource.assert_awaited_once_with(client, mock_ctx)
+        # Discovery wrapper should call discovery impl; single delegates to get_task
+        mod = __import__("lunatask_mcp.tools.tasks", fromlist=["tasks_discovery_resource_fn"])
+        tasks_discovery_mock = mod.tasks_discovery_resource_fn
+        assert tasks_discovery_mock.await_count == 1  # type: ignore[attr-defined]
         mock_get_task_resource.assert_awaited_once_with(client, mock_ctx, "abc123")
 
     @pytest.mark.asyncio

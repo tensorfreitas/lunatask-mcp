@@ -1,5 +1,4 @@
-"""Test error handling and edge cases for Task 13.
-
+"""
 This module tests JSON-RPC compliance, protocol version negotiation failures,
 tool invocation errors, request cancellation, and concurrent request handling.
 """

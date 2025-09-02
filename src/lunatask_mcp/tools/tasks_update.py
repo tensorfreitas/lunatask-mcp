@@ -29,7 +29,7 @@ async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
     note: str | None = None,
     area_id: str | None = None,
     status: str | None = None,
-    priority: int | None = None,
+    priority: int | str | None = None,
     due_date: str | None = None,
     motivation: str | None = None,
     eisenhower: int | None = None,
@@ -103,6 +103,25 @@ async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
             logger.warning("Invalid due_date format for task %s: %s", id, due_date)
             return result
 
+    # Coerce string priority values to integers when possible for client UX
+    coerced_priority: int | None = None
+    if priority is not None:
+        if isinstance(priority, int):
+            coerced_priority = priority
+        else:
+            try:
+                coerced_priority = int(priority)
+            except (TypeError, ValueError):
+                error_msg = "Invalid priority: must be an integer between -2 and 2"
+                result = {
+                    "success": False,
+                    "error": "validation_error",
+                    "message": f"Validation failed for priority: {error_msg}",
+                }
+                await ctx.error(error_msg)
+                logger.warning("Invalid priority type for task %s: %r", id, priority)
+                return result
+
     await ctx.info(f"Updating task {id}")
 
     try:
@@ -125,7 +144,7 @@ async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
             note=note,
             area_id=area_id,
             status=task_status,  # type: ignore[arg-type]
-            priority=priority,
+            priority=coerced_priority,
             due_date=parsed_due_date,
             motivation=task_motivation,  # type: ignore[arg-type]
             eisenhower=eisenhower,

@@ -1,13 +1,16 @@
-"""Priority input handling tests for update_task tool with parametrization.
+"""Priority and Eisenhower input handling tests for update_task tool.
 
-Covers valid numeric inputs across full range [-2..2] as ints and strings,
-and various invalid string inputs.
+Includes parametrized tests covering valid numeric priority values across the
+full range [-2..2] as both ints and strings and validation of various invalid
+priority strings. Also verifies that Eisenhower values provided as numeric
+strings [0..4] are coerced correctly and that invalid strings produce
+validation errors.
 """
 
 import pytest
 from fastmcp import FastMCP
 from pydantic import HttpUrl
-from pytest_mock import MockerFixture
+from pytest_mock import AsyncMockType, MockerFixture
 
 from lunatask_mcp.api.client import LunaTaskClient
 from lunatask_mcp.api.models import TaskUpdate
@@ -102,4 +105,74 @@ class TestUpdateTaskToolPriorityInput:
         assert result["success"] is False
         assert result["error"] == "validation_error"
         assert "priority" in result["message"].lower()
+        mock_update.assert_not_called()
+
+
+class TestUpdateTaskToolEisenhowerInput:
+    """Tests for coercing and validating eisenhower input values."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("input_value", "expected"),
+        [
+            ("0", 0),
+            ("1", 1),
+            ("2", 2),
+            ("3", 3),
+            ("4", 4),
+        ],
+    )
+    async def test_accepts_numeric_eisenhower_and_coerces_when_string(
+        self,
+        task_tools: TaskTools,
+        async_ctx: AsyncMockType,
+        mocker: MockerFixture,
+        input_value: str,
+        expected: int,
+    ) -> None:
+        """Valid eisenhower strings are coerced to ints and sent to API."""
+        client = task_tools.lunatask_client
+        updated_task = create_task_response(task_id="task-123", status="open", eisenhower=expected)
+        mocker.patch.object(client, "update_task", return_value=updated_task)
+        mocker.patch.object(client, "__aenter__", return_value=client)
+        mocker.patch.object(client, "__aexit__", return_value=None)
+
+        result = await task_tools.update_task_tool(async_ctx, id="task-123", eisenhower=input_value)
+
+        assert result["success"] is True
+        client.update_task.assert_called_once()  # type: ignore[attr-defined]
+        call_args = client.update_task.call_args  # type: ignore[attr-defined]
+        task_update: TaskUpdate = call_args[0][1]  # type: ignore[misc]
+        assert isinstance(task_update, TaskUpdate)
+        assert task_update.eisenhower == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "invalid",
+        [
+            "urgent",
+            "asap",
+            "none",
+            "e5",
+            "2.5",
+        ],
+    )
+    async def test_rejects_invalid_eisenhower_strings(
+        self,
+        task_tools: TaskTools,
+        client: LunaTaskClient,
+        async_ctx: AsyncMockType,
+        mocker: MockerFixture,
+        invalid: str,
+    ) -> None:
+        """Invalid eisenhower strings return validation_error and skip API call."""
+        mock_update = mocker.patch.object(client, "update_task")
+        mocker.patch.object(client, "__aenter__", return_value=client)
+        mocker.patch.object(client, "__aexit__", return_value=None)
+
+        result = await task_tools.update_task_tool(async_ctx, id="task-123", eisenhower=invalid)
+
+        assert result["success"] is False
+        assert result["error"] == "validation_error"
+        assert "eisenhower" in result["message"].lower()
         mock_update.assert_not_called()

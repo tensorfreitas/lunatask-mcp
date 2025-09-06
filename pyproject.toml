@@ -55,7 +55,7 @@ markers = [
     "e2e: marks tests as end-to-end tests"
 ]
 # Coverage configuration
-addopts = "--cov=src/lunatask_mcp --cov-report=term-missing --cov-fail-under=90"
+addopts = "--cov=src/lunatask_mcp --cov-report=term-missing --cov-fail-under=95"
 
 [tool.pyright]
 include = ["src", "tests"]

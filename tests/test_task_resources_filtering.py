@@ -1,20 +1,22 @@
-"""Test that the task filtering fix works correctly.
+"""Test task resource filtering behavior.
 
-This test verifies that the global/area aliases now properly filter tasks
-client-side and return only the expected subset instead of all tasks.
+This module verifies that task filtering via global and area aliases, time windows, and status
+criteria returns the expected tasks and handles errors appropriately.
 """
 
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 import pytest
-from fastmcp import FastMCP
+from fastmcp import Context, FastMCP
 from pydantic import HttpUrl
 from pytest_mock import MockerFixture
 
+import lunatask_mcp.tools.tasks_resources as tr  # pyright: ignore[reportPrivateUsage]
 from lunatask_mcp.api.client import LunaTaskClient
+from lunatask_mcp.api.exceptions import LunaTaskBadRequestError
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.tools.tasks import TaskTools
 from tests.factories import create_task_response
@@ -132,10 +134,10 @@ async def test_global_now_returns_only_custom_undated_set(
     ctx = Ctx()
     result: dict[str, Any] = await fn(ctx)  # type: ignore[misc] # Mock function signature
 
-    # Verify the fix: API is called with NO filtering parameters
+    # Ensure API is called with no filtering parameters
     mock_get_tasks.assert_awaited_once()
     _, kwargs = mock_get_tasks.call_args
-    assert not kwargs, "API should be called with no parameters"  # Fixed!
+    assert not kwargs, "API should be called with no parameters"
 
     # The result should now contain ONLY the filtered undated tasks
     expected_task_count = 4
@@ -308,3 +310,132 @@ async def test_area_alias_filters_by_area_and_criteria(
     assert "area1-low" not in returned_ids  # Area-1 but low priority
     assert "area2-high" not in returned_ids  # High priority but wrong area
     assert "no-area-high" not in returned_ids  # High priority but no area
+
+
+def test_filter_by_status_none_returns_all() -> None:
+    """tr._filter_by_status returns all tasks when status is None."""
+    t1 = create_task_response(task_id="t1", status="open")
+    t2 = create_task_response(task_id="t2", status="completed")
+    tasks = [t1, t2]
+    result = tr._filter_by_status(tasks, None)  # pyright: ignore[reportPrivateUsage]
+    assert result == tasks
+
+
+def test_apply_task_filters_empty_returns_all() -> None:
+    """tr._apply_task_filters returns tasks unchanged when no criteria supplied."""
+    t = create_task_response(task_id="t")
+    result = tr._apply_task_filters([t], {})  # pyright: ignore[reportPrivateUsage]
+    assert result == [t]
+
+
+def test_filter_by_time_window_variants() -> None:
+    """tr._filter_by_time_window handles supported windows and fallbacks."""
+    now = datetime.now(UTC)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = today_start + timedelta(days=1)
+    task_overdue = create_task_response(
+        task_id="overdue", due_date=today_start - timedelta(hours=1)
+    )
+    task_today = create_task_response(task_id="today", due_date=today_start + timedelta(hours=2))
+    task_next_week = create_task_response(
+        task_id="next-week", due_date=today_end + timedelta(days=2)
+    )
+    task_far = create_task_response(task_id="far", due_date=today_end + timedelta(days=8))
+    tasks = [task_overdue, task_today, task_next_week, task_far]
+
+    result_now = tr._filter_by_time_window(tasks, "now")  # pyright: ignore[reportPrivateUsage]
+    assert {t.id for t in result_now} == {"overdue", "today"}
+
+    result_today = tr._filter_by_time_window(tasks, "today")  # pyright: ignore[reportPrivateUsage]
+    assert {t.id for t in result_today} == {"today"}
+
+    result_next = tr._filter_by_time_window(tasks, "next_7_days")  # pyright: ignore[reportPrivateUsage]
+    assert {t.id for t in result_next} == {"next-week"}
+
+    result_unknown = tr._filter_by_time_window(tasks, "unknown")  # pyright: ignore[reportPrivateUsage]
+    assert result_unknown == tasks
+
+
+@pytest.mark.asyncio
+async def test_fetch_tasks_for_global_alias_window_now(
+    mocker: MockerFixture,
+) -> None:
+    """tr._fetch_tasks_for_global_alias handles window 'now'."""
+    client = mocker.Mock(spec=LunaTaskClient)
+    client.get_tasks = mocker.AsyncMock(return_value=[])
+    params: dict[str, str | int] = {}
+    filter_criteria = {"filter_type": "window", "window": "now"}
+
+    tasks, should_filter = await tr._fetch_tasks_for_global_alias(client, filter_criteria, params)  # pyright: ignore[reportPrivateUsage]
+
+    cast(Any, client.get_tasks).assert_awaited_once_with()
+    assert tasks == []
+    assert should_filter is True
+
+
+@pytest.mark.asyncio
+async def test_fetch_tasks_for_global_alias_unknown_type(
+    mocker: MockerFixture,
+) -> None:
+    """tr._fetch_tasks_for_global_alias defaults for unknown filter types."""
+    client = mocker.Mock(spec=LunaTaskClient)
+    client.get_tasks = mocker.AsyncMock(return_value=[])
+    params: dict[str, str | int] = {"scope": "global", "limit": 10}
+    filter_criteria = {"filter_type": "other"}
+
+    tasks, should_filter = await tr._fetch_tasks_for_global_alias(client, filter_criteria, params)  # pyright: ignore[reportPrivateUsage]
+
+    cast(Any, client.get_tasks).assert_awaited_once_with(scope="global", limit=10)
+    assert tasks == []
+    assert should_filter is False
+
+
+@pytest.mark.asyncio
+async def test_list_tasks_global_alias_unknown_alias_errors(
+    mocker: MockerFixture,
+) -> None:
+    """tr.list_tasks_global_alias raises for unknown alias values."""
+    config = ServerConfig(
+        lunatask_bearer_token="tok", lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/")
+    )
+    client = LunaTaskClient(config)
+
+    class Ctx:
+        info = mocker.AsyncMock()
+        error = mocker.AsyncMock()
+
+    ctx = cast(Context, Ctx())
+
+    with pytest.raises(LunaTaskBadRequestError):
+        await tr.list_tasks_global_alias(client, ctx, alias="bogus")
+    cast(Any, ctx.error).assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_list_tasks_area_alias_unknown_filter_type_calls_client(
+    mocker: MockerFixture,
+) -> None:
+    """tr.list_tasks_area_alias falls back to raw client call for unknown filter types."""
+    config = ServerConfig(
+        lunatask_bearer_token="tok", lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/")
+    )
+    client = LunaTaskClient(config)
+    task = create_task_response(task_id="a1", area_id="area-1")
+    mocker.patch.object(client, "get_tasks", mocker.AsyncMock(return_value=[task]))
+    mocker.patch.object(client, "__aenter__", return_value=client)
+    mocker.patch.object(client, "__aexit__", return_value=None)
+
+    mocker.patch(
+        "lunatask_mcp.tools.tasks_resources._get_alias_filter_criteria",
+        return_value={"filter_type": "weird", "limit": 50},
+    )
+
+    class Ctx:
+        info = mocker.AsyncMock()
+        error = mocker.AsyncMock()
+
+    ctx = cast(Context, Ctx())
+    result = await tr.list_tasks_area_alias(client, ctx, area_id="area-1", alias="whatever")
+
+    cast(Any, client.get_tasks).assert_awaited_once_with(area_id="area-1", limit=50)
+    assert result["items"][0]["id"] == "a1"

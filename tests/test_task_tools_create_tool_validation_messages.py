@@ -92,3 +92,49 @@ async def test_create_task_tool_unexpected_error_fallback(mocker: MockerFixture)
     assert result["success"] is False
     assert result["error"] == "unexpected_error"
     assert result["message"] == "Unexpected error creating task: Boom!"
+
+
+@pytest.mark.asyncio
+async def test_create_task_tool_invalid_priority_type_error(
+    mocker: MockerFixture,
+) -> None:
+    """Return structured error when priority cannot be coerced to int."""
+    mcp = FastMCP("test-server")
+    config = ServerConfig(
+        lunatask_bearer_token="test_token",
+        lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
+    )
+    client = LunaTaskClient(config)
+    task_tools = TaskTools(mcp, client)
+
+    mock_ctx = mocker.AsyncMock()
+
+    result = await task_tools.create_task_tool(mock_ctx, name="Test Task", priority="high")
+
+    assert result["success"] is False
+    assert result["error"] == "validation_error"
+    assert "priority" in result["message"]
+    assert "integer between -2 and 2" in result["message"]
+
+
+@pytest.mark.asyncio
+async def test_create_task_tool_invalid_eisenhower_type_error(
+    mocker: MockerFixture,
+) -> None:
+    """Return structured error when eisenhower cannot be coerced to int."""
+    mcp = FastMCP("test-server")
+    config = ServerConfig(
+        lunatask_bearer_token="test_token",
+        lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
+    )
+    client = LunaTaskClient(config)
+    task_tools = TaskTools(mcp, client)
+
+    mock_ctx = mocker.AsyncMock()
+
+    result = await task_tools.create_task_tool(mock_ctx, name="Test Task", eisenhower="urgent")
+
+    assert result["success"] is False
+    assert result["error"] == "validation_error"
+    assert "eisenhower" in result["message"]
+    assert "integer between 0 and 4" in result["message"]

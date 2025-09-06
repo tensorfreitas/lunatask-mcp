@@ -20,11 +20,3 @@
 2. Configuration instructions are provided, explaining all options for the config file and command-line arguments.
 3. A "Getting Started" or "Usage" section is added, showing a clear example of how to run the server and call a tool.
 4. All available MCP tools and resources are documented.
-
-## **Story 3.3: Package for PyPI**
-**As a** developer, **I want** the project to be properly packaged for distribution, **so that** it can be easily published to and installed from the Python Package Index (PyPI).
-### Acceptance Criteria
-1. The `pyproject.toml` file is fully configured with all necessary metadata for packaging (e.g., name, version, author, license, dependencies).
-2. The project can be successfully built into a source distribution and a wheel using standard Python build tools.
-3. The package can be installed locally via `pip` from the built wheel and run correctly.
-

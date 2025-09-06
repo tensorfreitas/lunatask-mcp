@@ -26,9 +26,9 @@ async def create_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
     note: str | None = None,
     area_id: str | None = None,
     status: str = "later",
-    priority: int = 0,
+    priority: int | str = 0,
     motivation: str = "unknown",
-    eisenhower: int | None = None,
+    eisenhower: int | str | None = None,
 ) -> dict[str, Any]:
     """Create a new task in LunaTask.
 
@@ -41,9 +41,9 @@ async def create_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
         note: Optional task note
         area_id: Optional area ID the task belongs to
         status: Task status (default: "later")
-        priority: Optional task priority level
+        priority: Optional task priority level (accepts int or numeric string)
         motivation: Optional task motivation (must, should, want, unknown)
-        eisenhower: Optional eisenhower matrix quadrant (0-4)
+        eisenhower: Optional eisenhower matrix quadrant (0-4; accepts int or numeric string)
 
     Returns:
         dict[str, Any]: Response containing task creation result with task_id
@@ -57,6 +57,43 @@ async def create_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
         LunaTaskAPIError: For other API errors
     """
     await ctx.info(f"Creating new task: {name}")
+
+    # Coerce string priority values to integers when possible for client UX
+    coerced_priority: int
+    if isinstance(priority, int):
+        coerced_priority = priority
+    else:
+        try:
+            coerced_priority = int(priority)
+        except (TypeError, ValueError):
+            error_msg = "Invalid priority: must be an integer between -2 and 2"
+            result = {
+                "success": False,
+                "error": "validation_error",
+                "message": f"Validation failed for priority: {error_msg}",
+            }
+            await ctx.error(error_msg)
+            logger.warning("Invalid priority type for create_task: %r", priority)
+            return result
+
+    # Coerce string eisenhower values to integers when possible for client UX
+    coerced_eisenhower: int | None = None
+    if eisenhower is not None:
+        if isinstance(eisenhower, int):
+            coerced_eisenhower = eisenhower
+        else:
+            try:
+                coerced_eisenhower = int(eisenhower)
+            except (TypeError, ValueError):
+                error_msg = "Invalid eisenhower: must be an integer between 0 and 4"
+                result = {
+                    "success": False,
+                    "error": "validation_error",
+                    "message": f"Validation failed for eisenhower: {error_msg}",
+                }
+                await ctx.error(error_msg)
+                logger.warning("Invalid eisenhower type for create_task: %r", eisenhower)
+                return result
 
     try:
         # Create TaskCreate object from parameters
@@ -73,9 +110,9 @@ async def create_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
             note=note,
             area_id=area_id,
             status=task_status,  # type: ignore[arg-type]
-            priority=priority,
+            priority=coerced_priority,
             motivation=task_motivation,  # type: ignore[arg-type]
-            eisenhower=eisenhower,
+            eisenhower=coerced_eisenhower,
         )
 
         # Use LunaTask client to create the task

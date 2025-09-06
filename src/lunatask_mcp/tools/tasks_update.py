@@ -32,7 +32,7 @@ async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
     priority: int | str | None = None,
     due_date: str | None = None,
     motivation: str | None = None,
-    eisenhower: int | None = None,
+    eisenhower: int | str | None = None,
 ) -> dict[str, Any]:
     """Update an existing task in LunaTask.
 
@@ -122,6 +122,25 @@ async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
                 logger.warning("Invalid priority type for task %s: %r", id, priority)
                 return result
 
+    # Coerce string eisenhower values to integers when possible for client UX
+    coerced_eisenhower: int | None = None
+    if eisenhower is not None:
+        if isinstance(eisenhower, int):
+            coerced_eisenhower = eisenhower
+        else:
+            try:
+                coerced_eisenhower = int(eisenhower)
+            except (TypeError, ValueError):
+                error_msg = "Invalid eisenhower: must be an integer between 0 and 4"
+                result = {
+                    "success": False,
+                    "error": "validation_error",
+                    "message": f"Validation failed for eisenhower: {error_msg}",
+                }
+                await ctx.error(error_msg)
+                logger.warning("Invalid eisenhower type for task %s: %r", id, eisenhower)
+                return result
+
     await ctx.info(f"Updating task {id}")
 
     try:
@@ -147,7 +166,7 @@ async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
             priority=coerced_priority,
             due_date=parsed_due_date,
             motivation=task_motivation,  # type: ignore[arg-type]
-            eisenhower=eisenhower,
+            eisenhower=coerced_eisenhower,
         )
 
         # Use LunaTask client to update the task

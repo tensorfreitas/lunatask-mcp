@@ -71,9 +71,9 @@ class TaskTools:
         note: str | None = None,
         area_id: str | None = None,
         status: str = "later",
-        priority: int = 0,
+        priority: int | str = 0,
         motivation: str = "unknown",
-        eisenhower: int | None = None,
+        eisenhower: int | str | None = None,
     ) -> dict[str, Any]:
         """Create a new task in LunaTask."""
         return await create_task_tool_fn(
@@ -99,7 +99,7 @@ class TaskTools:
         priority: int | str | None = None,
         due_date: str | None = None,
         motivation: str | None = None,
-        eisenhower: int | None = None,
+        eisenhower: int | str | None = None,
     ) -> dict[str, Any]:
         """Update an existing task in LunaTask."""
         return await update_task_tool_fn(
@@ -170,9 +170,9 @@ class TaskTools:
             note: str | None = None,
             area_id: str | None = None,
             status: str = "later",
-            priority: int = 0,
+            priority: int | str = 0,
             motivation: str = "unknown",
-            eisenhower: int | None = None,
+            eisenhower: int | str | None = None,
         ) -> dict[str, Any]:
             """Create a new task in LunaTask."""
             return await create_task_tool_fn(
@@ -197,7 +197,7 @@ class TaskTools:
             priority: int | str | None = None,
             due_date: str | None = None,
             motivation: str | None = None,
-            eisenhower: int | None = None,
+            eisenhower: int | str | None = None,
         ) -> dict[str, Any]:
             """Update an existing task in LunaTask."""
             return await update_task_tool_fn(

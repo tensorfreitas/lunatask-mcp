@@ -1,6 +1,6 @@
 # Epic 3: Habit Tracking & Release Readiness
 
-**Expanded Goal**: The goal of this final epic is to implement the specific habit-tracking functionality and to perform all the necessary final steps to prepare the project for a high-quality, public release on PyPI.
+**Expanded Goal**: The goal of this final epic is to implement the specific habit-tracking functionality and to perform all the necessary final steps to prepare the project for a high-quality, public release.
 
 ## **Story 3.1: Track Habit Tool**
 **As a** user, **I want** to track an activity for a specific habit on a given date using an MCP tool, **so that** I can log my habit progress from my AI tools.

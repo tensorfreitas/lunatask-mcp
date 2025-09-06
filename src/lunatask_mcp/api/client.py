@@ -7,6 +7,7 @@ requests to the LunaTask API with proper error handling and security.
 import asyncio
 import logging
 import types
+from datetime import date
 from typing import Any, NoReturn
 
 import httpx
@@ -540,3 +541,23 @@ class LunaTaskClient:
                 return True
             logger.warning("LunaTask API connectivity test failed: unexpected response")
             return False
+
+    async def track_habit(self, habit_id: str, track_date: date) -> None:
+        """Track an activity for a specific habit on a given date.
+
+        Args:
+            habit_id: The ID of the habit to track
+            track_date: The date when the habit was performed
+
+        Raises:
+            LunaTaskAuthenticationError: Authentication failed
+            LunaTaskNotFoundError: Habit not found
+            LunaTaskValidationError: Invalid date format
+            LunaTaskRateLimitError: Rate limit exceeded
+            LunaTaskServerError: Server error
+            LunaTaskTimeoutError: Request timeout
+            LunaTaskNetworkError: Network connectivity error
+        """
+        await self.make_request(
+            "POST", f"habits/{habit_id}/track", data={"performed_on": track_date.isoformat()}
+        )

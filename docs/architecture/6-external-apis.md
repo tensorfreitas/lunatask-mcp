@@ -67,7 +67,20 @@ This project has one critical external dependency: the LunaTask API. All core fu
    - **Behavior**: Non-idempotent (repeated deletion returns 404)
    - **Status**: ✅ Implemented (Story 2.5)
 
-#### Not Yet Implemented
+### Habits API
+
+#### Implemented Endpoints
+
+1. **POST /v1/habits/{id}/track** - Track Habit Activity
+   - **Purpose**: Track an activity for a specific habit on a given date
+   - **Implementation**: `LunaTaskClient.track_habit(habit_id: str, track_date: date)` method
+   - **MCP Tool**: `track_habit` tool (handler in `tools/habits.py`)
+   - **Request Body**: JSON with `performed_on` field in ISO-8601 format (`YYYY-MM-DD`)
+   - **Response**: Success returns 204 No Content or similar success status
+   - **Error Handling**: Habit not found (404), validation errors (422), auth errors (401)
+   - **Rate Limiting**: Applied via `TokenBucketLimiter` in `make_request`
+   - **Status**: ✅ Implemented (Story 3.1)
+
 
 ### Response Format Notes
 

@@ -139,5 +139,4 @@ class HabitTrackRequest(BaseModel):
     date: date
     value: Optional[float] = None  # For quantified habits (e.g., glasses of water)
     completed: bool = True  # For simple completion tracking
-    note: Optional[str] = None
 ```

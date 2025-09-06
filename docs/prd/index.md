@@ -42,5 +42,3 @@
       - [Acceptance Criteria](./epic-3-habit-tracking-release-readiness.md#acceptance-criteria)
     - [Story 3.2: Finalize Documentation](./epic-3-habit-tracking-release-readiness.md#story-32-finalize-documentation)
       - [Acceptance Criteria](./epic-3-habit-tracking-release-readiness.md#acceptance-criteria)
-    - [Story 3.3: Package for PyPI](./epic-3-habit-tracking-release-readiness.md#story-33-package-for-pypi)
-      - [Acceptance Criteria](./epic-3-habit-tracking-release-readiness.md#acceptance-criteria)

@@ -6,12 +6,11 @@ This project will not utilize traditional Infrastructure as Code (IaC) tools lik
 
 ## Deployment Strategy
 
-*   **Strategy**: The primary deployment strategy is **packaging and distribution via the Python Package Index (PyPI)**. This allows users to install the server easily and reliably on any platform with a Python environment using a standard command.
+*   **Strategy**: The primary deployment strategy is **uv**. This allows users to install the server easily and reliably on any platform using a standard command.
 *   **CI/CD Platform**: **GitHub Actions** will be used to automate testing, linting, and the package deployment process.
 *   **Pipeline Configuration**: The CI/CD workflow will be defined in `.github/workflows/ci.yaml`. This pipeline will:
     1.  Run `pre-commit` checks on every push to the `main` branch.
     2.  Execute the `pytest` test suite.
-    3.  On a new version tag (e.g., `v1.0.0`), it will automatically build the source distribution and wheel, then publish the package to PyPI.
 
 ## Environments
 

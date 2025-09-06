@@ -5,7 +5,7 @@ objects for use in tests. These functions help reduce duplication in test setup
 while keeping the construction explicit and readable.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from lunatask_mcp.api.models import Source, TaskResponse
 
@@ -38,7 +38,7 @@ def create_task_response(  # noqa: PLR0913  # Factory functions need many parame
     eisenhower: int | None = None,
     previous_status: str | None = None,
     progress: int | None = None,
-    scheduled_on: datetime | None = None,
+    scheduled_on: date | None = None,
     completed_at: datetime | None = None,
 ) -> TaskResponse:
     """Create a TaskResponse object with default or provided values.

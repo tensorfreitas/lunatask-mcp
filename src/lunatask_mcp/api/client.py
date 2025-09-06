@@ -288,8 +288,9 @@ class LunaTaskClient:
     async def get_tasks(self, **params: str | int | None) -> list[TaskResponse]:
         """Retrieve all tasks from the LunaTask API.
 
-        The API returns tasks in wrapped format: {"tasks": [TaskResponse, ...]}
-        This method extracts and returns the task list.
+        The API returns tasks in wrapped format: {"tasks": [TaskResponse, ...]}.
+        This method extracts and returns the task list with guardrails, while
+        translating composite filters (e.g., status="open") client-side.
 
         Args:
             **params: Optional query parameters for pagination/filtering
@@ -297,48 +298,69 @@ class LunaTaskClient:
 
         Returns:
             List[TaskResponse]: List of task objects from the API
-
-        Raises:
-            LunaTaskAuthenticationError: Invalid bearer token
-            LunaTaskRateLimitError: Rate limit exceeded
-            LunaTaskServerError: Server error occurred
-            LunaTaskNetworkError: Network connectivity error
-            LunaTaskAPIError: Other API errors (including missing 'tasks' key)
         """
-        # Prepare params dict, filtering out None values
-        query_params = {k: v for k, v in params.items() if v is not None} if params else None
-
-        # Apply guardrails and canonicalization for list queries when params provided
-        if query_params:
-            # Deny unsupported expand semantics on list resources
-            if "expand" in query_params:
-                raise LunaTaskBadRequestError.expand_not_supported()
-
-            # Enforce limit cap; clamp if exceeded
-            if "limit" in query_params:
-                try:
-                    limit_val = int(query_params["limit"])  # type: ignore[arg-type]
-                except Exception:
-                    limit_val = _MAX_LIST_LIMIT
-                if limit_val > _MAX_LIST_LIMIT:
-                    query_params["limit"] = _MAX_LIST_LIMIT
-
-            # Canonicalize by sorting parameter insertion order for deterministic queries
-            # Preserve values while enforcing lexicographic key order
-            query_params = {k: query_params[k] for k in sorted(query_params.keys())}
+        query_params, apply_open_filter = self._prepare_list_query_params(params)
 
         # Make authenticated request to /v1/tasks endpoint
-        if query_params:
-            response_data = await self.make_request("GET", "tasks", params=query_params)
-        else:
-            response_data = await self.make_request("GET", "tasks")
+        response_data = (
+            await self.make_request("GET", "tasks", params=query_params)
+            if query_params
+            else await self.make_request("GET", "tasks")
+        )
 
-        # Parse response JSON into TaskResponse model list
-        # The tasks API returns a wrapped response in format {"tasks": [...]}
-        # Extract the task list from the wrapped response
-        task_list: list[dict[str, Any]] = response_data["tasks"]
+        tasks = self._extract_task_list(response_data)
+
+        # Apply composite open filter client-side if requested
+        if apply_open_filter:
+            tasks = [t for t in tasks if t.status != "completed"]
+        logger.debug("Successfully retrieved %d tasks", len(tasks))
+        return tasks
+
+    def _prepare_list_query_params(
+        self, params: dict[str, str | int | None] | None
+    ) -> tuple[dict[str, str | int] | None, bool]:
+        """Sanitize and canonicalize list query params.
+
+        Returns a tuple of (query_params, apply_open_filter) where
+        apply_open_filter indicates whether a composite open filter should be
+        applied after fetching results.
+        """
+        if not params:
+            return None, False
+
+        # Drop None values
+        query_params: dict[str, str | int] = {
+            k: v
+            for k, v in params.items()
+            if v is not None  # type: ignore[misc]
+        }
+
+        apply_open_filter = False
+        if query_params.get("status") == "open":
+            apply_open_filter = True
+            del query_params["status"]
+
+        # Guardrails
+        if "expand" in query_params:
+            raise LunaTaskBadRequestError.expand_not_supported()
+
+        if "limit" in query_params:
+            try:
+                limit_val = int(query_params["limit"])  # type: ignore[arg-type]
+            except Exception:
+                limit_val = _MAX_LIST_LIMIT
+            if limit_val > _MAX_LIST_LIMIT:
+                query_params["limit"] = _MAX_LIST_LIMIT
+
+        # Canonicalize insertion order by lexicographic key
+        query_params = {k: query_params[k] for k in sorted(query_params.keys())}
+        return query_params, apply_open_filter
+
+    def _extract_task_list(self, response_data: dict[str, Any]) -> list[TaskResponse]:
+        """Parse the wrapped tasks list from API response with error handling."""
+        task_list: list[dict[str, Any]] = response_data.get("tasks", [])
         try:
-            tasks = [TaskResponse(**task_data) for task_data in task_list]
+            return [TaskResponse(**task_data) for task_data in task_list]
         except KeyError as e:
             logger.exception("Failed to extract tasks from wrapped response format")
             raise LunaTaskAPIError.create_parse_error(
@@ -348,9 +370,6 @@ class LunaTaskClient:
             logger.exception("Failed to parse task response data")
             task_count = len(task_list) if task_list else "unknown"
             raise LunaTaskAPIError.create_parse_error("tasks", task_count=task_count) from e
-        else:
-            logger.debug("Successfully retrieved %d tasks", len(tasks))
-            return tasks
 
     async def get_task(self, task_id: str) -> TaskResponse:
         """Retrieve a single task from the LunaTask API by ID.

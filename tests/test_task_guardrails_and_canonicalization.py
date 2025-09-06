@@ -47,10 +47,7 @@ async def test_discovery_alias_canonical_params_sorted() -> None:
     global_overdue = next(a for a in aliases if a["family"] == "global" and a["name"] == "overdue")
 
     # Expect canonical URIs to have params sorted by key
-    assert (
-        area_now["canonical"]
-        == "lunatask://tasks?area_id={area_id}&limit=25&status=open&window=now"
-    )
+    assert area_now["canonical"] == "lunatask://tasks?area_id={area_id}&limit=25&status=open"
     assert global_overdue["canonical"] == (
         "lunatask://tasks?limit=50&scope=global&sort=due_date.asc,priority.desc,id.asc"
         "&status=open&window=overdue"

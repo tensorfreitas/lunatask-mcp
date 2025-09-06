@@ -6,7 +6,7 @@ LunaTaskClient.get_tasks and minimal projection in the response.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 
 import pytest
@@ -88,6 +88,7 @@ class TestAreaAliasBehavior:
         t1 = create_task_response(
             task_id="t1",
             status="open",
+            area_id="area-1",
             created_at=datetime(2025, 8, 20, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 20, 11, 0, 0, tzinfo=UTC),
         )
@@ -121,6 +122,95 @@ class TestAreaAliasBehavior:
         assert len(result["items"]) == 1
         assert result["items"][0]["id"] == "t1"
         assert result["items"][0]["detail_uri"] == "lunatask://tasks/t1"
+
+    @pytest.mark.asyncio
+    async def test_area_today_scopes_and_filters_scheduled_on(self, mocker: MockerFixture) -> None:
+        mcp = FastMCP("test-server")
+        config = ServerConfig(
+            lunatask_bearer_token="test_token",
+            lunatask_base_url=HttpUrl("https://api.lunatask.app/v1/"),
+        )
+        client = LunaTaskClient(config)
+
+        registry: dict[str, object] = {}
+
+        def capture(uri: str) -> object:
+            def deco(fn: object) -> object:
+                registry[uri] = fn
+                return fn
+
+            return deco
+
+        mocker.patch.object(mcp, "resource", side_effect=capture)
+        TaskTools(mcp, client)
+
+        target_area = "area-123"
+        other_area = "area-999"
+        today = datetime.now(UTC)
+        tomorrow = today + timedelta(days=1)
+
+        # Mixed tasks across areas and days; upstream might ignore filters
+        t_today_a = create_task_response(
+            task_id="a-today-2",
+            status="open",
+            priority=2,
+            area_id=target_area,
+            scheduled_on=today.date(),
+        )
+        t_today_b = create_task_response(
+            task_id="a-today-0",
+            status="open",
+            priority=0,
+            area_id=target_area,
+            scheduled_on=today.date(),
+        )
+        t_other_area_today = create_task_response(
+            task_id="b-today",
+            status="open",
+            priority=2,
+            area_id=other_area,
+            scheduled_on=today.date(),
+        )
+        t_other_area_tomorrow = create_task_response(
+            task_id="b-tmr",
+            status="open",
+            priority=1,
+            area_id=other_area,
+            scheduled_on=tomorrow.date(),
+        )
+        t_unscheduled_same_area = create_task_response(
+            task_id="a-none",
+            status="open",
+            priority=1,
+            area_id=target_area,
+            scheduled_on=None,
+        )
+
+        mocker.patch.object(
+            client,
+            "get_tasks",
+            return_value=[
+                t_other_area_tomorrow,
+                t_today_b,
+                t_unscheduled_same_area,
+                t_today_a,
+                t_other_area_today,
+            ],
+        )
+        mocker.patch.object(client, "__aenter__", return_value=client)
+        mocker.patch.object(client, "__aexit__", return_value=None)
+
+        fn = cast(Any, registry["lunatask://area/{area_id}/today"])  # (area_id, ctx)
+
+        class Ctx:
+            async def info(self, _: str) -> None:
+                return
+
+        ctx = cast(Context, Ctx())
+        result = await fn(target_area, ctx)
+
+        ids_in_order = [i["id"] for i in result["items"]]
+        assert ids_in_order == ["a-today-2", "a-today-0"]
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(

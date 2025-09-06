@@ -9,6 +9,8 @@
 2. Aliases: provide canonical presets for both families with deterministic sorting and caps:
    - Area: `lunatask://area/{area_id}/now|today|overdue|next-7-days|high-priority|recent-completions`.
    - Global: `lunatask://global/now|today|overdue|next-7-days|high-priority|recent-completions`.
+   - Now semantics: client-side only; includes UNDated tasks matching ANY of {status=started, priority=2,
+     motivation=must, eisenhower=1}; completed tasks excluded.
 3. Defaults and caps: `status=open`, minimal projection (`id,due_date,priority,status,area_id,list_id,detail_uri`), deterministic sort (`priority.desc,due.asc,id.asc`), `limit<=50` (default 25 for `now`), and `tz=UTC` by default.
 4. Sorting variants: Overdue uses `due.asc,priority.desc,id.asc`; Recent completions uses `completed_at.desc,id.asc`; null `due_date` placed last for non‑overdue; null priority treated as lowest.
 5. Discovery: `lunatask://tasks` becomes discovery‑only and returns params, defaults (including `tz`), limits, canonical examples for both families, sorts, projection, and guardrails.

@@ -188,9 +188,8 @@ class TestLunaTaskClientGetTasks:
         # Test with optional pagination/filter parameters
         await client.get_tasks(limit=10, offset=20, status="open")
 
-        mock_request.assert_called_once_with(
-            "GET", "tasks", params={"limit": 10, "offset": 20, "status": "open"}
-        )
+        # "open" is a composite status not forwarded upstream; verify it's removed
+        mock_request.assert_called_once_with("GET", "tasks", params={"limit": 10, "offset": 20})
 
     @pytest.mark.asyncio
     async def test_task_response_missing_additional_fields(self, mocker: MockerFixture) -> None:

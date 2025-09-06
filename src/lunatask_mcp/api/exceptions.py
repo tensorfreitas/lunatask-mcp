@@ -82,6 +82,27 @@ class LunaTaskBadRequestError(LunaTaskAPIError):
         """
         return cls("Expand is not supported on task list resources")
 
+    @classmethod
+    def unknown_alias(cls, alias: str) -> "LunaTaskBadRequestError":
+        """Create an error for unknown alias parameter.
+
+        Args:
+            alias: The unknown alias that was provided
+
+        Returns:
+            LunaTaskBadRequestError for unknown alias
+        """
+        return cls(f"Unknown alias: {alias}")
+
+    @classmethod
+    def missing_area_id(cls) -> "LunaTaskBadRequestError":
+        """Create an error for missing area_id parameter.
+
+        Returns:
+            LunaTaskBadRequestError for missing area_id
+        """
+        return cls("Missing required parameter: area_id")
+
 
 class LunaTaskAuthenticationError(LunaTaskAPIError):
     """Raised when authentication fails (401 Unauthorized)."""

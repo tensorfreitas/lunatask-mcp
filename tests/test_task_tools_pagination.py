@@ -56,9 +56,9 @@ class TestTaskToolsPaginationAndFiltering:
         # Test pagination parameter forwarding
         await client.get_tasks(limit=50, offset=100, status="open")
 
-        # Verify parameters were forwarded correctly
+        # "open" is composite; ensure it is not forwarded to the upstream API
         mock_make_request.assert_called_once_with(
-            "GET", "tasks", params={"limit": 50, "offset": 100, "status": "open"}
+            "GET", "tasks", params={"limit": 50, "offset": 100}
         )
 
     @pytest.mark.asyncio

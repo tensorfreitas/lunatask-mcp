@@ -7,6 +7,8 @@ retrieving single tasks, designed to be bound as methods of TaskTools.
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastmcp import Context
@@ -21,6 +23,7 @@ from lunatask_mcp.api.exceptions import (
     LunaTaskServerError,
     LunaTaskTimeoutError,
 )
+from lunatask_mcp.api.models import TaskResponse
 from lunatask_mcp.tools.tasks_common import serialize_task_response
 
 logger = logging.getLogger(__name__)
@@ -51,7 +54,8 @@ async def tasks_discovery_resource(
             "area_id": "string",
             "scope": "global",
             "window": "today|overdue|next_7_days|now",
-            "status": "open|completed|next|started|now",
+            # Upstream-supported statuses; "open" is a composite (not forwarded upstream)
+            "status": "later|next|started|waiting|completed",
             "min_priority": "low|medium|high",
             "priority": ["low", "medium", "high"],
             "completed_since": "-72h|ISO8601",
@@ -88,7 +92,7 @@ async def tasks_discovery_resource(
                 "name": "now",
                 "uri": "lunatask://area/{area_id}/now",
                 # Canonical params sorted by key: area_id, limit, status, window
-                "canonical": ("lunatask://tasks?area_id={area_id}&limit=25&status=open&window=now"),
+                "canonical": ("lunatask://tasks?area_id={area_id}&limit=25&status=open"),
             },
             {
                 "family": "global",
@@ -302,15 +306,226 @@ async def get_task_resource(
         return resource_data
 
 
-def _get_alias_params(alias: str) -> dict[str, Any] | None:
-    """Map an alias string to a dictionary of canonical query parameters."""
-    if alias in ("now", "today", "overdue", "next_7_days"):
-        return {"window": alias, "status": "open", "limit": 25 if alias == "now" else 50}
-    if alias == "high_priority":
-        return {"min_priority": "high", "status": "open", "limit": 50}
-    if alias == "recent_completions":
-        return {"status": "completed", "completed_since": "-72h", "limit": 50}
-    return None
+def _get_alias_filter_criteria(alias: str) -> dict[str, Any] | None:
+    """Map an alias string to client-side filtering criteria.
+
+    Returns filtering criteria that will be applied after fetching tasks,
+    since the LunaTask API doesn't support these advanced filtering parameters.
+
+    Semantics adjustments:
+    - "today": due today only (unchanged)
+    - "now": client-side only; include UNDated tasks matching any of:
+        * status == "started"
+        * priority == 2
+        * motivation == "must"
+        * eisenhower == 1
+      Always excludes completed tasks.
+    """
+    criteria_map = {
+        # Special client-side criteria (no upstream window parameter)
+        "now": {
+            "filter_type": "now",
+            "status_filter": "open",
+            "limit": 25,
+            "now_rules": {
+                "require_no_due_date": True,
+                "include_status": {"started"},
+                "include_priority_exact": {2},
+                "include_motivation": {"must"},
+                "include_eisenhower_exact": {1},
+            },
+        },
+        # Time windows (applied upstream when possible, and client-side when needed)
+        "today": {"filter_type": "window", "window": "today", "status_filter": "open", "limit": 50},
+        "overdue": {
+            "filter_type": "window",
+            "window": "overdue",
+            "status_filter": "open",
+            "limit": 50,
+        },
+        "next_7_days": {
+            "filter_type": "window",
+            "window": "next_7_days",
+            "status_filter": "open",
+            "limit": 50,
+        },
+        "high_priority": {
+            "filter_type": "priority",
+            "min_priority": 1,  # High priority = 1 or 2 (range is -2 to 2)
+            "status_filter": "open",
+            "limit": 50,
+        },
+        "recent_completions": {
+            "filter_type": "completion",
+            "status_filter": "completed",
+            "completed_hours_ago": 72,
+            "limit": 50,
+        },
+    }
+    return criteria_map.get(alias)
+
+
+def _filter_by_status(tasks: Sequence[TaskResponse], status: str | None) -> list[TaskResponse]:
+    """Filter tasks by status; supports composite 'open' (not completed)."""
+    if not status:
+        return list(tasks)
+    if status == "open":
+        return [t for t in tasks if t.status != "completed"]
+    return [t for t in tasks if t.status == status]
+
+
+def _filter_by_priority(tasks: Sequence[TaskResponse], min_priority: int) -> list[TaskResponse]:
+    """Filter tasks by minimum priority threshold."""
+    return [t for t in tasks if t.priority is not None and t.priority >= min_priority]
+
+
+def _filter_by_completion_recent(
+    tasks: Sequence[TaskResponse], hours_ago: int
+) -> list[TaskResponse]:
+    """Filter tasks completed within the last N hours."""
+    cutoff_time = datetime.now(UTC) - timedelta(hours=hours_ago)
+    return [t for t in tasks if t.completed_at is not None and t.completed_at >= cutoff_time]
+
+
+def _filter_now_rules(tasks: Sequence[TaskResponse], rules: dict[str, Any]) -> list[TaskResponse]:
+    """Apply custom 'now' rules to include UNDated tasks only."""
+    require_no_due = bool(rules.get("require_no_due_date", True))
+    include_status = set(rules.get("include_status", set()))
+    include_priority_exact = set(rules.get("include_priority_exact", set()))
+    include_motivation = set(rules.get("include_motivation", set()))
+    include_eisenhower_exact = set(rules.get("include_eisenhower_exact", set()))
+
+    def should_include(t: TaskResponse) -> bool:
+        if require_no_due and t.due_date is not None:
+            return False
+        if t.status in include_status:
+            return True
+        prio = t.priority
+        if prio is not None and prio in include_priority_exact:
+            return True
+        mot = t.motivation
+        if mot is not None and mot in include_motivation:
+            return True
+        eis = t.eisenhower
+        return eis is not None and eis in include_eisenhower_exact
+
+    return [t for t in tasks if should_include(t)]
+
+
+def _apply_task_filters(
+    tasks: Sequence[TaskResponse], filter_criteria: dict[str, Any]
+) -> list[TaskResponse]:
+    """Apply client-side filtering to tasks based on filter criteria."""
+    if not filter_criteria:
+        return list(tasks)
+
+    filtered_tasks: list[TaskResponse] = list(tasks)
+    filter_type = filter_criteria.get("filter_type")
+
+    # Status first
+    filtered_tasks = _filter_by_status(filtered_tasks, filter_criteria.get("status_filter"))
+
+    # Then type-specific
+    if filter_type == "window":
+        filtered_tasks = _filter_by_time_window(filtered_tasks, filter_criteria["window"])
+    elif filter_type == "priority":
+        filtered_tasks = _filter_by_priority(filtered_tasks, filter_criteria["min_priority"])
+    elif filter_type == "completion":
+        filtered_tasks = _filter_by_completion_recent(
+            filtered_tasks, filter_criteria["completed_hours_ago"]
+        )
+    elif filter_type == "now":
+        filtered_tasks = _filter_now_rules(filtered_tasks, filter_criteria.get("now_rules", {}))
+
+    return filtered_tasks
+
+
+def _filter_today_scheduled_or_due(tasks: Sequence[TaskResponse]) -> list[TaskResponse]:
+    """Return tasks scheduled or due today (UTC).
+
+    Includes tasks where scheduled_on equals today's UTC date, or due_date falls
+    within today's UTC window [00:00, 24:00).
+    """
+    now = datetime.now(UTC)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = today_start + timedelta(days=1)
+    today_date = today_start.date()
+
+    def is_today(t: TaskResponse) -> bool:
+        return (t.scheduled_on is not None and t.scheduled_on == today_date) or (
+            t.due_date is not None and today_start <= t.due_date < today_end
+        )
+
+    return [t for t in tasks if is_today(t)]
+
+
+def _filter_by_time_window(tasks: list[TaskResponse], window: str) -> list[TaskResponse]:
+    """Filter tasks by time window.
+
+    Args:
+        tasks: List of TaskResponse objects
+        window: Time window ("now", "today", "overdue", "next_7_days")
+
+    Returns:
+        Filtered list of tasks
+    """
+    now = datetime.now(UTC)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = today_start + timedelta(days=1)
+
+    if window == "now":
+        # "Now" = overdue + due today
+        return [t for t in tasks if t.due_date is not None and t.due_date <= today_end]
+    if window == "today":
+        # "Today" = due today only
+        return [
+            t for t in tasks if t.due_date is not None and today_start <= t.due_date < today_end
+        ]
+    if window == "overdue":
+        # "Overdue" = due before now (matches app semantics)
+        return [t for t in tasks if t.due_date is not None and t.due_date < now]
+    if window == "next_7_days":
+        # "Next 7 days" = due within next 7 days (not including overdue/today)
+        next_week_end = today_end + timedelta(days=7)
+        return [
+            t for t in tasks if t.due_date is not None and today_end <= t.due_date < next_week_end
+        ]
+
+    return tasks
+
+
+async def _fetch_tasks_for_global_alias(
+    client: LunaTaskClient, filter_criteria: dict[str, Any], params: dict[str, str | int]
+) -> tuple[list[TaskResponse], bool]:
+    """Fetch tasks for a global alias and whether to apply client-side filtering."""
+    should_filter = False
+    ftype = filter_criteria["filter_type"]
+    if ftype == "window":
+        window = str(filter_criteria["window"])  # today|overdue|next_7_days|now
+        if window != "now":
+            params["window"] = window
+            params["status"] = "open"
+            if window == "overdue":
+                params["sort"] = "due_date.asc,priority.desc,id.asc"
+                should_filter = True
+            return (await client.get_tasks(**params), should_filter)
+        # now → client-side only
+        should_filter = True
+        return (await client.get_tasks(), should_filter)
+    if ftype == "priority":
+        params["min_priority"] = "high"
+        params["status"] = "open"
+        should_filter = True
+        return (await client.get_tasks(**params), should_filter)
+    if ftype == "completion":
+        params["status"] = "completed"
+        params["completed_since"] = "-72h"
+        should_filter = True
+        return (await client.get_tasks(**params), should_filter)
+    if ftype == "now":
+        should_filter = True
+        return (await client.get_tasks(), should_filter)
+    return (await client.get_tasks(**params), should_filter)
 
 
 async def list_tasks_global_alias(
@@ -319,7 +534,7 @@ async def list_tasks_global_alias(
     *,
     alias: str,
 ) -> dict[str, Any]:
-    """List tasks for a global alias with deterministic ordering.
+    """List tasks for a global alias with client-side filtering and deterministic ordering.
 
     Args:
         lunatask_client: Injected LunaTaskClient.
@@ -328,26 +543,59 @@ async def list_tasks_global_alias(
                "high_priority", "recent_completions".
 
     Returns:
-        dict[str, Any]: Minimal projection list with items and metadata.
+        dict[str, Any]: Minimal projection list with filtered items and metadata.
     """
-    params = _get_alias_params(alias)
-    if params is None:
+    filter_criteria = _get_alias_filter_criteria(alias)
+    if filter_criteria is None:
         await ctx.error(f"Unknown alias: {alias}")
-        raise LunaTaskBadRequestError
+        raise LunaTaskBadRequestError.unknown_alias(alias)
 
-    params["scope"] = "global"
+    await ctx.info(f"Listing global tasks with client-side filtering: alias={alias}")
 
-    await ctx.info(
-        f"Listing global tasks: alias={alias}, params={{'status': {params.get('status')}, "
-        f"'limit': {params.get('limit')}}}"
+    # Build canonical params but special-case "now" to call API without filters
+    params: dict[str, str | int] = {"scope": "global"}
+    limit = int(filter_criteria["limit"])  # 25 for now, else 50
+    params["limit"] = limit
+
+    should_filter = False
+    async with lunatask_client:
+        all_tasks, should_filter = await _fetch_tasks_for_global_alias(
+            lunatask_client, filter_criteria, params
+        )
+
+    # For time/priority windows that require client-side filtering, apply it now.
+    filtered_tasks = (
+        _apply_task_filters(all_tasks, filter_criteria) if should_filter else list(all_tasks)
     )
 
-    async with lunatask_client:
-        tasks = await lunatask_client.get_tasks(**params)
+    # If upstream 'today' window appears too broad, narrow locally using schedule/due.
+    if alias == "today" and any(getattr(t, "scheduled_on", None) is not None for t in all_tasks):
+        await ctx.info("Applying client-side 'today' filter by scheduled_on/due_date")
+        filtered_tasks = _filter_today_scheduled_or_due(all_tasks)
 
-    # Deterministic ordering client-side to ensure stability regardless of upstream
+    # Fallback: if overdue alias yields no results, retry without window upstream and
+    # filter client-side only. This guards against upstreams that ignore or reject
+    # non-standard params (e.g., window/scope) or return pages that miss overdue items.
+    if alias == "overdue" and not filtered_tasks:
+        await ctx.info(
+            "No items after overdue filter; retrying without window for client-side filtering"
+        )
+        fallback_params: dict[str, str | int] = {
+            "scope": "global",
+            "limit": limit,
+            "status": "open",
+        }
+        # Provide a sort hint to increase likelihood of capturing earliest due tasks
+        fallback_params["sort"] = "due_date.asc,id.asc"
+        async with lunatask_client:
+            all_tasks = await lunatask_client.get_tasks(**fallback_params)
+        filtered_tasks = _apply_task_filters(all_tasks, filter_criteria)
+
+    await ctx.info(f"Filtered {len(all_tasks)} tasks to {len(filtered_tasks)} for alias {alias}")
+
+    # Apply deterministic ordering based on alias type
     if alias == "overdue":
-        tasks.sort(
+        filtered_tasks.sort(
             key=lambda t: (  # due_date.asc, priority.desc, id.asc
                 ((0, int(t.due_date.timestamp())) if t.due_date else (1, 0)),
                 -(t.priority if t.priority is not None else -10),
@@ -356,7 +604,7 @@ async def list_tasks_global_alias(
         )
         sort = "due_date.asc,priority.desc,id.asc"
     elif alias == "recent_completions":
-        tasks.sort(
+        filtered_tasks.sort(
             key=lambda t: (
                 (0, -int(t.completed_at.timestamp())) if t.completed_at else (1, 0),
                 t.id,
@@ -364,7 +612,7 @@ async def list_tasks_global_alias(
         )
         sort = "completed_at.desc,id.asc"
     else:
-        tasks.sort(
+        filtered_tasks.sort(
             key=lambda t: (  # priority.desc, due_date.asc, id.asc
                 -(t.priority if t.priority is not None else -10),
                 ((0, int(t.due_date.timestamp())) if t.due_date else (1, 0)),
@@ -373,11 +621,15 @@ async def list_tasks_global_alias(
         )
         sort = "priority.desc,due_date.asc,id.asc"
 
+    # Apply limit after filtering and sorting
+    limited_tasks = filtered_tasks[:limit]
+
     items = [
-        {**serialize_task_response(t), "detail_uri": f"lunatask://tasks/{t.id}"} for t in tasks
+        {**serialize_task_response(t), "detail_uri": f"lunatask://tasks/{t.id}"}
+        for t in limited_tasks
     ]
 
-    return {"items": items, "limit": params.get("limit", 50), "sort": sort}
+    return {"items": items, "limit": limit, "sort": sort}
 
 
 async def list_tasks_area_alias(
@@ -387,7 +639,7 @@ async def list_tasks_area_alias(
     area_id: str,
     alias: str,
 ) -> dict[str, Any]:
-    """List tasks for a specific area alias.
+    """List tasks for a specific area alias with client-side filtering.
 
     Args:
         lunatask_client: Injected LunaTaskClient.
@@ -397,36 +649,91 @@ async def list_tasks_area_alias(
                "high_priority", "recent_completions".
 
     Returns:
-        dict[str, Any]: A minimal projection list with items and metadata.
+        dict[str, Any]: A minimal projection list with filtered items and metadata.
     """
     if not area_id:
         await ctx.error("Missing required parameter: area_id")
-        raise LunaTaskBadRequestError
+        raise LunaTaskBadRequestError.missing_area_id()
 
-    params = _get_alias_params(alias)
-    if params is None:
+    filter_criteria = _get_alias_filter_criteria(alias)
+    if filter_criteria is None:
         await ctx.error(f"Unknown alias: {alias}")
-        raise LunaTaskBadRequestError
+        raise LunaTaskBadRequestError.unknown_alias(alias)
 
-    params["area_id"] = area_id
+    await ctx.info(f"Listing tasks for area {area_id} with client-side filtering: alias={alias}")
+
+    # Build canonical query parameters for the client call
+    params: dict[str, str | int] = {"area_id": area_id}
+    limit = int(filter_criteria["limit"])  # 25 for now, else 50
+    params["limit"] = limit
+
+    should_filter = False
+    async with lunatask_client:
+        ftype = filter_criteria["filter_type"]
+        if ftype == "window":
+            w = str(filter_criteria["window"])  # today|overdue|next_7_days
+            params["window"] = w
+            params["status"] = "open"
+            all_tasks = await lunatask_client.get_tasks(**params)
+        elif ftype == "priority":
+            params["min_priority"] = "high"
+            params["status"] = "open"
+            should_filter = True
+            all_tasks = await lunatask_client.get_tasks(**params)
+        elif ftype == "completion":
+            params["status"] = "completed"
+            params["completed_since"] = "-72h"
+            all_tasks = await lunatask_client.get_tasks(**params)
+        elif ftype == "now":
+            # Client-side only rules; fetch area-scoped tasks and filter locally
+            params["status"] = "open"
+            should_filter = True
+            all_tasks = await lunatask_client.get_tasks(**params)
+        else:
+            all_tasks = await lunatask_client.get_tasks(**params)
+
+    # Always scope to the requested area_id client-side to guard against upstream
+    # ignoring area filters. Then apply alias filters deterministically.
+    scoped = [t for t in all_tasks if getattr(t, "area_id", None) == area_id]
+    filtered_tasks = _apply_task_filters(scoped, filter_criteria) if should_filter else list(scoped)
+
+    # Apply the same client-side correction for "today" as global: if scheduled_on
+    # hints are present, restrict to items scheduled/due today within the area.
+    if alias == "today" and any(getattr(t, "scheduled_on", None) is not None for t in scoped):
+        await ctx.info("Applying client-side area 'today' filter by scheduled_on/due_date")
+        filtered_tasks = _filter_today_scheduled_or_due(scoped)
 
     await ctx.info(
-        f"Listing tasks for area {area_id}: alias={alias}, params="
-        f"{{'status': {params.get('status')}, 'limit': {params.get('limit')}}}"
+        f"Retrieved {len(all_tasks)} tasks for area {area_id}; returning {len(filtered_tasks)}"
     )
 
-    async with lunatask_client:
-        tasks = await lunatask_client.get_tasks(**params)
+    # Apply deterministic ordering (same logic as global)
+    if alias == "overdue":
+        filtered_tasks.sort(
+            key=lambda t: (  # due_date.asc, priority.desc, id.asc
+                ((0, int(t.due_date.timestamp())) if t.due_date else (1, 0)),
+                -(t.priority if t.priority is not None else -10),
+                t.id,
+            )
+        )
+        sort = "due_date.asc,priority.desc,id.asc"
+    else:
+        filtered_tasks.sort(
+            key=lambda t: (  # priority.desc, due_date.asc, id.asc
+                -(t.priority if t.priority is not None else -10),
+                ((0, int(t.due_date.timestamp())) if t.due_date else (1, 0)),
+                t.id,
+            )
+        )
+        sort = "priority.desc,due_date.asc,id.asc"
+
+    # Apply limit after filtering and sorting
+    limit = filter_criteria["limit"]
+    limited_tasks = filtered_tasks[:limit]
 
     items = [
-        {**serialize_task_response(t), "detail_uri": f"lunatask://tasks/{t.id}"} for t in tasks
+        {**serialize_task_response(t), "detail_uri": f"lunatask://tasks/{t.id}"}
+        for t in limited_tasks
     ]
 
-    # Provide minimal response shape with deterministic sort hint
-    sort = (
-        "due_date.asc,priority.desc,id.asc"
-        if alias == "overdue"
-        else "priority.desc,due_date.asc,id.asc"
-    )
-
-    return {"items": items, "limit": params.get("limit", 50), "sort": sort}
+    return {"items": items, "limit": limit, "sort": sort}

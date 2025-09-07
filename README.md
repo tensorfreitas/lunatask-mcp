@@ -1,751 +1,56 @@
-# LunaTask MCP
+# LunaTask MCP Server
 
-Model Context Protocol integration for LunaTask.
+LunaTask MCP is an unnoficial Model Context Protocol server that provides a standardized bridge between AI models and the LunaTask API. It's designed as a lightweight, asynchronous Python application using the FastMCP framework, running as a local subprocess to enable AI tools to interact with LunaTask data.
 
-## Quickstart
+## Important Notes
 
-Set up the development environment:
-
-```bash
-# Install dependencies and create virtual environment
-uv sync
-
-# Verify the package imports correctly
-uv run python -c "import lunatask_mcp"
-```
-
-## Running the Server
-
-### CLI Command
-The server can be started using the console script entry point:
-
-```bash
-# Run the MCP server using the CLI command
-uv run lunatask-mcp
-```
-
-### Direct Python Module
-Alternatively, run the server directly as a Python module:
-
-```bash
-# Run as a Python module
-uv run python -m lunatask_mcp.main
-```
-
-The server will start and listen for MCP protocol messages on stdio. All logging output goes to stderr to maintain stdout purity for the MCP protocol channel.
-
-### Server Capabilities
-The server provides:
-- **Ping Tool**: A health-check tool that responds with "pong" when called
-- **LunaTask Resources**: Access to tasks and individual task details via MCP resources
-- **LunaTask Tools**: Create and update tasks in LunaTask via MCP tools
-- **MCP Protocol Version**: Supports MCP protocol version `2025-06-18`
-- **Stdio Transport**: Communicates over standard input/output streams
-
-## LunaTask Integration
-
-### Resources Available
-
-The server exposes LunaTask data through MCP resources:
-
-#### All Tasks Resource
-- **URI**: `lunatask://tasks`
-- **Description**: Retrieves a list of all tasks from your LunaTask account
-- **Response**: JSON array containing task objects with metadata
-
-#### Single Task Resource  
-- **URI**: `lunatask://tasks/{task_id}`
-- **Description**: Retrieves details of a specific task by its ID
-- **Parameters**: `task_id` - The unique identifier of the task
-- **Response**: JSON object containing the task details and metadata
-
-### Usage Examples
-
-#### Accessing All Tasks
-```python
-from fastmcp import Client
-from fastmcp.client.transports import StdioTransport
-
-async def get_all_tasks():
-    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
-    client = Client(transport)
-    
-    async with client:
-        # List all available resources
-        resources = await client.list_resources()
-        print(f"Available resources: {[r.uri for r in resources]}")
-        
-        # Access all tasks
-        tasks_resource = await client.read_resource("lunatask://tasks")
-        print(f"Retrieved {len(tasks_resource.contents[0].json['tasks'])} tasks")
-        
-        # Display task information
-        for task in tasks_resource.contents[0].json['tasks']:
-            print(f"Task {task['id']}: {task['status']} (Priority: {task['priority']})")
-```
-
-#### Accessing a Specific Task
-```python
-async def get_specific_task():
-    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
-    client = Client(transport)
-    
-    async with client:
-        # Access a specific task by ID
-        task_id = "your-task-id-here"
-        task_resource = await client.read_resource(f"lunatask://tasks/{task_id}")
-        
-        # Extract task details
-        task_data = task_resource.contents[0].json
-        task = task_data['task']
-        
-        print(f"Task Details:")
-        print(f"  ID: {task['id']}")
-        print(f"  Status: {task['status']}")
-        print(f"  Priority: {task['priority']}")
-        print(f"  Created: {task['created_at']}")
-        print(f"  Due Date: {task.get('due_date', 'Not set')}")
-        print(f"  Area: {task.get('area_id', 'No area assigned')}")
-```
-
-### Resource Response Format
-
-#### All Tasks Resource Response
-```json
-{
-  "resource_type": "lunatask_tasks",
-  "total_count": 3,
-  "tasks": [
-    {
-      "id": "task-123",
-      "status": "open",
-      "priority": 1,
-      "due_date": "2025-08-25T18:00:00+00:00",
-      "created_at": "2025-08-20T10:00:00+00:00",
-      "updated_at": "2025-08-20T10:30:00+00:00",
-      "area_id": "area-456",
-      "source": {
-        "type": "manual",
-        "value": "user_created"
-      },
-    }
-  ],
-  "metadata": {
-    "retrieved_at": "session-id-123",
-    "encrypted_fields_note": "Fields like 'name' and 'note' are not included due to LunaTask's E2E encryption"
-  }
-}
-```
-
-#### Single Task Resource Response
-```json
-{
-  "resource_type": "lunatask_task",
-  "task_id": "task-123",
-  "task": {
-    "id": "task-123",
-    "status": "open",
-    "priority": 1,
-    "due_date": "2025-08-25T18:00:00+00:00",
-    "created_at": "2025-08-20T10:00:00+00:00",
-    "updated_at": "2025-08-20T10:30:00+00:00",
-    "area_id": "area-456",
-    "source": {
-      "type": "manual",
-      "value": "user_created"
-    },
-  },
-  "metadata": {
-    "retrieved_at": "session-id-456",
-    "encrypted_fields_note": "Fields like 'name' and 'note' are not included due to LunaTask's E2E encryption"
-  }
-}
-```
-
-### Error Handling
-
-The server provides structured error responses for various scenarios:
-
-#### Task Not Found (404)
-```python
-try:
-    task_resource = await client.read_resource("lunatask://tasks/nonexistent-task")
-except Exception as e:
-    print(f"Error: {e}")
-    # Error message will indicate the task was not found
-```
-
-#### Authentication Error (401)
-```python
-# Occurs when bearer token is invalid or expired
-# Check your config.toml file and ensure the token is correct
-```
-
-#### Rate Limit Error (429)
-```python
-# Occurs when API rate limits are exceeded
-# The server implements rate limiting to prevent this
-# Wait and retry if this occurs
-```
-
-### Important Notes
-
-#### End-to-End Encryption
+### End-to-End Encryption
 LunaTask uses end-to-end encryption for sensitive task data. As a result:
 - Task `name` and `note` fields are **not included** in API responses
 - Only non-sensitive metadata and structural information is available
 - This is a security feature of LunaTask and cannot be bypassed
+- The `name` and `note` fields **can be included** in create requests
+- LunaTask automatically encrypts these fields client-side before storage
+- Once created, these fields will not be visible in GET responses due to E2E encryption
+- This is normal LunaTask behavior and ensures data privacy
 
 #### Task IDs
 - Task IDs are unique identifiers assigned by LunaTask
 - Use the All Tasks resource to discover available task IDs
 - Task IDs remain consistent across API calls
 
-### Tools Available
-
-The server provides MCP tools for creating, updating, and deleting tasks in LunaTask:
-
-#### Create Task Tool
-- **Tool Name**: `create_task`
-- **Description**: Creates a new task in LunaTask with the specified parameters
-- **Returns**: Task creation result with the newly assigned task ID
-
-##### Parameters
-
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `name` | string | ✅ Yes | - | Task name (will be encrypted client-side by LunaTask) |
-| `note` | string | ❌ No | `null` | Task note (will be encrypted client-side by LunaTask) |
-| `area_id` | string | ❌ No | `null` | Area ID the task belongs to |
-| `status` | string | ❌ No | `"open"` | Task status (e.g., "open", "completed") |
-| `priority` | integer | ❌ No | `null` | Task priority level |
-
-##### Tool Usage Examples
-
-###### Create Minimal Task
-```python
-from fastmcp import Client
-from fastmcp.client.transports import StdioTransport
-
-async def create_simple_task():
-    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
-    client = Client(transport)
-    
-    async with client:
-        # Create a task with just the required name parameter
-        result = await client.call_tool("create_task", {
-            "name": "Review quarterly reports"
-        })
-        
-        if result.success:
-            print(f"Task created successfully with ID: {result.task_id}")
-        else:
-            print(f"Error creating task: {result.message}")
-```
-
-###### Create Complete Task
-```python
-async def create_detailed_task():
-    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
-    client = Client(transport)
-    
-    async with client:
-        # Create a task with all available parameters
-        result = await client.call_tool("create_task", {
-            "name": "Implement OAuth2 authentication",
-            "note": "Add support for Google and GitHub OAuth2 providers with PKCE security",
-            "area_id": "development-area-123",
-            "status": "open",
-            "priority": 3,
-        })
-        
-        if result.success:
-            print(f"Detailed task created with ID: {result.task_id}")
-        else:
-            print(f"Task creation failed: {result.error} - {result.message}")
-```
-
-##### Response Format
-
-###### Successful Creation Response
-```json
-{
-  "success": true,
-  "task_id": "new-task-abc123",
-  "message": "Task created successfully"
-}
-```
-
-###### Error Response Examples
-
-**Validation Error (422)**
-```json
-{
-  "success": false,
-  "error": "validation_error",
-  "message": "Task validation failed: Task name is required"
-}
-```
-
-**Subscription Required (402)**
-```json
-{
-  "success": false,
-  "error": "subscription_required", 
-  "message": "Subscription required: Free plan task limit reached"
-}
-```
-
-**Authentication Error (401)**
-```json
-{
-  "success": false,
-  "error": "authentication_error",
-  "message": "Authentication failed: Invalid or expired LunaTask API credentials"
-}
-```
-
-**Rate Limit Error (429)**
-```json
-{
-  "success": false,
-  "error": "rate_limit_error",
-  "message": "Rate limit exceeded: Please try again later"
-}
-```
-
-**Server Error (5xx)**
-```json
-{
-  "success": false,
-  "error": "server_error",
-  "message": "Server error: LunaTask API is temporarily unavailable"
-}
-```
-
-##### Tool Error Handling
-
-```python
-async def create_task_with_error_handling():
-    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
-    client = Client(transport)
-    
-    async with client:
-        try:
-            result = await client.call_tool("create_task", {
-                "name": "Test task",
-                "priority": 1
-            })
-            
-            if result.success:
-                print(f"✅ Task created: {result.task_id}")
-            else:
-                # Handle specific error types
-                if result.error == "validation_error":
-                    print("❌ Validation failed - check your parameters")
-                elif result.error == "subscription_required":
-                    print("💳 Upgrade your LunaTask plan to create more tasks")
-                elif result.error == "authentication_error":
-                    print("🔑 Check your bearer token in config.toml")
-                elif result.error == "rate_limit_error":
-                    print("⏰ Rate limit exceeded - wait and retry")
-                else:
-                    print(f"❌ Unknown error: {result.message}")
-                    
-        except Exception as e:
-            print(f"🚨 Unexpected error: {e}")
-```
-
-##### Important Notes
-
-###### End-to-End Encryption Support
-- The `name` and `note` fields **can be included** in create requests
-- LunaTask automatically encrypts these fields client-side before storage
-- Once created, these fields will not be visible in GET responses due to E2E encryption
-- This is normal LunaTask behavior and ensures data privacy
-
-###### Task Creation Limits
+#### Task Creation Limits
 - Free LunaTask plans have limits on the number of tasks that can be created
 - When limits are reached, the tool returns a `subscription_required` error
 - Consider upgrading your LunaTask plan if you need to create more tasks
 
-###### Rate Limiting
+##### Rate Limiting
 - The server implements rate limiting to prevent API abuse
 - If you encounter rate limit errors, wait before retrying
 - Rate limits are per-server instance and reset over time
 
-#### Update Task Tool
-- **Tool Name**: `update_task`
-- **Description**: Updates an existing task in LunaTask with the specified parameters
-- **Returns**: Task update result with the updated task data
+## Local Installation
 
-##### Parameters
+Lunatask MCP Server is managed by uv, so you will need to [install it](https://docs.astral.sh/uv/getting-started/installation/).
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `id` | string | ✅ Yes | - | Task ID to update (unique identifier) |
-| `name` | string | ❌ No | `null` | Updated task name (will be encrypted client-side by LunaTask) |
-| `note` | string | ❌ No | `null` | Updated task note (will be encrypted client-side by LunaTask) |
-| `area_id` | string | ❌ No | `null` | Updated area ID the task belongs to |
-| `status` | string | ❌ No | `null` | Updated task status (e.g., "open", "completed") |
-| `priority` | integer | ❌ No | `null` | Updated task priority level |
-| `due_date` | string | ❌ No | `null` | Updated due date as ISO 8601 string (e.g., "2025-12-31T23:59:59Z") |
+### Using `uv`
+```bash
+# Install dependencies and create the local virtual environment
+uv sync
 
-##### Tool Usage Examples
-
-###### Update Single Field
-```python
-from fastmcp import Client
-from fastmcp.client.transports import StdioTransport
-
-async def update_task_status():
-    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
-    client = Client(transport)
-    
-    async with client:
-        # Update only the status of a specific task
-        result = await client.call_tool("update_task", {
-            "id": "task-abc123",
-            "status": "completed"
-        })
-        
-        if result.success:
-            print(f"Task {result.task_id} status updated successfully")
-        else:
-            print(f"Error updating task: {result.message}")
+# Optionally verify the package imports correctly
+uv run python -c "import lunatask_mcp"
 ```
 
-###### Update Multiple Fields
-```python
-async def update_task_details():
-    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
-    client = Client(transport)
-    
-    async with client:
-        # Update multiple fields of a task (partial update)
-        result = await client.call_tool("update_task", {
-            "id": "task-xyz789",
-            "name": "Updated task name",
-            "priority": 2,
-            "due_date": "2025-12-31T23:59:59Z",
-        })
-        
-        if result.success:
-            print(f"Task {result.task_id} updated successfully")
-            # The response includes updated task data
-            if 'task' in result:
-                task = result.task
-                print(f"Updated priority: {task.get('priority')}")
-                print(f"Updated due date: {task.get('due_date')}")
-        else:
-            print(f"Task update failed: {result.error} - {result.message}")
-```
-
-###### Update with ISO 8601 Date Handling
-```python
-from datetime import datetime, timezone
-
-async def update_task_due_date():
-    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
-    client = Client(transport)
-    
-    async with client:
-        # Update due date with proper timezone handling
-        due_date = datetime(2025, 12, 25, 18, 0, 0, tzinfo=timezone.utc)
-        
-        result = await client.call_tool("update_task", {
-            "id": "task-holiday-prep",
-            "due_date": due_date.isoformat(),  # "2025-12-25T18:00:00+00:00"
-        })
-        
-        if result.success:
-            print(f"Task due date updated to {due_date}")
-        else:
-            print(f"Date update failed: {result.message}")
-```
-
-##### Response Format
-
-###### Successful Update Response
-```json
-{
-  "success": true,
-  "task_id": "task-abc123",
-  "message": "Task updated successfully",
-  "task": {
-    "id": "task-abc123",
-    "status": "completed",
-    "priority": 2,
-    "due_date": "2025-12-31T23:59:59+00:00",
-    "created_at": "2025-08-20T10:00:00+00:00",
-    "updated_at": "2025-08-23T15:30:00+00:00",
-    "area_id": "area-456",
-    "source": {
-      "type": "api",
-      "value": "mcp_update"
-    },
-  }
-}
-```
-
-###### Error Response Examples
-
-**Task Not Found (404)**
-```json
-{
-  "success": false,
-  "error": "not_found_error",
-  "message": "Task not found: Task with ID 'nonexistent-task' was not found"
-}
-```
-
-**Validation Error (Empty Task ID)**
-```json
-{
-  "success": false,
-  "error": "validation_error",
-  "message": "Task ID cannot be empty"
-}
-```
-
-**Validation Error (Invalid Due Date)**
-```json
-{
-  "success": false,
-  "error": "validation_error",
-  "message": "Invalid due_date format. Expected ISO 8601 string: time data 'invalid-date' does not match format"
-}
-```
-
-**Authentication Error (401)**
-```json
-{
-  "success": false,
-  "error": "authentication_error",
-  "message": "Authentication failed: Invalid or expired LunaTask API credentials"
-}
-```
-
-**Rate Limit Error (429)**
-```json
-{
-  "success": false,
-  "error": "rate_limit_error",
-  "message": "Rate limit exceeded: Please try again later"
-}
-```
-
-##### Tool Error Handling
-
-```python
-async def update_task_with_error_handling():
-    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
-    client = Client(transport)
-    
-    async with client:
-        try:
-            result = await client.call_tool("update_task", {
-                "id": "task-to-update",
-                "status": "completed",
-                "priority": 1
-            })
-            
-            if result.success:
-                print(f"✅ Task updated: {result.task_id}")
-            else:
-                # Handle specific error types
-                if result.error == "not_found_error":
-                    print("❌ Task not found - check the task ID")
-                elif result.error == "validation_error":
-                    print("❌ Validation failed - check your parameters")
-                elif result.error == "authentication_error":
-                    print("🔑 Check your bearer token in config.toml")
-                elif result.error == "rate_limit_error":
-                    print("⏰ Rate limit exceeded - wait and retry")
-                else:
-                    print(f"❌ Unknown error: {result.message}")
-                    
-        except Exception as e:
-            print(f"🚨 Unexpected error: {e}")
-```
-
-##### Important Notes
-
-###### Partial Updates
-- **Only provided fields are updated** - omitted fields remain unchanged
-- You can update just one field (e.g., only status) without affecting other fields
-- Pass `null` or omit parameters to leave fields unchanged
-- This allows for precise, targeted task modifications
-
-###### End-to-End Encryption Support
-- The `name` and `note` fields **can be included** in update requests
-- LunaTask automatically encrypts these fields client-side before storage
-- Updated encrypted fields will not be visible in the response due to E2E encryption
-- Non-encrypted fields (status, priority, etc.) will be visible in the response
-
-###### Date Format Requirements
-- `due_date` must be provided as an ISO 8601 string
-- Supported formats: `"2025-12-31T23:59:59Z"` (UTC), `"2025-12-31T18:00:00-05:00"` (with timezone)
-- Invalid date formats will result in validation errors
-- Use Python's `datetime.isoformat()` for proper formatting
-
-###### Task ID Requirements
-- Task ID is required and cannot be empty
-- Must be a valid, existing task ID from your LunaTask account
-- Use the resources (`lunatask://tasks`) to discover available task IDs
-- Non-existent task IDs will result in "not_found_error"
-
-###### Rate Limiting
-- The server implements rate limiting for update operations
-- If you encounter rate limit errors, wait before retrying
-- Rate limits help prevent API abuse and ensure service stability
-
-#### Delete Task Tool
-- **Tool Name**: `delete_task`
-- **Description**: Deletes an existing task from LunaTask permanently
-- **Returns**: Task deletion confirmation with the deleted task ID
-
-##### Parameters
-
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `id` | string | ✅ Yes | - | Task ID to delete (unique identifier) |
-
-##### Tool Usage Examples
-
-###### Delete Task
-```python
-from fastmcp import Client
-from fastmcp.client.transports import StdioTransport
-
-async def delete_completed_task():
-    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
-    client = Client(transport)
-    
-    async with client:
-        # Delete a task by its ID
-        result = await client.call_tool("delete_task", {
-            "id": "task-abc123"
-        })
-        
-        if result.success:
-            print(f"Task {result.task_id} deleted successfully")
-        else:
-            print(f"Error deleting task: {result.message}")
-```
-
-###### Delete with Error Handling
-```python
-async def delete_task_safely():
-    transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
-    client = Client(transport)
-    
-    async with client:
-        try:
-            result = await client.call_tool("delete_task", {
-                "id": "task-to-delete"
-            })
-            
-            if result.success:
-                print(f"✅ Task {result.task_id} deleted permanently")
-            else:
-                # Handle specific error types
-                if result.error == "not_found_error":
-                    print("❌ Task not found - already deleted or invalid ID")
-                elif result.error == "validation_error":
-                    print("❌ Invalid task ID provided")
-                elif result.error == "authentication_error":
-                    print("🔑 Check your bearer token in config.toml")
-                elif result.error == "rate_limit_error":
-                    print("⏰ Rate limit exceeded - wait and retry")
-                else:
-                    print(f"❌ Delete failed: {result.message}")
-                    
-        except Exception as e:
-            print(f"🚨 Unexpected error: {e}")
-```
-
-##### Response Format
-
-###### Successful Delete Response
-```json
-{
-  "success": true,
-  "task_id": "task-abc123",
-  "message": "Task deleted successfully"
-}
-```
-
-###### Error Response Examples
-
-**Task Not Found (404)**
-```json
-{
-  "success": false,
-  "error": "not_found_error",
-  "message": "Task not found: Task with ID 'nonexistent-task' was not found"
-}
-```
-
-**Validation Error (Empty Task ID)**
-```json
-{
-  "success": false,
-  "error": "validation_error",
-  "message": "Task ID cannot be empty"
-}
-```
-
-**Authentication Error (401)**
-```json
-{
-  "success": false,
-  "error": "authentication_error",
-  "message": "Authentication failed: Invalid or expired LunaTask API credentials"
-}
-```
-
-**Rate Limit Error (429)**
-```json
-{
-  "success": false,
-  "error": "rate_limit_error",
-  "message": "Rate limit exceeded: Please try again later"
-}
-```
-
-##### Important Notes
-
-###### Permanent Deletion
-- **Task deletion is permanent** - deleted tasks cannot be recovered
-- Use with caution as this action is irreversible
-- Consider marking tasks as "completed" instead if you might need them later
-
-###### Non-Idempotent Behavior
-- Attempting to delete an already-deleted task returns a "not_found_error"
-- This is intentional behavior to indicate the task no longer exists
-- Check task existence using resources before deletion if needed
-
-###### Task ID Requirements
-- Task ID is required and cannot be empty or whitespace-only
-- Must be a valid, existing task ID from your LunaTask account
-- Use the resources (`lunatask://tasks`) to discover available task IDs
-- Invalid or non-existent task IDs will result in "not_found_error"
-
-###### Rate Limiting
-- The server implements rate limiting for delete operations
-- If you encounter rate limit errors, wait before retrying
-- Rate limits help prevent accidental bulk deletions and ensure service stability
-
-## Configuration
+## Server Configuration
 
 The LunaTask MCP server supports flexible configuration through TOML files and command-line arguments. A bearer token is required to authenticate with the LunaTask API.
 
 ### Quick Start
 
-1. Copy the example configuration file:
+1. Copy the example configuration file to a path you prefer:
 ```bash
-cp config.example.toml config.toml
+cp config.example.toml ~/path/to/your/lunatas_mcp_config.toml
 ```
 
 2. Edit `config.toml` and add your LunaTask API bearer token:
@@ -755,8 +60,10 @@ lunatask_bearer_token = "your_lunatask_bearer_token_here"
 
 3. Run the server:
 ```bash
-uv run lunatask-mcp
+uv run lunatask-mcp --config-file /path/to/your/config.toml
 ```
+
+Note: To create an acess token open Lunatask app, open application settings, head to "Access tokens" section, and create a new access token. Then, click "Copy to clipboard", and paste it in the `lunatask_bearer_token` field in the config file.
 
 ### Configuration Methods
 
@@ -775,8 +82,11 @@ uv run lunatask-mcp
 # Specify a custom config file
 uv run lunatask-mcp --config-file /path/to/your/config.toml
 
-# Override specific settings
+# Override specific settings (examples)
 uv run lunatask-mcp --log-level DEBUG --port 9000
+uv run lunatask-mcp --base-url https://api.lunatask.app/v1/
+uv run lunatask-mcp --token "$LUNATASK_TOKEN"
+uv run lunatask-mcp --rate-limit-rpm 120 --rate-limit-burst 20
 
 # Get help on available options
 uv run lunatask-mcp --help
@@ -800,6 +110,20 @@ port = 8080
 # Optional: Logging level (default: INFO)
 # Valid values: DEBUG, INFO, WARNING, ERROR, CRITICAL
 log_level = "INFO"
+
+# Optional: Connectivity test during startup (default: false)
+test_connectivity_on_startup = false
+
+# Optional: Rate limiting (defaults: rpm=60, burst=10)
+rate_limit_rpm = 60
+rate_limit_burst = 10
+
+# Optional: HTTP client tuning
+http_retries = 2
+http_backoff_start_seconds = 0.25
+http_user_agent = "lunatask-mcp/0.1.0"
+timeout_connect = 5.0
+timeout_read = 30.0
 ```
 
 ### Configuration Discovery
@@ -824,114 +148,90 @@ The server validates all configuration on startup and fails fast with clear erro
 - **Unknown keys rejection**: Prevents typos and ensures clean configuration
 - **Input validation**: All configuration values are validated before server startup
 
-### Error Handling
+## Server Capabilities
 
-Configuration errors result in:
-- Clear error messages to stderr
-- Non-zero exit codes (exit code 1 for all configuration failures)
-- No server startup on configuration validation failures
+The server provides the following tools:
+- **Ping Tool**: A health-check tool that responds with "pong" when called
+- **MCP Resources (read-only)**: Discovery + single task, plus area/global list aliases
+- **MCP Tools (write)**: Create, update, delete tasks; track habit activity
+- **MCP Protocol Version**: Supports MCP protocol version `2025-06-18`
+- **Stdio Transport**: Communicates over standard input/output streams
 
-### Example Configurations
+## Tools Available
+`create_task`: Creates a new task in LunaTask with the specified parameters. Returns the newly assigned task ID
+- `update_task`: Updates an existing task in LunaTask with the specified parameters. Returns the updated task data. **You can update just one field** (e.g., only status) without affecting other fields.
+- `delete_task`: Deletes an existing task from LunaTask permanently. Returns the deleted task ID. **Deleted tasks cannot be recovered**: use with caution as this action is irreversible
+- `track_habit`: Track an activity for a specific habit id on a given date. Returns: `{ "ok": true, "message": "Successfully tracked habit <id> on <date>" }` on success
 
-**Minimal setup:**
-```toml
-lunatask_bearer_token = "your_token_here"
-```
+## Resources Available
+The server also has the following resources:
+- Discovery: `lunatask://tasks` and `lunatask://tasks/discovery`
+- Single Task: `lunatask://tasks/{task_id}`
+- Area lists (replace `{area_id}`):
+  - `lunatask://area/{area_id}/now`
+  - `lunatask://area/{area_id}/today`
+  - `lunatask://area/{area_id}/overdue`
+  - `lunatask://area/{area_id}/next-7-days`
+  - `lunatask://area/{area_id}/high-priority`
+  - `lunatask://area/{area_id}/recent-completions`
+- Global lists:
+  - `lunatask://global/now`
+  - `lunatask://global/today`
+  - `lunatask://global/overdue`
+  - `lunatask://global/next-7-days`
+  - `lunatask://global/high-priority`
+  - `lunatask://global/recent-completions`
 
-**Development setup with debug logging:**
-```toml
-lunatask_bearer_token = "your_token_here"
-log_level = "DEBUG"
-```
+Discovery resource returns discovery metadata for list resources, including supported parameters, alias URIs, canonical examples, defaults, and guardrails.
 
-**Custom API endpoint (if needed):**
-```toml
-lunatask_bearer_token = "your_token_here"
-lunatask_base_url = "https://custom.lunatask.endpoint.com/v1/"
-log_level = "WARNING"
-```
+You can filter globally and by `area_id`. The filters work as follows:
+- **today**: due today
+- **overdue**: due before today
+- **next-7-days**: due within the next 7 days
+- **recent-completions**: tasks completed in the last 72 hours.
+- **now**: one of the following:
+  - Tasks without due date but with status as "started" (in progress in the app)
+  - Tasks without due date but with highest priority (2)
+  - Tasks without due date but with motivation as "must"
+  - Tasks without due date but with eisenhower as 1 (urgent and important)
 
-## Client Testing
+The reason behind these filters is that if you try to gather all the tasks from the Lunastask API you will easily fill up your LLM context if you have a lot of tasks. 
+In the future these could be expanded to include:
+- filters by `goal_id`
+- filters for all priority types
+- filters for all motivation types
+- filters for all eisenhower types
+- filters for specific dates
+- filters for completed tasks in a range of dates
 
-### Running Client Integration Tests
-To test the server with a real MCP client:
+## Integration with other tools
 
+### Claude Code
+You give acess to Claude code via:
 ```bash
-# Run the integration tests using pytest
-uv run pytest tests/test_stdio_client_integration.py -v
-
-# Or run the integration test as a standalone script
-uv run python tests/test_stdio_client_integration.py
+claude mcp add lunatask-mcp -- uvx --from git+https://github.com/tensorfreitas/lunatask-mcp --config-file /your/path/to/lunatask_mcp_config.toml
 ```
 
-### Manual Client Testing
-You can also test the server manually using the FastMCP client:
-
-```python
-import asyncio
-from fastmcp import Client
-from fastmcp.client.transports import StdioTransport
-
-async def test_server():
-    # Create stdio transport to launch the server
-    # Note: Ensure you have a config.toml file with your bearer token
-    transport = StdioTransport(command="uv", args=["run", "python", "-m", "lunatask_mcp.main"])
-    client = Client(transport)
-    
-    async with client:
-        # List available tools
-        tools = await client.list_tools()
-        print(f"Available tools: {[tool.name for tool in tools]}")
-        # Expected tools: ['ping', 'create_task', 'update_task']
-        
-        # Call the ping tool
-        result = await client.call_tool("ping", {})
-        print(f"Ping result: {result}")
-        
-        # Call the create_task tool
-        task_result = await client.call_tool("create_task", {
-            "name": "Test task from manual testing"
-        })
-        print(f"Task creation result: {task_result}")
-
-# Run the test
-asyncio.run(test_server())
+### Claude Desktop or LM Studio
+```json
+{
+    "mcpServers": {
+        "serena": {
+            "command": "uvx",
+            "args": ["--from", "git+https://github.com/tensorfreitas/lunatask-mcp", "--config-file", "/your/path/to/lunatask_mcp_config.toml"]
+        }
+    }
+}
 ```
 
-## Example Usage
+### Codex
+Unlike Claude Code, in Codex you add an MCP server globally and not per project. Add the following to ~/.codex/config.toml (create the file if it does not exist):
 
-### Client Connection Example
-Here's how to connect to the LunaTask MCP server from another application:
-
-```python
-from fastmcp import Client
-from fastmcp.client.transports import StdioTransport
-
-# Connect to the server (ensure config.toml exists with bearer token)
-transport = StdioTransport(command="uv", args=["run", "lunatask-mcp"])
-client = Client(transport)
-
-async with client:
-    # Verify server capabilities
-    tools = await client.list_tools()
-    tool_names = [tool.name for tool in tools]
-    assert "ping" in tool_names
-    assert "create_task" in tool_names
-    assert "update_task" in tool_names
-    
-    # Test server health
-    ping_response = await client.call_tool("ping", {})
-    print("Server is healthy:", ping_response)
+```toml
+[mcp_servers.serena]
+command = "uvx"
+args = ["--from", " git+https://github.com/tensorfreitas/lunatask-mcp", "--config-file", "/your/path/to/lunatask_mcp_config.toml"]
 ```
 
-### Protocol Verification
-The server implements MCP protocol version `2025-06-18`:
 
-```python
-async with client:
-    # Check protocol version during initialization
-    init_result = client.initialize_result
-    protocol_version = init_result.protocolVersion
-    print(f"Server protocol version: {protocol_version}")
-    assert protocol_version == "2025-06-18"
-```
+### LM Studio

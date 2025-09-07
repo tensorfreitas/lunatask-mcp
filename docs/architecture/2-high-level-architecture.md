@@ -11,7 +11,7 @@ The server's core architectural style is a **single, event-driven monolith**. Th
 The primary user interaction flow involves an external client (e.g., an IDE) launching the server as a subprocess. The client sends MCP requests over `stdio`, which the server parses and translates into authenticated HTTPS requests to the LunaTask API. The server then formats the response from LunaTask back into an MCP response and sends it to the client via `stdio`.
 
 ## Protocol Versioning
-The server will declare its support for a specific version of the Model Context Protocol (e.g., `2025-06-18`). It **must** correctly handle the version negotiation phase of the initialization handshake with any connecting client. For the MVP, the server will support a single, current version of the protocol. The architecture should allow for easily updating this version or adding support for new versions in the future.
+The server declares support for Model Context Protocol version `2025-06-18`. It **must** correctly handle the version negotiation phase of the initialization handshake with any connecting client. For the MVP, the server will support a single, current version of the protocol. The architecture should allow for easily updating this version or adding support for new versions in the future.
 
 ## High Level Project Diagram
 

@@ -65,12 +65,12 @@ This architecture aligns with the stated dependency injection and repository pat
 
 ## 4. `CoreServer` (Application Runner)
 
-**Responsibility**: This is the main application entry point (`server.py`). It will be responsible for:
+**Responsibility**: This is the main application entry point (`main.py`). It will be responsible for:
 *   Initializing the `FastMCP` application.
 *   Handling configuration loading (from files and command-line arguments).
 *   Setting up logging to `stderr`.
 *   Initializing the `LunaTaskClient` and making it available to the tool components (e.g., via dependency injection).
-*   Registering the `TaskTools` and `HabitTools` with the FastMCP instance.
+*   Registering the `TaskTools`, `HabitTools`, and a built-in `ping` health-check tool with the FastMCP instance.
 *   Starting the server with the `stdio` transport.
 
 **Dependencies**: All other components.

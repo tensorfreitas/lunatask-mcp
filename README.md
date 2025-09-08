@@ -185,15 +185,15 @@ The server also has the following resources:
 Discovery resource returns discovery metadata for list resources, including supported parameters, alias URIs, canonical examples, defaults, and guardrails.
 
 You can filter globally and by `area_id`. The filters work as follows:
-- **today**: due today
-- **overdue**: due before today
-- **next-7-days**: due within the next 7 days
+- **today**: scheduled today
+- **overdue**: scheduled before today
+- **next-7-days**: scheduled within the next 7 days (UTC), excluding today
 - **recent-completions**: tasks completed in the last 72 hours.
 - **now**: one of the following:
-  - Tasks without due date but with status as "started" (in progress in the app)
-  - Tasks without due date but with highest priority (2)
-  - Tasks without due date but with motivation as "must"
-  - Tasks without due date but with eisenhower as 1 (urgent and important)
+  - Tasks without scheduled date but with status as "started" (in progress in the app)
+  - Tasks without scheduled date but with highest priority (2)
+  - Tasks without scheduled date but with motivation as "must"
+  - Tasks without scheduled date but with eisenhower as 1 (urgent and important)
 
 The reason behind these filters is that if you try to gather all the tasks from the Lunastask API you will easily fill up your LLM context if you have a lot of tasks. 
 In the future these could be expanded to include:

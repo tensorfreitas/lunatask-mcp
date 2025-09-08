@@ -349,8 +349,16 @@ def test_filter_by_time_window_variants() -> None:
     result_today = tr._filter_by_time_window(tasks, "today")  # pyright: ignore[reportPrivateUsage]
     assert {t.id for t in result_today} == {"today"}
 
-    result_next = tr._filter_by_time_window(tasks, "next_7_days")  # pyright: ignore[reportPrivateUsage]
-    assert {t.id for t in result_next} == {"next-week"}
+    # For next_7_days we filter by scheduled_on (not due_date). Build a separate set
+    sched_next = create_task_response(
+        task_id="sched-next", scheduled_on=today_start.date() + timedelta(days=2)
+    )
+    sched_far = create_task_response(
+        task_id="sched-far", scheduled_on=today_start.date() + timedelta(days=8)
+    )
+    tasks_sched = [sched_next, sched_far]
+    result_next = tr._filter_by_time_window(tasks_sched, "next_7_days")  # pyright: ignore[reportPrivateUsage]
+    assert {t.id for t in result_next} == {"sched-next"}
 
     result_unknown = tr._filter_by_time_window(tasks, "unknown")  # pyright: ignore[reportPrivateUsage]
     assert result_unknown == tasks

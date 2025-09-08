@@ -501,10 +501,14 @@ def _filter_by_time_window(tasks: list[TaskResponse], window: str) -> list[TaskR
         # - scheduled_on before today when due_date is absent.
         return [t for t in tasks if _is_overdue(t)]
     if window == "next_7_days":
-        # "Next 7 days" = due within next 7 days (not including overdue/today)
-        next_week_end = today_end + timedelta(days=7)
+        # "Next 7 days" (scheduled) = tasks with scheduled_on in (today, today+7] (UTC)
+        # Excludes items scheduled today or in the past; includes up to and including day+7.
+        next_week_date = (today_end + timedelta(days=6)).date()  # today_date + 7
+        today_date = today_start.date()
         return [
-            t for t in tasks if t.due_date is not None and today_end <= t.due_date < next_week_end
+            t
+            for t in tasks
+            if (t.scheduled_on is not None and today_date < t.scheduled_on <= next_week_date)
         ]
 
     return tasks
@@ -521,8 +525,10 @@ async def _fetch_tasks_for_global_alias(
         if window != "now":
             params["window"] = window
             params["status"] = "open"
-            if window == "overdue":
-                params["sort"] = "due_date.asc,priority.desc,id.asc"
+            # Apply client-side narrowing for windows that upstream may ignore
+            if window in {"overdue", "next_7_days"}:
+                if window == "overdue":
+                    params["sort"] = "due_date.asc,priority.desc,id.asc"
                 should_filter = True
             return (await client.get_tasks(**params), should_filter)
         # now → client-side only
@@ -554,8 +560,10 @@ async def _fetch_tasks_for_area_alias(
         w = str(filter_criteria["window"])  # today|overdue|next_7_days
         params["window"] = w
         params["status"] = "open"
-        if w == "overdue":
-            params["sort"] = "due_date.asc,priority.desc,id.asc"
+        # Apply client-side narrowing where upstream may ignore window
+        if w in {"overdue", "next_7_days"}:
+            if w == "overdue":
+                params["sort"] = "due_date.asc,priority.desc,id.asc"
             should_filter = True
         return (await client.get_tasks(**params), should_filter)
     if ftype == "priority":

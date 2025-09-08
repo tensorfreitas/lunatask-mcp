@@ -216,7 +216,7 @@ claude mcp add lunatask-mcp -- uvx --from git+https://github.com/tensorfreitas/l
 ```json
 {
     "mcpServers": {
-        "serena": {
+        "lunatask-mcp": {
             "command": "uvx",
             "args": ["--from", "git+https://github.com/tensorfreitas/lunatask-mcp", "--config-file", "/your/path/to/lunatask_mcp_config.toml"]
         }
@@ -228,10 +228,7 @@ claude mcp add lunatask-mcp -- uvx --from git+https://github.com/tensorfreitas/l
 Unlike Claude Code, in Codex you add an MCP server globally and not per project. Add the following to ~/.codex/config.toml (create the file if it does not exist):
 
 ```toml
-[mcp_servers.serena]
+[mcp_servers.lunatask-mcp]
 command = "uvx"
 args = ["--from", " git+https://github.com/tensorfreitas/lunatask-mcp", "--config-file", "/your/path/to/lunatask_mcp_config.toml"]
 ```
-
-
-### LM Studio

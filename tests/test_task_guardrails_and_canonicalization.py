@@ -49,7 +49,7 @@ async def test_discovery_alias_canonical_params_sorted() -> None:
     # Expect canonical URIs to have params sorted by key
     assert area_now["canonical"] == "lunatask://tasks?area_id={area_id}&limit=25&status=open"
     assert global_overdue["canonical"] == (
-        "lunatask://tasks?limit=50&scope=global&sort=due_date.asc,priority.desc,id.asc"
+        "lunatask://tasks?limit=50&scope=global&sort=scheduled_on.asc,priority.desc,id.asc"
         "&status=open&window=overdue"
     )
 

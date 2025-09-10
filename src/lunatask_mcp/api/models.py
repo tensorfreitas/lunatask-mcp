@@ -39,7 +39,6 @@ class TaskResponse(BaseModel):
     area_id: str | None = Field(None, description="Area ID the task belongs to")
     status: str = Field(..., description="Task status (e.g., 'open', 'completed')")
     priority: int | None = Field(None, description="Task priority level")
-    due_date: datetime | None = Field(None, description="Task due date")
     created_at: datetime = Field(..., description="Task creation timestamp")
     updated_at: datetime = Field(..., description="Task last update timestamp")
     source: Source | None = Field(None, description="Task source information")
@@ -51,7 +50,9 @@ class TaskResponse(BaseModel):
     eisenhower: int | None = Field(None, description="Eisenhower matrix quadrant (0-4)")
     previous_status: str | None = Field(None, description="Previous task status")
     progress: int | None = Field(None, description="Task completion percentage")
-    scheduled_on: date | None = Field(None, description="Date when task is scheduled")
+    scheduled_on: date | None = Field(
+        None, description="Date when task is scheduled (YYYY-MM-DD format, date-only)"
+    )
     completed_at: datetime | None = Field(None, description="Task completion timestamp")
 
     # Note: 'name' and 'note' fields are not included due to E2E encryption
@@ -72,7 +73,9 @@ class TaskCreate(BaseModel):
     area_id: str | None = Field(default=None, description="Area ID the task belongs to")
     status: TaskStatus = Field(default="later", description="Task status (default: 'later')")
     priority: int = Field(default=0, description="Task priority level (default: 0)")
-    due_date: datetime | None = Field(default=None, description="Task due date")
+    scheduled_on: date | None = Field(
+        default=None, description="Date when task is scheduled (YYYY-MM-DD format, date-only)"
+    )
     source: Source | None = Field(default=None, description="Task source information")
     motivation: TaskMotivation = Field(
         default="unknown", description="Task motivation (default: 'unknown')"
@@ -111,7 +114,9 @@ class TaskUpdate(BaseModel):
     area_id: str | None = Field(default=None, description="Area ID the task belongs to")
     status: TaskStatus | None = Field(default=None, description="Task status")
     priority: int | None = Field(default=None, description="Task priority level")
-    due_date: datetime | None = Field(default=None, description="Task due date")
+    scheduled_on: date | None = Field(
+        default=None, description="Date when task is scheduled (YYYY-MM-DD format, date-only)"
+    )
     source: Source | None = Field(default=None, description="Task source information")
     motivation: TaskMotivation | None = Field(default=None, description="Task motivation")
     eisenhower: int | None = Field(default=None, description="Eisenhower matrix quadrant (0-4)")

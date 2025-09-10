@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import date
 from typing import Any
 
 import pytest
@@ -71,12 +71,12 @@ class TestLunaTaskClientUpdateTask:
         client = LunaTaskClient(config)
 
         task_id = "task-456"
-        due_date = datetime(2025, 8, 30, 14, 30, 0, tzinfo=UTC)
+        scheduled_on = date(2025, 8, 30)
         update_data = TaskUpdate(
             name="Updated Task Name",
             status="started",
             priority=2,
-            due_date=due_date,
+            scheduled_on=scheduled_on,
         )
 
         mock_response_data: dict[str, Any] = {
@@ -84,7 +84,7 @@ class TestLunaTaskClientUpdateTask:
                 "id": "task-456",
                 "status": "started",
                 "priority": 2,
-                "due_date": "2025-08-30T14:30:00Z",
+                "scheduled_on": "2025-08-30",
                 "created_at": "2025-08-21T10:00:00Z",
                 "updated_at": "2025-08-21T11:30:00Z",
             }
@@ -109,7 +109,7 @@ class TestLunaTaskClientUpdateTask:
                 "name": "Updated Task Name",
                 "status": "started",
                 "priority": 2,
-                "due_date": due_date,
+                "scheduled_on": scheduled_on,
             },
         )
 

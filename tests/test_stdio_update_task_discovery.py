@@ -41,7 +41,7 @@ class TestStdioUpdateTaskDiscovery:
                 "area_id": False,
                 "status": False,
                 "priority": False,
-                "due_date": False,
+                "scheduled_on": False,
             }
 
             input_schema = update_task_tool.inputSchema

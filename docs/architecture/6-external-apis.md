@@ -53,7 +53,7 @@ This project has one critical external dependency: the LunaTask API. All core fu
    - **Response Model**: `TaskResponse` object with updated task data
    - **Features**: Supports partial updates (only provided fields are modified)
    - **Error Handling**: Task not found (404), validation errors (400), auth errors (401)
-   - **Date Handling**: ISO 8601 string parsing and validation for `due_date` field
+   - **Date Handling**: Date string parsing and validation for `scheduled_on` field (YYYY-MM-DD format)
    - **Status**: ✅ Implemented (Story 2.4)
 
 5. **DELETE /v1/tasks/{id}** - Delete Task

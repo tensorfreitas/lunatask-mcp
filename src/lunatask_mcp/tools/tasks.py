@@ -97,7 +97,7 @@ class TaskTools:
         area_id: str | None = None,
         status: str | None = None,
         priority: int | str | None = None,
-        due_date: str | None = None,
+        scheduled_on: str | None = None,
         motivation: str | None = None,
         eisenhower: int | str | None = None,
     ) -> dict[str, Any]:
@@ -111,7 +111,7 @@ class TaskTools:
             area_id,
             status,
             priority,
-            due_date,
+            scheduled_on,
             motivation,
             eisenhower,
         )
@@ -195,7 +195,7 @@ class TaskTools:
             area_id: str | None = None,
             status: str | None = None,
             priority: int | str | None = None,
-            due_date: str | None = None,
+            scheduled_on: str | None = None,
             motivation: str | None = None,
             eisenhower: int | str | None = None,
         ) -> dict[str, Any]:
@@ -209,7 +209,7 @@ class TaskTools:
                 area_id,
                 status,
                 priority,
-                due_date,
+                scheduled_on,
                 motivation,
                 eisenhower,
             )

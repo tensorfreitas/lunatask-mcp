@@ -52,33 +52,30 @@ async def test_global_now_returns_only_custom_undated_set(
     TaskTools(mcp, client)
 
     # Create sample data: mix of tasks that should and shouldn't be in "now"
-    now = datetime.now(UTC)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-
     # Included (undated + any rule)
     undated_started = create_task_response(
         task_id="undated-started",
         status="started",
         priority=0,
-        due_date=None,
+        scheduled_on=None,
     )
     undated_priority2 = create_task_response(
         task_id="undated-prio2",
         status="next",
         priority=2,
-        due_date=None,
+        scheduled_on=None,
     )
     undated_must = create_task_response(
         task_id="undated-must",
         status="waiting",
         motivation="must",
-        due_date=None,
+        scheduled_on=None,
     )
     undated_e1 = create_task_response(
         task_id="undated-e1",
         status="later",
         eisenhower=1,
-        due_date=None,
+        scheduled_on=None,
     )
 
     # Excluded
@@ -86,24 +83,24 @@ async def test_global_now_returns_only_custom_undated_set(
         task_id="dated-today",
         status="started",
         priority=2,
-        due_date=today_start + timedelta(hours=14),
+        scheduled_on=datetime.now(UTC).date(),
     )
     dated_overdue = create_task_response(
         task_id="dated-overdue",
         status="next",
-        due_date=today_start - timedelta(days=1),
+        scheduled_on=datetime.now(UTC).date() - timedelta(days=1),
     )
     undated_low = create_task_response(
         task_id="undated-low",
         status="next",
         priority=1,
-        due_date=None,
+        scheduled_on=None,
     )
     undated_completed = create_task_response(
         task_id="undated-completed",
         status="completed",
         priority=2,
-        due_date=None,
+        scheduled_on=None,
     )
 
     # Mock the API to return ALL tasks (simulating the real API behavior)
@@ -239,7 +236,7 @@ async def test_global_high_priority_returns_only_high_priority_tasks(
     # Check limit and sort
     expected_high_priority_limit = 50
     assert result["limit"] == expected_high_priority_limit  # High priority should have limit of 50
-    assert result["sort"] == "priority.desc,due_date.asc,id.asc"
+    assert result["sort"] == "priority.desc,scheduled_on.asc,id.asc"
 
 
 @pytest.mark.asyncio
@@ -330,35 +327,28 @@ def test_apply_task_filters_empty_returns_all() -> None:
 
 def test_filter_by_time_window_variants() -> None:
     """tr._filter_by_time_window handles supported windows and fallbacks."""
-    now = datetime.now(UTC)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    today_end = today_start + timedelta(days=1)
     task_overdue = create_task_response(
-        task_id="overdue", due_date=today_start - timedelta(hours=1)
+        task_id="overdue", scheduled_on=datetime.now(UTC).date() - timedelta(days=1)
     )
-    task_today = create_task_response(task_id="today", due_date=today_start + timedelta(hours=2))
+    task_today = create_task_response(task_id="today", scheduled_on=datetime.now(UTC).date())
     task_next_week = create_task_response(
-        task_id="next-week", due_date=today_end + timedelta(days=2)
+        task_id="next-week", scheduled_on=datetime.now(UTC).date() + timedelta(days=2)
     )
-    task_far = create_task_response(task_id="far", due_date=today_end + timedelta(days=8))
+    task_far = create_task_response(
+        task_id="far", scheduled_on=datetime.now(UTC).date() + timedelta(days=8)
+    )
     tasks = [task_overdue, task_today, task_next_week, task_far]
 
     result_now = tr._filter_by_time_window(tasks, "now")  # pyright: ignore[reportPrivateUsage]
-    assert {t.id for t in result_now} == {"overdue", "today"}
+    # "now" window returns all tasks since filtering is handled by _filter_now_rules
+    assert {t.id for t in result_now} == {"overdue", "today", "next-week", "far"}
 
     result_today = tr._filter_by_time_window(tasks, "today")  # pyright: ignore[reportPrivateUsage]
     assert {t.id for t in result_today} == {"today"}
 
-    # For next_7_days we filter by scheduled_on (not due_date). Build a separate set
-    sched_next = create_task_response(
-        task_id="sched-next", scheduled_on=today_start.date() + timedelta(days=2)
-    )
-    sched_far = create_task_response(
-        task_id="sched-far", scheduled_on=today_start.date() + timedelta(days=8)
-    )
-    tasks_sched = [sched_next, sched_far]
-    result_next = tr._filter_by_time_window(tasks_sched, "next_7_days")  # pyright: ignore[reportPrivateUsage]
-    assert {t.id for t in result_next} == {"sched-next"}
+    # For next_7_days we filter by scheduled_on. Use the same tasks
+    result_next = tr._filter_by_time_window(tasks, "next_7_days")  # pyright: ignore[reportPrivateUsage]
+    assert {t.id for t in result_next} == {"next-week"}
 
     result_unknown = tr._filter_by_time_window(tasks, "unknown")  # pyright: ignore[reportPrivateUsage]
     assert result_unknown == tasks

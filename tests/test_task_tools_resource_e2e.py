@@ -4,7 +4,7 @@ This module contains end-to-end validation tests for the TaskTools class
 that validate complete MCP resource functionality from client perspective.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 from fastmcp import FastMCP
@@ -99,7 +99,7 @@ class TestEndToEndResourceValidation:
             created_at=datetime(2025, 8, 21, 9, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 21, 11, 30, 0, tzinfo=UTC),
             priority=3,
-            due_date=datetime(2025, 8, 28, 17, 0, 0, tzinfo=UTC),
+            scheduled_on=date(2025, 8, 28),
             area_id="work-area-789",
             source=create_source("integration", "github_issue"),
         )
@@ -123,7 +123,7 @@ class TestEndToEndResourceValidation:
         assert task_data["status"] == "in_progress"
         expected_priority = 3
         assert task_data["priority"] == expected_priority
-        assert task_data["due_date"] == "2025-08-28T17:00:00+00:00"
+        assert task_data["scheduled_on"] == "2025-08-28"
         assert task_data["area_id"] == "work-area-789"
         assert task_data["source"]["type"] == "integration"
         assert task_data["source"]["value"] == "github_issue"
@@ -341,7 +341,7 @@ class TestEndToEndResourceValidation:
             created_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             priority=1,
-            due_date=datetime(2025, 8, 30, 16, 0, 0, tzinfo=UTC),
+            scheduled_on=date(2025, 8, 30),
             area_id="secure-area",
             source=create_source("secure", "encrypted_source"),
         )

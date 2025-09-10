@@ -48,40 +48,37 @@ async def test_global_overdue_filters_only_overdue_open_tasks(mocker: MockerFixt
     mocker.patch.object(mcp, "resource", side_effect=capture)
     TaskTools(mcp, client)
 
-    now = datetime.now(UTC)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-
     od1 = create_task_response(
         task_id="od1",
         status="later",
-        due_date=today_start - timedelta(days=2),
+        scheduled_on=datetime.now(UTC).date() - timedelta(days=2),
     )
     od2 = create_task_response(
         task_id="od2",
         status="started",
-        due_date=today_start - timedelta(hours=1),
+        scheduled_on=datetime.now(UTC).date() - timedelta(days=1),
     )
     od3 = create_task_response(
         task_id="od3",
         status="waiting",
-        due_date=today_start - timedelta(days=1),
+        scheduled_on=datetime.now(UTC).date() - timedelta(days=1),
     )
 
-    # Due later than 'now' to ensure it's not considered overdue
+    # Scheduled later than today to ensure it's not considered overdue
     t_today = create_task_response(
         task_id="today",
         status="next",
-        due_date=now + timedelta(hours=2),
+        scheduled_on=datetime.now(UTC).date() + timedelta(days=1),
     )
     t_future = create_task_response(
         task_id="future",
         status="later",
-        due_date=today_start + timedelta(days=3),
+        scheduled_on=datetime.now(UTC).date() + timedelta(days=3),
     )
     t_completed_overdue = create_task_response(
         task_id="done-od",
         status="completed",
-        due_date=today_start - timedelta(days=3),
+        scheduled_on=datetime.now(UTC).date() - timedelta(days=3),
     )
 
     # Simulate upstream returning mixed results even when window=overdue
@@ -106,7 +103,7 @@ async def test_global_overdue_filters_only_overdue_open_tasks(mocker: MockerFixt
     # Should contain exactly the 3 overdue open tasks
     assert set(returned_ids) == {"od1", "od2", "od3"}
     # Ensure sort hint matches overdue
-    assert result["sort"] == "due_date.asc,priority.desc,id.asc"
+    assert result["sort"] == "scheduled_on.asc,priority.desc,id.asc"
 
 
 @pytest.mark.asyncio
@@ -134,39 +131,37 @@ async def test_area_overdue_scopes_and_filters_overdue_only(mocker: MockerFixtur
 
     area = "area-1"
     other_area = "area-2"
-    now = datetime.now(UTC)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
     # Target area: mix of overdue/open, today, future, and completed-overdue
     a1_od = create_task_response(
         task_id="a1-od",
         status="later",
         area_id=area,
-        due_date=today_start - timedelta(days=1),
+        scheduled_on=datetime.now(UTC).date() - timedelta(days=1),
     )
     a1_od2 = create_task_response(
         task_id="a1-od2",
         status="started",
         area_id=area,
-        due_date=today_start - timedelta(hours=2),
+        scheduled_on=datetime.now(UTC).date() - timedelta(days=1),
     )
     a1_today = create_task_response(
         task_id="a1-today",
         status="next",
         area_id=area,
-        due_date=now + timedelta(hours=3),
+        scheduled_on=datetime.now(UTC).date() + timedelta(days=1),
     )
     a1_future = create_task_response(
         task_id="a1-future",
         status="waiting",
         area_id=area,
-        due_date=today_start + timedelta(days=5),
+        scheduled_on=datetime.now(UTC).date() + timedelta(days=5),
     )
     a1_done_od = create_task_response(
         task_id="a1-done-od",
         status="completed",
         area_id=area,
-        due_date=today_start - timedelta(days=2),
+        scheduled_on=datetime.now(UTC).date() - timedelta(days=2),
     )
 
     # Other area overdue (should be excluded by area filter)
@@ -174,7 +169,7 @@ async def test_area_overdue_scopes_and_filters_overdue_only(mocker: MockerFixtur
         task_id="a2-od",
         status="later",
         area_id=other_area,
-        due_date=today_start - timedelta(days=1),
+        scheduled_on=datetime.now(UTC).date() - timedelta(days=1),
     )
 
     # Simulate upstream returning area-scoped tasks (but not filtering by window correctly)
@@ -198,4 +193,4 @@ async def test_area_overdue_scopes_and_filters_overdue_only(mocker: MockerFixtur
     returned_ids = [i["id"] for i in result["items"]]
     # Only overdue open tasks within area-1
     assert set(returned_ids) == {"a1-od", "a1-od2"}
-    assert result["sort"] == "due_date.asc,priority.desc,id.asc"
+    assert result["sort"] == "scheduled_on.asc,priority.desc,id.asc"

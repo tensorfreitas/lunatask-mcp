@@ -66,7 +66,7 @@ log_level = "INFO"
                             "id": "test-task-456",
                             "name": "Multi-field Update",
                             "status": "completed",
-                            "due_date": "2025-12-31T23:59:59Z",
+                            "scheduled_on": "2025-12-31",
                         },
                     )
 

@@ -84,11 +84,12 @@ class TestGlobalAliasBehavior:
         TaskTools(mcp, client)
 
         # Build unsorted sample data to ensure handler sorts deterministically
+        # All scheduled for today to pass the "today" window filter
         t1 = create_task_response(
             task_id="a",
             status="open",
             priority=0,
-            due_date=datetime(2025, 8, 25, 10, 0, 0, tzinfo=UTC),
+            scheduled_on=datetime.now(UTC).date(),
             created_at=datetime(2025, 8, 20, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 20, 10, 0, 0, tzinfo=UTC),
         )
@@ -96,7 +97,7 @@ class TestGlobalAliasBehavior:
             task_id="b",
             status="open",
             priority=2,
-            due_date=datetime(2025, 8, 24, 10, 0, 0, tzinfo=UTC),
+            scheduled_on=datetime.now(UTC).date(),
             created_at=datetime(2025, 8, 19, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 19, 10, 0, 0, tzinfo=UTC),
         )
@@ -104,7 +105,7 @@ class TestGlobalAliasBehavior:
             task_id="c",
             status="open",
             priority=2,
-            due_date=datetime(2025, 8, 24, 10, 0, 0, tzinfo=UTC),
+            scheduled_on=datetime.now(UTC).date(),
             created_at=datetime(2025, 8, 18, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 18, 10, 0, 0, tzinfo=UTC),
         )
@@ -132,7 +133,7 @@ class TestGlobalAliasBehavior:
         max_limit = 50
         assert kwargs["limit"] == max_limit
 
-        # Sorted deterministically: priority.desc then due_date.asc then id.asc
+        # Sorted deterministically: priority.desc then scheduled_on.asc then id.asc
         ids_in_order = [i["id"] for i in result["items"]]
         assert ids_in_order == ["b", "c", "a"]
 
@@ -181,7 +182,7 @@ class TestGlobalAliasBehavior:
         assert first_kwargs["status"] == "open"
         max_limit = 50
         assert first_kwargs["limit"] == max_limit
-        assert result["sort"] == "due_date.asc,priority.desc,id.asc"
+        assert result["sort"] == "scheduled_on.asc,priority.desc,id.asc"
 
     @pytest.mark.asyncio
     async def test_global_today_filters_by_scheduled_on_when_present(

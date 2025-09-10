@@ -27,10 +27,10 @@ from tests.factories import create_task_response
 
 @pytest.mark.asyncio
 async def test_global_next_7_days_filters_only_future_window(mocker: MockerFixture) -> None:
-    """Global next-7-days should include only tasks due in next 7 days.
+    """Global next-7-days should include only tasks scheduled in next 7 days.
 
-    Excludes overdue and due-today tasks; includes tasks with due_date >= end-of-today
-    and < end-of-today + 7 days.
+    Excludes overdue and today-scheduled tasks; includes tasks with scheduled_on >= tomorrow
+    and <= today + 7 days.
     """
     mcp = FastMCP("test-server")
     config = ServerConfig(

@@ -4,7 +4,7 @@ This module contains tests for the TaskTools class that provides
 MCP resource for retrieving a single LunaTask task.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 from fastmcp import FastMCP
@@ -72,7 +72,7 @@ class TestSingleTaskResource:
             created_at=datetime(2025, 8, 20, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 20, 10, 30, 0, tzinfo=UTC),
             priority=2,
-            due_date=datetime(2025, 8, 25, 14, 30, 0, tzinfo=UTC),
+            scheduled_on=date(2025, 8, 25),
             area_id="area-456",
             source=create_source("manual", "user_created"),
         )
@@ -94,7 +94,7 @@ class TestSingleTaskResource:
         assert task_data["status"] == "open"
         expected_priority = 2
         assert task_data["priority"] == expected_priority
-        assert task_data["due_date"] == "2025-08-25T14:30:00+00:00"
+        assert task_data["scheduled_on"] == "2025-08-25"
         assert task_data["created_at"] == "2025-08-20T10:00:00+00:00"
         assert task_data["updated_at"] == "2025-08-20T10:30:00+00:00"
         assert task_data["area_id"] == "area-456"
@@ -143,7 +143,7 @@ class TestSingleTaskResource:
         assert task_data["id"] == "task-minimal"
         assert task_data["status"] == "completed"
         assert task_data["priority"] is None
-        assert task_data["due_date"] is None
+        assert task_data["scheduled_on"] is None
         assert task_data["area_id"] is None
         assert task_data["source"] is None
 

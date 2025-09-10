@@ -1,7 +1,7 @@
 """Task update tool handler for LunaTask MCP integration."""
 
 import logging
-from datetime import datetime
+from datetime import date
 from typing import Any
 
 from fastmcp import Context
@@ -30,7 +30,7 @@ async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
     area_id: str | None = None,
     status: str | None = None,
     priority: int | str | None = None,
-    due_date: str | None = None,
+    scheduled_on: str | None = None,
     motivation: str | None = None,
     eisenhower: int | str | None = None,
 ) -> dict[str, Any]:
@@ -47,7 +47,7 @@ async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
         area_id: Updated area ID the task belongs to (optional)
         status: Updated task status (optional)
         priority: Updated task priority level (optional)
-        due_date: Updated due date as ISO 8601 string (optional)
+        scheduled_on: Updated scheduled date in YYYY-MM-DD format (optional)
         motivation: Updated task motivation (must, should, want, unknown) (optional)
         eisenhower: Updated eisenhower matrix quadrant (0-4) (optional)
 
@@ -75,7 +75,7 @@ async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
         return result
 
     # Validate that at least one field is provided for update
-    update_fields = [name, note, area_id, status, priority, due_date, motivation, eisenhower]
+    update_fields = [name, note, area_id, status, priority, scheduled_on, motivation, eisenhower]
     if all(field is None for field in update_fields):
         error_msg = "At least one field must be provided for update"
         result = {
@@ -87,20 +87,20 @@ async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
         logger.warning("No fields provided for task update: %s", id)
         return result
 
-    # Parse and validate due_date if provided
-    parsed_due_date = None
-    if due_date is not None:
+    # Parse and validate scheduled_on if provided
+    parsed_scheduled_on = None
+    if scheduled_on is not None:
         try:
-            parsed_due_date = datetime.fromisoformat(due_date)
+            parsed_scheduled_on = date.fromisoformat(scheduled_on)
         except (ValueError, TypeError) as e:
-            error_msg = f"Invalid due_date format. Expected ISO 8601 string: {e}"
+            error_msg = f"Invalid scheduled_on format. Expected YYYY-MM-DD format: {e}"
             result = {
                 "success": False,
                 "error": "validation_error",
                 "message": error_msg,
             }
             await ctx.error(error_msg)
-            logger.warning("Invalid due_date format for task %s: %s", id, due_date)
+            logger.warning("Invalid scheduled_on format for task %s: %s", id, scheduled_on)
             return result
 
     # Coerce string priority values to integers when possible for client UX
@@ -164,7 +164,7 @@ async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
             area_id=area_id,
             status=task_status,  # type: ignore[arg-type]
             priority=coerced_priority,
-            due_date=parsed_due_date,
+            scheduled_on=parsed_scheduled_on,
             motivation=task_motivation,  # type: ignore[arg-type]
             eisenhower=coerced_eisenhower,
         )

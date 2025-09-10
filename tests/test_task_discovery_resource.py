@@ -58,7 +58,7 @@ async def test_tasks_discovery_resource_minimal_contract() -> None:
     # Defaults and params basics
     assert body["defaults"]["status"] == "open"
     assert body["defaults"]["limit"] == body["limits"]["max_limit"]
-    assert body["defaults"]["sort"] == "priority.desc,due_date.asc,id.asc"
+    assert body["defaults"]["sort"] == "priority.desc,scheduled_on.asc,id.asc"
     assert body["defaults"]["tz"] == "UTC"
 
     # Aliases include both families
@@ -66,7 +66,7 @@ async def test_tasks_discovery_resource_minimal_contract() -> None:
     assert {"area", "global"}.issubset(families)
 
     # Projection includes detail_uri and core fields
-    for field in ("id", "due_date", "priority", "status", "area_id", "detail_uri"):
+    for field in ("id", "scheduled_on", "priority", "status", "area_id", "detail_uri"):
         assert field in body["projection"]
 
 

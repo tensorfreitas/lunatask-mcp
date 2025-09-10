@@ -29,7 +29,7 @@ def create_task_response(  # noqa: PLR0913  # Factory functions need many parame
     created_at: datetime | None = None,
     updated_at: datetime | None = None,
     priority: int | None = None,
-    due_date: datetime | None = None,
+    scheduled_on: date | None = None,
     area_id: str | None = None,
     source: Source | None = None,
     goal_id: str | None = None,
@@ -38,7 +38,6 @@ def create_task_response(  # noqa: PLR0913  # Factory functions need many parame
     eisenhower: int | None = None,
     previous_status: str | None = None,
     progress: int | None = None,
-    scheduled_on: date | None = None,
     completed_at: datetime | None = None,
 ) -> TaskResponse:
     """Create a TaskResponse object with default or provided values.
@@ -49,7 +48,7 @@ def create_task_response(  # noqa: PLR0913  # Factory functions need many parame
         created_at: Creation timestamp (default: 2025-08-20 10:00:00 UTC)
         updated_at: Last update timestamp (default: 2025-08-20 10:30:00 UTC)
         priority: Task priority
-        due_date: Due date
+        scheduled_on: Date when task is scheduled
         area_id: Area ID
         source: Source object
         goal_id: Goal ID
@@ -58,7 +57,6 @@ def create_task_response(  # noqa: PLR0913  # Factory functions need many parame
         eisenhower: Eisenhower matrix quadrant
         previous_status: Previous task status
         progress: Task completion percentage
-        scheduled_on: Date when task is scheduled
         completed_at: Task completion timestamp
 
     Returns:
@@ -76,7 +74,7 @@ def create_task_response(  # noqa: PLR0913  # Factory functions need many parame
         created_at=created_at,
         updated_at=updated_at,
         priority=priority,
-        due_date=due_date,
+        scheduled_on=scheduled_on,
         area_id=area_id,
         source=source,
         goal_id=goal_id,
@@ -85,6 +83,5 @@ def create_task_response(  # noqa: PLR0913  # Factory functions need many parame
         eisenhower=eisenhower,
         previous_status=previous_status,
         progress=progress,
-        scheduled_on=scheduled_on,
         completed_at=completed_at,
     )

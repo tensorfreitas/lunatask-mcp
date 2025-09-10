@@ -44,7 +44,7 @@ class TestLunaTaskClientGetTask:
                 "area_id": "area-456",
                 "status": "open",
                 "priority": 2,
-                "due_date": "2025-08-25T14:30:00Z",
+                "scheduled_on": "2025-08-25",
                 "created_at": "2025-08-20T10:00:00Z",
                 "updated_at": "2025-08-20T11:00:00Z",
                 "source": {"type": "manual", "value": "user_created"},
@@ -65,8 +65,8 @@ class TestLunaTaskClientGetTask:
         assert result.status == "open"
         expected_priority = 2
         assert result.priority == expected_priority
-        assert result.due_date is not None
-        assert result.due_date.isoformat() == "2025-08-25T14:30:00+00:00"
+        assert result.scheduled_on is not None
+        assert result.scheduled_on.isoformat() == "2025-08-25"
         assert result.source is not None
         assert result.source.type == "manual"
         assert result.source.value == "user_created"
@@ -91,7 +91,7 @@ class TestLunaTaskClientGetTask:
                 "updated_at": "2025-08-20T10:00:00Z",
                 "area_id": None,
                 "priority": None,
-                "due_date": None,
+                "scheduled_on": None,
                 "source": None,
             }
         }
@@ -109,7 +109,7 @@ class TestLunaTaskClientGetTask:
         assert result.status == "completed"
         assert result.area_id is None
         assert result.priority is None
-        assert result.due_date is None
+        assert result.scheduled_on is None
         assert result.source is None
         mock_request.assert_called_once_with("GET", "tasks/task-minimal")
 

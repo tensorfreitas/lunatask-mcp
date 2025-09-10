@@ -18,6 +18,9 @@ source .venv/bin/activate
 ```
 
 ### Code Quality and Testing
+
+Always follow the guidelines in [coding_guidelines](docs/architecture/11-coding-standards.md)
+
 ```bash
 # Format and lint code
 uv run ruff format
@@ -26,20 +29,42 @@ uv run ruff check --fix
 # Type checking
 uv run pyright
 
-# Run tests
+# Run all tests
 uv run pytest
 
+# Run specific test file
+uv run pytest tests/test_specific_file.py
+
+# Run tests with coverage report
+uv run pytest --cov=src/lunatask_mcp --cov-report=term-missing
+
 # Run pre-commit hooks manually
-pre-commit run --all-files
+uv run pre-commit run --all-files
 ```
 
 ### Running the Application
 ```bash
-# Run the MCP server
-python -m lunatask_mcp
-# or
-lunatask-mcp
+# Run the MCP server (looks for ./config.toml by default)
+uv run python -m lunatask_mcp
+# or using the installed script
+uv run lunatask-mcp
+
+# Run with custom config file
+uv run lunatask-mcp --config-file /path/to/config.toml
+
+# Run with debug logging
+uv run lunatask-mcp --log-level DEBUG
+
+# Get help on available options
+uv run lunatask-mcp --help
 ```
+
+### Configuration
+The server requires a TOML configuration file with at minimum:
+```toml
+lunatask_bearer_token = "your_lunatask_bearer_token_here"
+```
+See `config.example.toml` for a complete configuration template.
 
 ## Architecture
 
@@ -61,11 +86,27 @@ Key architectural patterns:
 
 ```
 src/lunatask_mcp/           # Main package
-├── __init__.py             # Entry point and main server logic
-tests/                      # Test files
+├── __init__.py             # Entry point and version info
+├── main.py                 # CoreServer and application entry point
+├── config.py               # Configuration loading (Pydantic models)
+├── rate_limiter.py         # Rate limiting implementation
+├── api/                    # LunaTask API client components
+│   ├── client.py           # LunaTaskClient class
+│   ├── exceptions.py       # Custom exception definitions
+│   └── models.py           # Pydantic data models
+└── tools/                  # MCP tools implementation
+    ├── tasks.py            # Main TaskTools delegator/registration
+    ├── tasks_common.py     # Shared task helpers and serialization
+    ├── tasks_resources.py  # Task list/single MCP resources
+    ├── tasks_create.py     # create_task MCP tool
+    ├── tasks_update.py     # update_task MCP tool
+    ├── tasks_delete.py     # delete_task MCP tool
+    └── habits.py           # Habit tracking tools
+tests/                      # Test files (flat structure, split by concern)
 docs/                       # Architecture and PRD documentation
-├── architecture/           # Technical architecture docs
-└── prd/                    # Product requirements
+├── architecture/           # Technical architecture docs (including 11-coding-standards.md)
+├── prd/                    # Product requirements
+└── stories/                # Development stories
 ```
 
 ## Coding Standards
@@ -95,7 +136,7 @@ docs/                       # Architecture and PRD documentation
 - Keep fixtures minimal and function-scoped in [tests/conftest.py](tests/conftest.py); avoid `autouse` unless essential.
 - Use pytest markers to separate unit vs integration/E2E (e.g., `@pytest.mark.integration`); register markers in [pytest.ini](pytest.ini) to avoid unknown-marker warnings.
 - Assertions for logging must attach to `stderr` only.
-- Coverage baseline is maintained at 87% minimum via `--cov-fail-under=87` in pytest configuration.
+- Coverage baseline is maintained at 95% minimum via `--cov-fail-under=95` in pytest configuration.
 
 ## Test Module Splitting Guidance
 When test modules grow large, **split by concern before 500 lines**:
@@ -134,141 +175,3 @@ When test modules grow large, **split by concern before 500 lines**:
 - `httpx`: Async HTTP client for LunaTask API
 - `pydantic`: Configuration and data validation
 - `pytest` + `pytest-asyncio`: Testing framework
-
-# Archon MCP Integration & Workflow
-
-You can use archon mcp to research for FastMCP and Lunatask API documentation.
-
-### Universal Research & Planning Phase
-
-**For all scenarios, research before task creation:**
-
-```bash
-# High-level patterns and architecture
-archon:perform_rag_query(query="[technology] architecture patterns", match_count=5)
-
-# Specific implementation guidance  
-archon:search_code_examples(query="[specific feature] implementation", match_count=3)
-```
-
-## Development Iteration Workflow
-### Task-Specific Research
-**For each task, conduct focused research:**
-```bash
-# High-level: Architecture, security, optimization patterns
-archon:perform_rag_query(
-  query="JWT authentication security best practices",
-  match_count=5
-)
-
-# Low-level: Specific API usage, syntax, configuration
-archon:perform_rag_query(
-  query="Express.js middleware setup validation",
-  match_count=3
-)
-
-# Implementation examples
-archon:search_code_examples(
-  query="Express JWT middleware implementation",
-  match_count=3
-)
-```
-
-**Research Scope Examples:**
-- **High-level**: "microservices architecture patterns", "database security practices"
-- **Low-level**: "Zod schema validation syntax", "Cloudflare Workers KV usage", "PostgreSQL connection pooling"
-- **Debugging**: "TypeScript generic constraints error", "npm dependency resolution"
-
-**Implement with Research-Driven Approach:**
-- Use findings from `search_code_examples` to guide implementation
-- Follow patterns discovered in `perform_rag_query` results`
-
-## Knowledge Management Integration
-
-### Documentation Queries
-
-**Use RAG for both high-level and specific technical guidance:**
-
-```bash
-# Architecture & patterns
-archon:perform_rag_query(query="microservices vs monolith pros cons", match_count=5)
-
-# Security considerations  
-archon:perform_rag_query(query="OAuth 2.0 PKCE flow implementation", match_count=3)
-
-# Specific API usage
-archon:perform_rag_query(query="React useEffect cleanup function", match_count=2)
-
-# Configuration & setup
-archon:perform_rag_query(query="Docker multi-stage build Node.js", match_count=3)
-
-# Debugging & troubleshooting
-archon:perform_rag_query(query="TypeScript generic type inference error", match_count=2)
-```
-
-### Code Example Integration
-
-**Search for implementation patterns before coding:**
-
-```bash
-# Before implementing any feature
-archon:search_code_examples(query="React custom hook data fetching", match_count=3)
-
-# For specific technical challenges
-archon:search_code_examples(query="PostgreSQL connection pooling Node.js", match_count=2)
-```
-
-**Usage Guidelines:**
-- Search for examples before implementing from scratch
-- Adapt patterns to project-specific requirements  
-- Use for both complex features and simple API usage
-- Validate examples against current best practices
-
-## Research-Driven Development Standards
-
-### Before Any Implementation
-
-**Research checklist:**
-
-- [ ] Search for existing code examples of the pattern
-- [ ] Query documentation for best practices (high-level or specific API usage)
-- [ ] Understand security implications
-- [ ] Check for common pitfalls or antipatterns
-
-### Knowledge Source Prioritization
-
-**Query Strategy:**
-- Start with broad architectural queries, narrow to specific implementation
-- Use RAG for both strategic decisions and tactical "how-to" questions
-- Cross-reference multiple sources for validation
-- Keep match_count low (2-5) for focused results
-
-## Error Handling & Recovery
-
-### When Research Yields No Results
-
-**If knowledge queries return empty results:**
-
-1. Broaden search terms and try again
-2. Search for related concepts or technologies
-3. Document the knowledge gap for future learning
-4. Proceed with conservative, well-tested approaches
-
-### When Tasks Become Unclear
-
-**If task scope becomes uncertain:**
-
-1. Break down into smaller, clearer subtasks
-2. Research the specific unclear aspects
-3. Update task descriptions with new understanding
-4. Create parent-child task relationships if needed
-
-## Quality Assurance Integration
-
-### Research Validation
-
-**Always validate research findings:**
-- Cross-reference multiple sources
-- Verify recency of information
-- Test applicability to current project context
-- Document assumptions and limitations

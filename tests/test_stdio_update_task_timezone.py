@@ -32,7 +32,7 @@ class TestStdioUpdateTaskTimezone:
                     {
                         "id": "timezone-test-1",
                         "name": "Timezone Test 1",
-                        "due_date": "2032-04-23T10:20:30.400+02:30",
+                        "scheduled_on": "2032-04-23",
                     },
                 )
 
@@ -64,7 +64,7 @@ class TestStdioUpdateTaskTimezone:
                     {
                         "id": "timezone-test-2",
                         "name": "Timezone Test 2",
-                        "due_date": "2032-04-23T10:20:30Z",
+                        "scheduled_on": "2032-04-23",
                     },
                 )
 
@@ -96,7 +96,7 @@ class TestStdioUpdateTaskTimezone:
                     {
                         "id": "timezone-test-3",
                         "name": "Timezone Test 3",
-                        "due_date": "2032-04-23T10:20:30",
+                        "scheduled_on": "2032-04-23",
                     },
                 )
 
@@ -127,7 +127,7 @@ class TestStdioUpdateTaskTimezone:
                 {
                     "id": "timezone-test-4",
                     "name": "Timezone Test 4",
-                    "due_date": "invalid-datetime-format",
+                    "scheduled_on": "invalid-date-format",
                 },
             )
 
@@ -136,8 +136,8 @@ class TestStdioUpdateTaskTimezone:
 
             if response_text and (
                 "validation_error" in response_text.lower()
-                or "invalid due_date format" in response_text.lower()
-                or "iso 8601" in response_text.lower()
+                or "invalid scheduled_on format" in response_text.lower()
+                or "date format" in response_text.lower()
             ):
                 logger.info("✓ Invalid datetime format properly rejected with validation error")
             else:
@@ -162,7 +162,7 @@ class TestStdioUpdateTaskTimezone:
                     {
                         "id": "timezone-test-5",
                         "name": "Timezone Test 5",
-                        "due_date": "2032-04-23T10:20:30.123456Z",
+                        "scheduled_on": "2032-04-23",
                     },
                 )
 

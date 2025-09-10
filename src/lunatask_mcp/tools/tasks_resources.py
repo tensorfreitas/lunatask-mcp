@@ -63,18 +63,18 @@ async def tasks_discovery_resource(
             "q": "string",
             "limit": 50,
             "cursor": "opaque",
-            "sort": "priority.desc,due_date.asc,id.asc",
+            "sort": "priority.desc,scheduled_on.asc,id.asc",
         },
         "defaults": {
             "status": "open",
             "limit": 50,
-            "sort": "priority.desc,due_date.asc,id.asc",
+            "sort": "priority.desc,scheduled_on.asc,id.asc",
             "tz": "UTC",
         },
         "limits": {"max_limit": 50, "dense_cap": 25},
         "projection": [
             "id",
-            "due_date",
+            "scheduled_on",
             "priority",
             "status",
             "area_id",
@@ -82,8 +82,8 @@ async def tasks_discovery_resource(
             "detail_uri",
         ],
         "sorts": {
-            "default": "priority.desc,due_date.asc,id.asc",
-            "overdue": "due_date.asc,priority.desc,id.asc",
+            "default": "priority.desc,scheduled_on.asc,id.asc",
+            "overdue": "scheduled_on.asc,priority.desc,id.asc",
             "recent_completions": "completed_at.desc,id.asc",
         },
         "aliases": [
@@ -100,7 +100,7 @@ async def tasks_discovery_resource(
                 "uri": "lunatask://global/overdue",
                 # Canonical params sorted by key with explicit scope=global
                 "canonical": (
-                    "lunatask://tasks?limit=50&scope=global&sort=due_date.asc,priority.desc,id.asc"
+                    "lunatask://tasks?limit=50&scope=global&sort=scheduled_on.asc,priority.desc,id.asc"
                     "&status=open&window=overdue"
                 ),
             },
@@ -328,7 +328,7 @@ def _get_alias_filter_criteria(alias: str) -> dict[str, Any] | None:
             "status_filter": "open",
             "limit": 25,
             "now_rules": {
-                "require_no_due_date": True,
+                "require_no_scheduled_on": True,
                 "include_status": {"started"},
                 "include_priority_exact": {2},
                 "include_motivation": {"must"},
@@ -388,15 +388,15 @@ def _filter_by_completion_recent(
 
 
 def _filter_now_rules(tasks: Sequence[TaskResponse], rules: dict[str, Any]) -> list[TaskResponse]:
-    """Apply custom 'now' rules to include UNDated tasks only."""
-    require_no_due = bool(rules.get("require_no_due_date", True))
+    """Apply custom 'now' rules to include unscheduled tasks only."""
+    require_no_scheduled = bool(rules.get("require_no_scheduled_on", True))
     include_status = set(rules.get("include_status", set()))
     include_priority_exact = set(rules.get("include_priority_exact", set()))
     include_motivation = set(rules.get("include_motivation", set()))
     include_eisenhower_exact = set(rules.get("include_eisenhower_exact", set()))
 
     def should_include(t: TaskResponse) -> bool:
-        if require_no_due and t.due_date is not None:
+        if require_no_scheduled and t.scheduled_on is not None:
             return False
         if t.status in include_status:
             return True
@@ -443,18 +443,14 @@ def _apply_task_filters(
 def _filter_today_scheduled_or_due(tasks: Sequence[TaskResponse]) -> list[TaskResponse]:
     """Return tasks scheduled or due today (UTC).
 
-    Includes tasks where scheduled_on equals today's UTC date, or due_date falls
-    within today's UTC window [00:00, 24:00).
+    Includes tasks where scheduled_on equals today's UTC date.
     """
     now = datetime.now(UTC)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    today_end = today_start + timedelta(days=1)
     today_date = today_start.date()
 
     def is_today(t: TaskResponse) -> bool:
-        return (t.scheduled_on is not None and t.scheduled_on == today_date) or (
-            t.due_date is not None and today_start <= t.due_date < today_end
-        )
+        return t.scheduled_on is not None and t.scheduled_on == today_date
 
     return [t for t in tasks if is_today(t)]
 
@@ -471,39 +467,26 @@ def _filter_by_time_window(tasks: list[TaskResponse], window: str) -> list[TaskR
     """
     now = datetime.now(UTC)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    today_end = today_start + timedelta(days=1)
-
-    def _as_aware(dt: datetime | None) -> datetime | None:
-        if dt is None:
-            return None
-        # Treat naive timestamps as UTC to avoid comparison errors and align with config default
-        return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt.astimezone(UTC)
 
     def _is_overdue(t: TaskResponse) -> bool:
-        due = _as_aware(t.due_date)
-        # Primary: due before start of today (strictly prior days)
-        if due is not None and due < today_start:
-            return True
-        # Secondary: scheduled_on in the past (acts like overdue when no due_date)
+        # Primary: scheduled_on before today (strictly prior days)
         return t.scheduled_on is not None and t.scheduled_on < today_start.date()
 
     if window == "now":
-        # "Now" = overdue + due today
-        return [t for t in tasks if t.due_date is not None and t.due_date <= today_end]
+        # "Now" = items with no scheduled_on meeting existing heuristics
+        # This should be handled by _filter_now_rules, not here
+        return tasks
     if window == "today":
-        # "Today" = due today only
-        return [
-            t for t in tasks if t.due_date is not None and today_start <= t.due_date < today_end
-        ]
+        # "Today" = scheduled_on == today (UTC)
+        today_date = today_start.date()
+        return [t for t in tasks if t.scheduled_on is not None and t.scheduled_on == today_date]
     if window == "overdue":
-        # "Overdue":
-        # - due_date before start of today (UTC), OR
-        # - scheduled_on before today when due_date is absent.
+        # "Overdue" = scheduled_on < today (UTC)
         return [t for t in tasks if _is_overdue(t)]
     if window == "next_7_days":
         # "Next 7 days" (scheduled) = tasks with scheduled_on in (today, today+7] (UTC)
         # Excludes items scheduled today or in the past; includes up to and including day+7.
-        next_week_date = (today_end + timedelta(days=6)).date()  # today_date + 7
+        next_week_date = (today_start + timedelta(days=7)).date()  # today_date + 7
         today_date = today_start.date()
         return [
             t
@@ -528,7 +511,7 @@ async def _fetch_tasks_for_global_alias(
             # Apply client-side narrowing for windows that upstream may ignore
             if window in {"overdue", "next_7_days"}:
                 if window == "overdue":
-                    params["sort"] = "due_date.asc,priority.desc,id.asc"
+                    params["sort"] = "scheduled_on.asc,priority.desc,id.asc"
                 should_filter = True
             return (await client.get_tasks(**params), should_filter)
         # now → client-side only
@@ -563,7 +546,7 @@ async def _fetch_tasks_for_area_alias(
         # Apply client-side narrowing where upstream may ignore window
         if w in {"overdue", "next_7_days"}:
             if w == "overdue":
-                params["sort"] = "due_date.asc,priority.desc,id.asc"
+                params["sort"] = "scheduled_on.asc,priority.desc,id.asc"
             should_filter = True
         return (await client.get_tasks(**params), should_filter)
     if ftype == "priority":
@@ -588,12 +571,12 @@ def _sort_tasks_for_alias(alias: str, tasks: list[TaskResponse]) -> tuple[list[T
     if alias == "overdue":
         sorted_tasks.sort(
             key=lambda t: (
-                ((0, int(t.due_date.timestamp())) if t.due_date else (1, 0)),
+                ((0, int(t.scheduled_on.toordinal())) if t.scheduled_on else (1, 0)),
                 -(t.priority if t.priority is not None else -10),
                 t.id,
             )
         )
-        return sorted_tasks, "due_date.asc,priority.desc,id.asc"
+        return sorted_tasks, "scheduled_on.asc,priority.desc,id.asc"
     if alias == "recent_completions":
         sorted_tasks.sort(
             key=lambda t: (
@@ -605,11 +588,11 @@ def _sort_tasks_for_alias(alias: str, tasks: list[TaskResponse]) -> tuple[list[T
     sorted_tasks.sort(
         key=lambda t: (
             -(t.priority if t.priority is not None else -10),
-            ((0, int(t.due_date.timestamp())) if t.due_date else (1, 0)),
+            ((0, int(t.scheduled_on.toordinal())) if t.scheduled_on else (1, 0)),
             t.id,
         )
     )
-    return sorted_tasks, "priority.desc,due_date.asc,id.asc"
+    return sorted_tasks, "priority.desc,scheduled_on.asc,id.asc"
 
 
 async def list_tasks_global_alias(
@@ -654,7 +637,7 @@ async def list_tasks_global_alias(
 
     # If upstream 'today' window appears too broad, narrow locally using schedule/due.
     if alias == "today" and any(getattr(t, "scheduled_on", None) is not None for t in all_tasks):
-        await ctx.info("Applying client-side 'today' filter by scheduled_on/due_date")
+        await ctx.info("Applying client-side 'today' filter by scheduled_on")
         filtered_tasks = _filter_today_scheduled_or_due(all_tasks)
 
     # Fallback: if overdue alias yields no results, retry without window upstream and
@@ -670,7 +653,7 @@ async def list_tasks_global_alias(
             "status": "open",
         }
         # Provide a sort hint to increase likelihood of capturing earliest due tasks
-        fallback_params["sort"] = "due_date.asc,id.asc"
+        fallback_params["sort"] = "scheduled_on.asc,id.asc"
         async with lunatask_client:
             all_tasks = await lunatask_client.get_tasks(**fallback_params)
         filtered_tasks = _apply_task_filters(all_tasks, filter_criteria)
@@ -680,13 +663,13 @@ async def list_tasks_global_alias(
     # Apply deterministic ordering based on alias type
     if alias == "overdue":
         filtered_tasks.sort(
-            key=lambda t: (  # due_date.asc, priority.desc, id.asc
-                ((0, int(t.due_date.timestamp())) if t.due_date else (1, 0)),
+            key=lambda t: (  # scheduled_on.asc, priority.desc, id.asc
+                ((0, int(t.scheduled_on.toordinal())) if t.scheduled_on else (1, 0)),
                 -(t.priority if t.priority is not None else -10),
                 t.id,
             )
         )
-        sort = "due_date.asc,priority.desc,id.asc"
+        sort = "scheduled_on.asc,priority.desc,id.asc"
     elif alias == "recent_completions":
         filtered_tasks.sort(
             key=lambda t: (
@@ -697,13 +680,13 @@ async def list_tasks_global_alias(
         sort = "completed_at.desc,id.asc"
     else:
         filtered_tasks.sort(
-            key=lambda t: (  # priority.desc, due_date.asc, id.asc
+            key=lambda t: (  # priority.desc, scheduled_on.asc, id.asc
                 -(t.priority if t.priority is not None else -10),
-                ((0, int(t.due_date.timestamp())) if t.due_date else (1, 0)),
+                ((0, int(t.scheduled_on.toordinal())) if t.scheduled_on else (1, 0)),
                 t.id,
             )
         )
-        sort = "priority.desc,due_date.asc,id.asc"
+        sort = "priority.desc,scheduled_on.asc,id.asc"
 
     # Apply limit after filtering and sorting
     limited_tasks = filtered_tasks[:limit]
@@ -764,7 +747,7 @@ async def list_tasks_area_alias(
     # Apply the same client-side correction for "today" as global: if scheduled_on
     # hints are present, restrict to items scheduled/due today within the area.
     if alias == "today" and any(getattr(t, "scheduled_on", None) is not None for t in scoped):
-        await ctx.info("Applying client-side area 'today' filter by scheduled_on/due_date")
+        await ctx.info("Applying client-side area 'today' filter by scheduled_on")
         filtered_tasks = _filter_today_scheduled_or_due(scoped)
 
     await ctx.info(

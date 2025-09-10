@@ -193,7 +193,7 @@ class TestTaskToolsRegisteredWrappers:
         )  # type: ignore[misc]
         update_res = cast(
             dict[str, Any],
-            await update_fn(mock_ctx, id="tid", status="started", due_date=None),
+            await update_fn(mock_ctx, id="tid", status="started", scheduled_on=None),
         )  # type: ignore[misc]
         delete_res = cast(dict[str, Any], await delete_fn(mock_ctx, id="tid"))  # type: ignore[misc]
 

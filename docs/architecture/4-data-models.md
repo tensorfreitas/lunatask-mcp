@@ -39,7 +39,7 @@ class TaskResponse(BaseModel):
     area_id: Optional[str] = None
     status: str  # e.g., "open", "completed", "canceled"
     priority: Optional[int] = None
-    due_date: Optional[datetime] = None
+    scheduled_on: Optional[date] = None
     created_at: datetime
     updated_at: datetime
     source: Optional[Source] = None
@@ -66,7 +66,7 @@ class TaskResponse(BaseModel):
       "area_id": "area-456",
       "status": "open",
       "priority": 2,
-      "due_date": "2025-08-25T18:00:00Z",
+      "scheduled_on": "2025-08-25",
       "created_at": "2025-08-20T10:00:00Z",
       "updated_at": "2025-08-20T10:30:00Z",
       "source": {"type": "manual", "value": "user_created"},
@@ -97,7 +97,7 @@ class TaskCreate(BaseModel):
     area_id: Optional[str] = None
     status: str = "open"
     priority: Optional[int] = None
-    due_date: Optional[datetime] = None
+    scheduled_on: Optional[date] = None
     source: Optional[dict] = None
 ```
 
@@ -118,7 +118,7 @@ class TaskUpdate(BaseModel):
     area_id: Optional[str] = None
     status: Optional[str] = None
     priority: Optional[int] = None
-    due_date: Optional[datetime] = None
+    scheduled_on: Optional[date] = None
     source: Optional[dict] = None
 ```
 

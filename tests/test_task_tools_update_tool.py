@@ -4,7 +4,7 @@ This module contains tests for the TaskTools class that provides
 MCP tool for updating LunaTask tasks.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 from fastmcp import FastMCP
@@ -83,16 +83,16 @@ class TestUpdateTaskTool:
             area_id=None,
             status="completed",
             priority=None,
-            due_date=None,
+            scheduled_on=None,
         )
         # Mock method added by pytest-mock, type system doesn't recognize it
         mock_update_task.assert_called_with("update-task-123", expected_update)  # type: ignore[attr-defined] # Mock method added by mocker.patch.object
 
     @pytest.mark.asyncio
-    async def test_update_task_tool_due_date_parsing_valid_iso_8601(
+    async def test_update_task_tool_scheduled_on_parsing_valid_date(
         self, mocker: MockerFixture
     ) -> None:
-        """Test update_task tool correctly parses valid ISO 8601 due_date strings."""
+        """Test update_task tool correctly parses valid scheduled_on date strings."""
         mcp = FastMCP("test-server")
         config = ServerConfig(
             lunatask_bearer_token="test_token",
@@ -104,31 +104,31 @@ class TestUpdateTaskTool:
         mock_ctx = mocker.AsyncMock()
 
         # Mock successful task update response
-        expected_due_date = datetime(2025, 12, 25, 14, 30, 0, tzinfo=UTC)
+        expected_scheduled_on = date(2025, 12, 25)
         updated_task = create_task_response(
             task_id="date-task-789",
             status="later",
             created_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 22, 15, 30, 0, tzinfo=UTC),
-            due_date=expected_due_date,
+            scheduled_on=expected_scheduled_on,
         )
 
         mocker.patch.object(client, "update_task", return_value=updated_task)
         mocker.patch.object(client, "__aenter__", return_value=client)
         mocker.patch.object(client, "__aexit__", return_value=None)
 
-        # Test with valid ISO 8601 string
+        # Test with valid date string
         result = await task_tools.update_task_tool(
             mock_ctx,
             id="date-task-789",
-            due_date="2025-12-25T14:30:00+00:00",
+            scheduled_on="2025-12-25",
         )
 
         # Verify successful parsing and update
         assert result["success"] is True
-        assert result["task"]["due_date"] == "2025-12-25T14:30:00+00:00"
+        assert result["task"]["scheduled_on"] == "2025-12-25"
 
-        # Verify the parsed datetime was passed correctly to client
+        # Verify the parsed date was passed correctly to client
         # Mock object dynamically added by pytest-mock, hence type ignore needed
         mock_update_task = client.update_task  # type: ignore[attr-defined] # Mock method reference added by mocker.patch.object
         expected_update = TaskUpdate(
@@ -137,16 +137,16 @@ class TestUpdateTaskTool:
             area_id=None,
             status=None,
             priority=None,
-            due_date=expected_due_date,
+            scheduled_on=expected_scheduled_on,
         )
         # Mock method added by pytest-mock, type system doesn't recognize it
         mock_update_task.assert_called_with("date-task-789", expected_update)  # type: ignore[attr-defined] # Mock method added by mocker.patch.object
 
     @pytest.mark.asyncio
-    async def test_update_task_tool_due_date_parsing_invalid_format(
+    async def test_update_task_tool_scheduled_on_parsing_invalid_format(
         self, mocker: MockerFixture
     ) -> None:
-        """Test update_task tool handles invalid due_date format correctly."""
+        """Test update_task tool handles invalid scheduled_on format correctly."""
         mcp = FastMCP("test-server")
         config = ServerConfig(
             lunatask_bearer_token="test_token",
@@ -166,13 +166,13 @@ class TestUpdateTaskTool:
         result = await task_tools.update_task_tool(
             mock_ctx,
             id="date-task-invalid",
-            due_date="invalid-date-format",
+            scheduled_on="invalid-date-format",
         )
 
         # Verify error response
         assert result["success"] is False
         assert result["error"] == "validation_error"
-        assert "Invalid due_date format" in result["message"]
+        assert "Invalid scheduled_on format" in result["message"]
 
         # Verify client was not called due to validation error
         mock_update.assert_not_called()

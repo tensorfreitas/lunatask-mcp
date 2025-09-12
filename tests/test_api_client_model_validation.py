@@ -14,8 +14,6 @@ from lunatask_mcp.api.models import (
     MIN_EISENHOWER,
     MIN_PRIORITY,
     TaskCreate,
-    TaskMotivation,
-    TaskStatus,
     TaskUpdate,
 )
 from tests.factories import create_task_response
@@ -40,7 +38,7 @@ class TestTaskModelValidationAndDefaults:
     def test_task_create_status_enum_validation(self) -> None:
         """Test TaskCreate validates status enum values (AC: 1)."""
         # Valid values should pass
-        valid_statuses: list[TaskStatus] = ["later", "next", "started", "waiting", "completed"]
+        valid_statuses: list[str] = ["later", "next", "started", "waiting", "completed"]
         for status in valid_statuses:
             task = TaskCreate(name="Test Task", status=status)
             assert task.status == status
@@ -52,7 +50,7 @@ class TestTaskModelValidationAndDefaults:
     def test_task_create_motivation_enum_validation(self) -> None:
         """Test TaskCreate validates motivation enum values (AC: 1, 2)."""
         # Valid values should pass
-        valid_motivations: list[TaskMotivation] = ["must", "should", "want", "unknown"]
+        valid_motivations: list[str] = ["must", "should", "want", "unknown"]
         for motivation in valid_motivations:
             task = TaskCreate(name="Test Task", motivation=motivation)
             assert task.motivation == motivation
@@ -69,10 +67,10 @@ class TestTaskModelValidationAndDefaults:
             task = TaskCreate(name="Test Task", priority=priority)
             assert task.priority == priority
 
-        # Invalid values should raise ValidationError
-        with pytest.raises(ValueError, match=f"Priority must be between {MIN_PRIORITY}"):
+        # Invalid values should raise Pydantic ValidationError with standard constraint messages
+        with pytest.raises(ValidationError, match="greater than or equal"):
             TaskCreate(name="Test Task", priority=MIN_PRIORITY - 1)
-        with pytest.raises(ValueError, match=f"Priority must be between {MIN_PRIORITY}"):
+        with pytest.raises(ValidationError, match="less than or equal"):
             TaskCreate(name="Test Task", priority=MAX_PRIORITY + 1)
 
     def test_task_create_eisenhower_bounds_validation(self) -> None:
@@ -83,10 +81,10 @@ class TestTaskModelValidationAndDefaults:
             task = TaskCreate(name="Test Task", eisenhower=eisenhower)
             assert task.eisenhower == eisenhower
 
-        # Invalid values should raise ValidationError
-        with pytest.raises(ValueError, match=f"Eisenhower must be between {MIN_EISENHOWER}"):
+        # Invalid values should raise Pydantic ValidationError with standard constraint messages
+        with pytest.raises(ValidationError, match="greater than or equal"):
             TaskCreate(name="Test Task", eisenhower=MIN_EISENHOWER - 1)
-        with pytest.raises(ValueError, match=f"Eisenhower must be between {MIN_EISENHOWER}"):
+        with pytest.raises(ValidationError, match="less than or equal"):
             TaskCreate(name="Test Task", eisenhower=MAX_EISENHOWER + 1)
 
     def test_task_create_optional_fields_motivation_eisenhower(self) -> None:
@@ -104,7 +102,7 @@ class TestTaskModelValidationAndDefaults:
     def test_task_update_status_enum_validation(self) -> None:
         """Test TaskUpdate validates status enum values (AC: 1)."""
         # Valid values should pass
-        valid_statuses: list[TaskStatus] = ["later", "next", "started", "waiting", "completed"]
+        valid_statuses: list[str] = ["later", "next", "started", "waiting", "completed"]
         for status in valid_statuses:
             task = TaskUpdate(status=status)
             assert task.status == status
@@ -116,7 +114,7 @@ class TestTaskModelValidationAndDefaults:
     def test_task_update_motivation_enum_validation(self) -> None:
         """Test TaskUpdate validates motivation enum values (AC: 1, 2)."""
         # Valid values should pass
-        valid_motivations: list[TaskMotivation] = ["must", "should", "want", "unknown"]
+        valid_motivations: list[str] = ["must", "should", "want", "unknown"]
         for motivation in valid_motivations:
             task = TaskUpdate(motivation=motivation)
             assert task.motivation == motivation
@@ -133,10 +131,10 @@ class TestTaskModelValidationAndDefaults:
             task = TaskUpdate(priority=priority)
             assert task.priority == priority
 
-        # Invalid values should raise ValidationError
-        with pytest.raises(ValueError, match=f"Priority must be between {MIN_PRIORITY}"):
+        # Invalid values should raise Pydantic ValidationError with standard constraint messages
+        with pytest.raises(ValidationError, match="greater than or equal"):
             TaskUpdate(priority=MIN_PRIORITY - 1)
-        with pytest.raises(ValueError, match=f"Priority must be between {MIN_PRIORITY}"):
+        with pytest.raises(ValidationError, match="less than or equal"):
             TaskUpdate(priority=MAX_PRIORITY + 1)
 
     def test_task_update_eisenhower_bounds_validation(self) -> None:
@@ -147,10 +145,10 @@ class TestTaskModelValidationAndDefaults:
             task = TaskUpdate(eisenhower=eisenhower)
             assert task.eisenhower == eisenhower
 
-        # Invalid values should raise ValidationError
-        with pytest.raises(ValueError, match=f"Eisenhower must be between {MIN_EISENHOWER}"):
+        # Invalid values should raise Pydantic ValidationError with standard constraint messages
+        with pytest.raises(ValidationError, match="greater than or equal"):
             TaskUpdate(eisenhower=MIN_EISENHOWER - 1)
-        with pytest.raises(ValueError, match=f"Eisenhower must be between {MIN_EISENHOWER}"):
+        with pytest.raises(ValidationError, match="less than or equal"):
             TaskUpdate(eisenhower=MAX_EISENHOWER + 1)
 
     def test_task_update_optional_fields_motivation_eisenhower(self) -> None:

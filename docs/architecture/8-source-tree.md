@@ -14,10 +14,7 @@ The project will be organized using a standard, installable Python package layou
 │       │   └── client.py     # Contains the LunaTaskClient class
 │       ├── config.py         # Configuration loading (pydantic models)
 │       ├── main.py           # Main application entry point (CoreServer)
-│       ├── models/           # Pydantic data models
-│       │   ├── __init__.py
-│       │   ├── habit.py      # Habit related models
-│       │   └── task.py       # Task related models
+│       ├── api/models.py     # Pydantic data models (tasks, habits)
 │       └── tools/            # Components defining MCP tools
 │           ├── __init__.py
 │           ├── habits.py               # Habit-related tools (future)

@@ -1,17 +1,37 @@
-"""Data models for LunaTask API responses.
+"""Data models for LunaTask API requests and responses.
 
-This module contains Pydantic models for parsing and validating
-LunaTask API responses, particularly focusing on task data.
+This module defines Pydantic models and enums used to parse and validate
+LunaTask API data. Request models use field constraints for numeric bounds
+and `StrEnum` for string enums to generate clearer schemas and consistent
+validation errors.
 """
 
 from datetime import date, datetime
-from typing import Literal
+from enum import StrEnum
+from typing import cast
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, model_validator
+from pydantic.config import ConfigDict
 
-# Enums for request validation
-TaskStatus = Literal["later", "next", "started", "waiting", "completed"]
-TaskMotivation = Literal["must", "should", "want", "unknown"]
+
+class TaskStatus(StrEnum):
+    """Status values accepted by LunaTask task creation/update."""
+
+    LATER = "later"
+    NEXT = "next"
+    STARTED = "started"
+    WAITING = "waiting"
+    COMPLETED = "completed"
+
+
+class TaskMotivation(StrEnum):
+    """Motivation values accepted by LunaTask task creation/update."""
+
+    MUST = "must"
+    SHOULD = "should"
+    WANT = "want"
+    UNKNOWN = "unknown"
+
 
 # Constants for validation bounds
 MIN_PRIORITY = -2
@@ -35,106 +55,150 @@ class TaskResponse(BaseModel):
     Note: Encrypted fields (name, note) are not included due to E2E encryption.
     """
 
-    id: str = Field(..., description="Unique task identifier")
-    area_id: str | None = Field(None, description="Area ID the task belongs to")
-    status: str = Field(..., description="Task status (e.g., 'open', 'completed')")
-    priority: int | None = Field(None, description="Task priority level")
-    created_at: datetime = Field(..., description="Task creation timestamp")
-    updated_at: datetime = Field(..., description="Task last update timestamp")
-    source: Source | None = Field(None, description="Task source information")
-    goal_id: str | None = Field(None, description="Goal ID the task belongs to")
+    # Ensure outbound JSON uses enum string values
+    model_config = ConfigDict(use_enum_values=True)
+    id: str = Field(..., description="The ID of the task (UUID)")
+    area_id: str | None = Field(
+        None, description="The ID of the area of life the task belongs in (UUID)"
+    )
+    goal_id: str | None = Field(None, description="The ID of the goal the task belongs in (UUID)")
+    status: TaskStatus | str = Field(
+        default=TaskStatus.LATER, description="Task status (default: 'later')"
+    )
+    previous_status: TaskStatus | str | None = Field(
+        default=None, description="Previous task status"
+    )
     estimate: int | None = Field(None, description="Estimated duration in minutes")
-    motivation: str | None = Field(
+    priority: int | None = Field(default=0, description="Current priority")
+    progress: int | None = Field(None, description="Task completion percentage")
+    motivation: TaskMotivation | str | None = Field(
         None, description="Task motivation level (must, should, want, unknown)"
     )
-    eisenhower: int | None = Field(None, description="Eisenhower matrix quadrant (0-4)")
-    previous_status: str | None = Field(None, description="Previous task status")
-    progress: int | None = Field(None, description="Task completion percentage")
+    eisenhower: int | None = Field(default=None, description="Eisenhower matrix quadrant")
+    source: Source | None = Field(None, description="Task source information")
     scheduled_on: date | None = Field(
         None, description="Date when task is scheduled (YYYY-MM-DD format, date-only)"
     )
     completed_at: datetime | None = Field(None, description="Task completion timestamp")
+    created_at: datetime = Field(..., description="Task creation timestamp")
+    updated_at: datetime = Field(..., description="Task last update timestamp")
 
     # Note: 'name' and 'note' fields are not included due to E2E encryption
     # and are not returned in GET responses from the LunaTask API
 
 
-class TaskCreate(BaseModel):
+class TaskPayload(BaseModel):
+    """Shared request payload fields for task create/update.
+
+    This base model centralizes field declarations and validation constraints
+    common to both `TaskCreate` and `TaskUpdate` without prescribing defaults.
+    Subclasses are responsible for applying operation-specific defaults and
+    required-ness (e.g., `TaskCreate.name` required).
+
+    Notes:
+        - Enum and bounds validation live here so both subclasses stay in sync.
+        - Outbound serialization uses enum string values (`use_enum_values=True`).
+    """
+
+    # Ensure outbound JSON uses enum string values
+    model_config = ConfigDict(use_enum_values=True)
+
+    # Shared relational/context fields
+    area_id: str | None = Field(default=None, description="Area ID the task belongs to")
+    goal_id: str | None = Field(
+        default=None,
+        description=(
+            "ID of the goal where the task should belong to (optional, "
+            "can be found in our apps in the goal's settings)"
+        ),
+    )
+
+    # Encrypted content fields (present in write payloads only)
+    name: str | None = Field(default=None, description="Task name (gets encrypted client-side)")
+    note: str | None = Field(
+        default=None, description="Task note in Markdown (encrypted client-side)"
+    )
+
+    # State and prioritization
+    status: TaskStatus | None = Field(default=None, description="Task status")
+    motivation: TaskMotivation | None = Field(default=None, description="Task motivation level")
+    eisenhower: int | None = Field(
+        default=None,
+        ge=MIN_EISENHOWER,
+        le=MAX_EISENHOWER,
+        description=f"Eisenhower matrix quadrant [{MIN_EISENHOWER}, {MAX_EISENHOWER}]",
+    )
+    priority: int | None = Field(
+        default=None,
+        ge=MIN_PRIORITY,
+        le=MAX_PRIORITY,
+        description=f"Task priority level [{MIN_PRIORITY}, {MAX_PRIORITY}]",
+    )
+
+    # Scheduling/completion timestamps
+    scheduled_on: date | None = Field(
+        default=None, description="Scheduled date (YYYY-MM-DD, date-only)"
+    )
+    completed_at: datetime | None = Field(
+        default=None, description="Completion timestamp (ISO-8601)"
+    )
+
+    # Source metadata
+    source: Source | None = Field(default=None, description="Task source information")
+
+
+class TaskCreate(TaskPayload):
     """Request model for creating new tasks in LunaTask.
 
-    This model represents the data required to create a new task via POST /v1/tasks.
-    Note: name and note fields CAN be included in POST requests (they get encrypted client-side).
+    Inherits shared fields and validation from `TaskPayload` and applies
+    create-time defaults and requirements. Ensures `name` is provided and
+    sets defaults for `status`, `priority`, and `motivation` when omitted.
     """
 
-    name: str = Field(..., description="Task name (required, gets encrypted client-side)")
-    note: str | None = Field(
-        default=None, description="Task note (optional, gets encrypted client-side)"
-    )
-    area_id: str | None = Field(default=None, description="Area ID the task belongs to")
-    status: TaskStatus = Field(default="later", description="Task status (default: 'later')")
-    priority: int = Field(default=0, description="Task priority level (default: 0)")
-    scheduled_on: date | None = Field(
-        default=None, description="Date when task is scheduled (YYYY-MM-DD format, date-only)"
-    )
-    source: Source | None = Field(default=None, description="Task source information")
-    motivation: TaskMotivation = Field(
-        default="unknown", description="Task motivation (default: 'unknown')"
-    )
-    eisenhower: int | None = Field(default=None, description="Eisenhower matrix quadrant (0-4)")
+    # Ensure outbound JSON uses enum string values
+    model_config = ConfigDict(use_enum_values=True)
 
-    @field_validator("priority")
+    # Field present in create payload only (not shared by update)
+    estimate: int | None = Field(default=None, description="Estimated duration in minutes")
+
+    @model_validator(mode="before")
     @classmethod
-    def validate_priority(cls, v: int) -> int:
-        """Validate priority is within bounds [-2, 2]."""
-        if v < MIN_PRIORITY or v > MAX_PRIORITY:
-            msg = f"Priority must be between {MIN_PRIORITY} and {MAX_PRIORITY}"
-            raise ValueError(msg)
-        return v
+    def _apply_create_defaults_and_requirements(cls, data: object) -> object:
+        """Enforce required name and set create-time defaults.
 
-    @field_validator("eisenhower")
-    @classmethod
-    def validate_eisenhower(cls, v: int | None) -> int | None:
-        """Validate eisenhower is within bounds [0, 4]."""
-        if v is not None and (v < MIN_EISENHOWER or v > MAX_EISENHOWER):
-            msg = f"Eisenhower must be between {MIN_EISENHOWER} and {MAX_EISENHOWER}"
-            raise ValueError(msg)
-        return v
+        - Require `name` to be provided and non-empty.
+        - Default `status` to later, `priority` to 0, `motivation` to unknown.
+        """
+        if isinstance(data, dict):
+            d = cast(dict[str, object], data)
+            name = d.get("name")
+            # Require that name is provided (may be empty string; API performs content validation)
+            if name is None:
+                raise ValueError("name is required")  # noqa: TRY003
+
+            d.setdefault("status", TaskStatus.LATER)
+            d.setdefault("priority", 0)
+            d.setdefault("motivation", TaskMotivation.UNKNOWN)
+            return d
+        return data
+
+    def __init__(self, **data: object) -> None:
+        """Pydantic-compatible initializer with permissive typing for tools/tests."""
+        super().__init__(**data)  # type: ignore[arg-type]
 
 
-class TaskUpdate(BaseModel):
-    """Request model for updating existing tasks in LunaTask.
+class TaskUpdate(TaskPayload):
+    """Partial update payload for existing tasks.
 
-    This model supports partial updates via PATCH /v1/tasks/{id}.
-    All fields are optional to allow selective updates.
-    Note: name and note fields CAN be included in PATCH requests (they get encrypted client-side).
+    Inherits all shared request fields and constraints from `TaskPayload` with
+    all attributes optional to support PATCH semantics. Outbound serialization
+    relies on `model_dump(exclude_none=True)` at call sites to send only changed
+    fields.
     """
 
-    name: str | None = Field(default=None, description="Task name (gets encrypted client-side)")
-    note: str | None = Field(default=None, description="Task note (gets encrypted client-side)")
-    area_id: str | None = Field(default=None, description="Area ID the task belongs to")
-    status: TaskStatus | None = Field(default=None, description="Task status")
-    priority: int | None = Field(default=None, description="Task priority level")
-    scheduled_on: date | None = Field(
-        default=None, description="Date when task is scheduled (YYYY-MM-DD format, date-only)"
-    )
-    source: Source | None = Field(default=None, description="Task source information")
-    motivation: TaskMotivation | None = Field(default=None, description="Task motivation")
-    eisenhower: int | None = Field(default=None, description="Eisenhower matrix quadrant (0-4)")
+    # Ensure outbound JSON uses enum string values
+    model_config = ConfigDict(use_enum_values=True)
 
-    @field_validator("priority")
-    @classmethod
-    def validate_priority(cls, v: int | None) -> int | None:
-        """Validate priority is within bounds [-2, 2]."""
-        if v is not None and (v < MIN_PRIORITY or v > MAX_PRIORITY):
-            msg = f"Priority must be between {MIN_PRIORITY} and {MAX_PRIORITY}"
-            raise ValueError(msg)
-        return v
-
-    @field_validator("eisenhower")
-    @classmethod
-    def validate_eisenhower(cls, v: int | None) -> int | None:
-        """Validate eisenhower is within bounds [0, 4]."""
-        if v is not None and (v < MIN_EISENHOWER or v > MAX_EISENHOWER):
-            msg = f"Eisenhower must be between {MIN_EISENHOWER} and {MAX_EISENHOWER}"
-            raise ValueError(msg)
-        return v
+    def __init__(self, **data: object) -> None:
+        """Pydantic-compatible initializer with permissive typing for tools/tests."""
+        super().__init__(**data)  # type: ignore[arg-type]

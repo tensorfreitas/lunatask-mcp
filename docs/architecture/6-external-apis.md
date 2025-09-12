@@ -39,7 +39,7 @@ This project has one critical external dependency: the LunaTask API. All core fu
    - **Purpose**: Create a new task with specified parameters
    - **Implementation**: `LunaTaskClient.create_task(task: TaskCreate)` method
    - **MCP Tool**: `create_task` tool (handler in `tools/tasks_create.py`)
-   - **Request Model**: `TaskCreate` object with required/optional fields
+   - **Request Model**: `TaskCreate` (subclasses `TaskPayload`) with create-time defaults
    - **Response Model**: Task creation result with new task ID
    - **Features**: Supports E2E encryption for `name` and `note` fields
    - **Error Handling**: Validation errors (422), subscription limits (402), auth errors (401)
@@ -49,7 +49,7 @@ This project has one critical external dependency: the LunaTask API. All core fu
    - **Purpose**: Update an existing task with partial field updates
    - **Implementation**: `LunaTaskClient.update_task(task_id: str, update: TaskUpdate)` method
    - **MCP Tool**: `update_task` tool (handler in `tools/tasks_update.py`)
-   - **Request Model**: `TaskUpdate` object with all optional fields (partial updates)
+   - **Request Model**: `TaskUpdate` (subclasses `TaskPayload`) with all optional fields
    - **Response Model**: `TaskResponse` object with updated task data
    - **Features**: Supports partial updates (only provided fields are modified)
    - **Error Handling**: Task not found (404), validation errors (400), auth errors (401)

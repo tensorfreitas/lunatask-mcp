@@ -14,9 +14,8 @@ from typing import Optional
 
 class Source(BaseModel):
     """Nested model representing the source/origin of a task."""
-    type: Optional[str] = None
-    url: Optional[str] = None
-    title: Optional[str] = None
+    type: str
+    value: Optional[str] = None
 ```
 
 ### `TaskResponse` (Response Model)
@@ -26,35 +25,32 @@ class Source(BaseModel):
 ```python
 from pydantic import BaseModel
 from datetime import date, datetime
-from typing import Optional, List
+from typing import Optional
 
 class TaskResponse(BaseModel):
     """Response model for task data received from LunaTask API.
-    
+
     Note: Encrypted fields like 'name' and 'note' are absent in GET responses
-    due to end-to-end encryption.
+    due to end-to-end encryption. This model is intentionally permissive to
+    accommodate upstream values (e.g., status like "open").
     """
-    # Core fields
+
     id: str
     area_id: Optional[str] = None
-    status: str  # e.g., "open", "completed", "canceled"
-    priority: Optional[int] = None
+    status: str  # permissive: accepts upstream strings
+    priority: Optional[int] = 0  # permissive: no bounds enforced in response
     scheduled_on: Optional[date] = None
     created_at: datetime
     updated_at: datetime
     source: Optional[Source] = None
-    
-    # Additional fields from LunaTask API
-    goal_id: Optional[str] = None  # Goal ID the task belongs to
-    estimate: Optional[int] = None  # Estimated duration in minutes
-    motivation: Optional[str] = None  # Task motivation: "must", "should", "want", "unknown"
-    eisenhower: Optional[int] = None  # Eisenhower matrix quadrant (0-4)
-    previous_status: Optional[str] = None  # Previous task status
-    progress: Optional[int] = None  # Task completion percentage (0-100)
-    scheduled_on: Optional[date] = None  # Date when task is scheduled
-    completed_at: Optional[datetime] = None  # Task completion timestamp
-    
-    # Note: 'name' and 'note' fields are encrypted and not returned in responses
+
+    goal_id: Optional[str] = None
+    estimate: Optional[int] = None
+    motivation: Optional[str] = None
+    eisenhower: Optional[int] = None
+    previous_status: Optional[str] = None
+    progress: Optional[int] = None
+    completed_at: Optional[datetime] = None
 ```
 
 **Example API Response:**
@@ -83,43 +79,42 @@ class TaskResponse(BaseModel):
 }
 ```
 
-### `TaskCreate` (Request Model)
+### `TaskPayload` (Shared Request Base)
 
 ```python
 from pydantic import BaseModel
-from datetime import datetime
-from typing import Optional, List
+from datetime import date, datetime
+from typing import Optional
 
-class TaskCreate(BaseModel):
-    """Request model for creating new tasks via LunaTask API."""
-    name: str
-    note: Optional[str] = None
+class TaskPayload(BaseModel):
+    """Shared fields and constraints for create/update requests."""
     area_id: Optional[str] = None
-    status: str = "open"
-    priority: Optional[int] = None
+    goal_id: Optional[str] = None
+    name: Optional[str] = None
+    note: Optional[str] = None
+    status: Optional[str] = None  # strict in requests; validated against enum in code
+    motivation: Optional[str] = None  # strict in requests
+    eisenhower: Optional[int] = None  # strict bounds in requests (0..4)
+    priority: Optional[int] = None    # strict bounds in requests (-2..2)
     scheduled_on: Optional[date] = None
-    source: Optional[dict] = None
+    completed_at: Optional[datetime] = None
+    source: Optional[Source] = None
+```
+
+### `TaskCreate` (Request Model)
+
+```python
+class TaskCreate(TaskPayload):
+    """Create new tasks; applies create-time defaults and requirements."""
+    estimate: Optional[int] = None
+    # Defaults applied: status="later", priority=0, motivation="unknown"; name required.
 ```
 
 ### `TaskUpdate` (Request Model)
 
 ```python
-from pydantic import BaseModel
-from datetime import datetime
-from typing import Optional, List
-
-class TaskUpdate(BaseModel):
-    """Request model for updating existing tasks via LunaTask API.
-    
-    All fields are optional to support partial updates.
-    """
-    name: Optional[str] = None
-    note: Optional[str] = None
-    area_id: Optional[str] = None
-    status: Optional[str] = None
-    priority: Optional[int] = None
-    scheduled_on: Optional[date] = None
-    source: Optional[dict] = None
+class TaskUpdate(TaskPayload):
+    """Partial updates; all fields optional. Used with PATCH."""
 ```
 
 ## Habit Models

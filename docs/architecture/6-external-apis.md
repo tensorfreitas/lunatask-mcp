@@ -25,7 +25,6 @@ This project has one critical external dependency: the LunaTask API. All core fu
    - **MCP Resource**: `lunatask://tasks`
    - **Response Model**: Array of `TaskResponse` objects
    - **Features**: Supports pagination and filtering parameters
-   - **Status**: ✅ Implemented (Story 2.1)
 
 2. **GET /v1/tasks/{id}** - Retrieve Single Task
    - **Purpose**: Get details of a specific task by its unique ID  
@@ -33,7 +32,6 @@ This project has one critical external dependency: the LunaTask API. All core fu
    - **MCP Resource**: `lunatask://tasks/{task_id}` (URI template)
    - **Response Model**: Single `TaskResponse` object
    - **Error Handling**: Returns `TaskNotFoundError` for non-existent tasks (404)
-   - **Status**: ✅ Implemented (Story 2.2)
 
 3. **POST /v1/tasks** - Create Task
    - **Purpose**: Create a new task with specified parameters
@@ -43,7 +41,6 @@ This project has one critical external dependency: the LunaTask API. All core fu
    - **Response Model**: Task creation result with new task ID
    - **Features**: Supports E2E encryption for `name` and `note` fields
    - **Error Handling**: Validation errors (422), subscription limits (402), auth errors (401)
-   - **Status**: ✅ Implemented (Story 2.3)
 
 4. **PATCH /v1/tasks/{id}** - Update Task
    - **Purpose**: Update an existing task with partial field updates
@@ -54,7 +51,6 @@ This project has one critical external dependency: the LunaTask API. All core fu
    - **Features**: Supports partial updates (only provided fields are modified)
    - **Error Handling**: Task not found (404), validation errors (400), auth errors (401)
    - **Date Handling**: Date string parsing and validation for `scheduled_on` field (YYYY-MM-DD format)
-   - **Status**: ✅ Implemented (Story 2.4)
 
 5. **DELETE /v1/tasks/{id}** - Delete Task
    - **Purpose**: Delete a task by ID
@@ -65,7 +61,6 @@ This project has one critical external dependency: the LunaTask API. All core fu
      provider variations (e.g., some deployments may return 200 OK with a JSON body). The MCP tool
      reports success when no exception is raised by the client.
    - **Behavior**: Non-idempotent (repeated deletion returns 404)
-   - **Status**: ✅ Implemented (Story 2.5)
 
 ### Habits API
 
@@ -79,8 +74,6 @@ This project has one critical external dependency: the LunaTask API. All core fu
    - **Response**: Success returns 204 No Content or similar success status
    - **Error Handling**: Habit not found (404), validation errors (422), auth errors (401)
    - **Rate Limiting**: Applied via `TokenBucketLimiter` in `make_request`
-   - **Status**: ✅ Implemented (Story 3.1)
-
 
 ### Response Format Notes
 

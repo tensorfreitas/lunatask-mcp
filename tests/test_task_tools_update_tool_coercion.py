@@ -43,7 +43,7 @@ class TestUpdateTaskToolCoercion:
         call_args = client.update_task.call_args  # type: ignore[attr-defined]
         task_update: TaskUpdate = call_args[0][1]  # type: ignore[misc]
         assert isinstance(task_update, TaskUpdate)
-        assert task_update.status is None
+        assert task_update.status == "later"
 
     @pytest.mark.asyncio
     async def test_invalid_motivation_is_ignored_not_sent(

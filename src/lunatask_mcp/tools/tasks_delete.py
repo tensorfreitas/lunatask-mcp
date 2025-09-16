@@ -18,6 +18,7 @@ from lunatask_mcp.api.exceptions import (
 logger = logging.getLogger(__name__)
 
 
+# TODO: Refactor delete_task_tool to avoid too many return statements
 async def delete_task_tool(  # noqa: PLR0911
     lunatask_client: LunaTaskClient,
     ctx: Context,

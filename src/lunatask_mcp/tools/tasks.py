@@ -64,6 +64,7 @@ class TaskTools:
         """MCP resource providing access to a single LunaTask task by ID."""
         return await get_task_resource_fn(self.lunatask_client, ctx, task_id)
 
+    # TODO: Refactor create_task_tool with`TypedDict` to avoid too many arguments
     async def create_task_tool(  # noqa: PLR0913
         self,
         ctx: ServerContext,
@@ -88,6 +89,7 @@ class TaskTools:
             eisenhower,
         )
 
+    # TODO: Refactor update_task_tool with`TypedDict` to avoid too many arguments
     async def update_task_tool(  # noqa: PLR0913
         self,
         ctx: ServerContext,
@@ -164,6 +166,7 @@ class TaskTools:
                 self.lunatask_client, ctx, area_id=area_id, alias="recent_completions"
             )
 
+        # TODO: Refactor _create_task_tool with`TypedDict` to avoid too many arguments
         async def _create_task_tool(  # noqa: PLR0913
             ctx: ServerContext,
             name: str,
@@ -187,6 +190,7 @@ class TaskTools:
                 eisenhower,
             )
 
+        # TODO: Refactor _update_task_tool with`TypedDict` to avoid too many arguments
         async def _update_task_tool(  # noqa: PLR0913
             ctx: ServerContext,
             id: str,  # noqa: A002

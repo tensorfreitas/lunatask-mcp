@@ -45,7 +45,7 @@ async def test_get_task_resource_metadata_defaults_without_session_id(
     # Minimal task response
     sample_task = create_task_response(
         task_id="task-unknown-meta",
-        status="open",
+        status="next",
         created_at=datetime(2025, 8, 20, 10, 0, 0, tzinfo=UTC),
         updated_at=datetime(2025, 8, 20, 10, 30, 0, tzinfo=UTC),
     )

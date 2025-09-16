@@ -39,12 +39,14 @@ class TestLunaTaskClientUpdateTask:
         client = LunaTaskClient(config)
 
         task_id = "task-123"
-        update_data = TaskUpdate(status="completed")
+        update_data = TaskUpdate(id=task_id, area_id="area-1", status="completed")
 
         mock_response_data: dict[str, Any] = {
             "task": {
                 "id": "task-123",
+                "area_id": "area-1",
                 "status": "completed",
+                "priority": 0,
                 "created_at": "2025-08-21T10:00:00Z",
                 "updated_at": "2025-08-21T11:00:00Z",
             }
@@ -61,7 +63,9 @@ class TestLunaTaskClientUpdateTask:
         assert result.id == "task-123"
         assert result.status == "completed"
         mock_request.assert_called_once_with(
-            "PATCH", "tasks/task-123", data={"status": "completed"}
+            "PATCH",
+            "tasks/task-123",
+            data={"id": task_id, "area_id": "area-1", "status": "completed"},
         )
 
     @pytest.mark.asyncio
@@ -73,6 +77,8 @@ class TestLunaTaskClientUpdateTask:
         task_id = "task-456"
         scheduled_on = date(2025, 8, 30)
         update_data = TaskUpdate(
+            id=task_id,
+            area_id="area-2",
             name="Updated Task Name",
             status="started",
             priority=2,
@@ -82,6 +88,7 @@ class TestLunaTaskClientUpdateTask:
         mock_response_data: dict[str, Any] = {
             "task": {
                 "id": "task-456",
+                "area_id": "area-2",
                 "status": "started",
                 "priority": 2,
                 "scheduled_on": "2025-08-30",
@@ -106,6 +113,8 @@ class TestLunaTaskClientUpdateTask:
             "PATCH",
             "tasks/task-456",
             data={
+                "id": task_id,
+                "area_id": "area-2",
                 "name": "Updated Task Name",
                 "status": "started",
                 "priority": 2,
@@ -120,13 +129,15 @@ class TestLunaTaskClientUpdateTask:
         client = LunaTaskClient(config)
 
         task_id = "task-partial"
-        # Only set status field, leaving others as None
-        update_data = TaskUpdate(status="completed")
+        # Only set status field in addition to required identifiers
+        update_data = TaskUpdate(id=task_id, area_id="area-3", status="completed")
 
         mock_response_data: dict[str, Any] = {
             "task": {
                 "id": "task-partial",
+                "area_id": "area-3",
                 "status": "completed",
+                "priority": 0,
                 "created_at": "2025-08-21T10:00:00Z",
                 "updated_at": "2025-08-21T11:00:00Z",
             }
@@ -140,9 +151,11 @@ class TestLunaTaskClientUpdateTask:
 
         result = await client.update_task(task_id, update_data)
 
-        # Verify only non-None fields were sent
+        # Verify only expected fields were sent (no None values)
         mock_request.assert_called_once_with(
-            "PATCH", "tasks/task-partial", data={"status": "completed"}
+            "PATCH",
+            "tasks/task-partial",
+            data={"id": task_id, "area_id": "area-3", "status": "completed"},
         )
         assert result.status == "completed"
 
@@ -153,13 +166,15 @@ class TestLunaTaskClientUpdateTask:
         client = LunaTaskClient(config)
 
         task_id = "task-no-content"
-        update_data = TaskUpdate(status="completed")
+        update_data = TaskUpdate(id=task_id, area_id="area-4", status="completed")
 
         # Mock 204 response which returns minimal data
         mock_response_data: dict[str, Any] = {
             "task": {
                 "id": "task-no-content",
+                "area_id": "area-4",
                 "status": "completed",
+                "priority": 0,
                 "created_at": "2025-08-21T10:00:00Z",
                 "updated_at": "2025-08-21T11:00:00Z",
             }
@@ -184,7 +199,7 @@ class TestLunaTaskClientUpdateTask:
         client = LunaTaskClient(config)
 
         task_id = "nonexistent-task"
-        update_data = TaskUpdate(status="completed")
+        update_data = TaskUpdate(id=task_id, area_id="area-x", status="completed")
 
         mock_request = mocker.patch.object(
             client,
@@ -200,9 +215,13 @@ class TestLunaTaskClientUpdateTask:
     @pytest.mark.asyncio
     async def test_update_task_validation_error_400(self) -> None:
         """Test update_task model validation rejects invalid status values."""
-        # Test that validation error occurs at model creation time
+        # Test that validation error occurs at model creation time (invalid status)
         with pytest.raises(ValidationError):
-            TaskUpdate(status="invalid_status")  # type: ignore[arg-type] # Intentionally invalid for error testing
+            TaskUpdate(
+                id="invalid",
+                area_id="area-invalid",
+                status="invalid_status",  # type: ignore[arg-type]
+            )
 
     @pytest.mark.asyncio
     async def test_update_task_authentication_error_401(self, mocker: MockerFixture) -> None:
@@ -213,7 +232,7 @@ class TestLunaTaskClientUpdateTask:
         client = LunaTaskClient(config)
 
         task_id = "task-123"
-        update_data = TaskUpdate(status="completed")
+        update_data = TaskUpdate(id=task_id, area_id="area-auth", status="completed")
 
         mock_request = mocker.patch.object(
             client,
@@ -233,7 +252,7 @@ class TestLunaTaskClientUpdateTask:
         client = LunaTaskClient(config)
 
         task_id = "task-123"
-        update_data = TaskUpdate(status="completed")
+        update_data = TaskUpdate(id=task_id, area_id="area-rl", status="completed")
 
         mock_request = mocker.patch.object(
             client,
@@ -253,7 +272,7 @@ class TestLunaTaskClientUpdateTask:
         client = LunaTaskClient(config)
 
         task_id = "task-123"
-        update_data = TaskUpdate(status="completed")
+        update_data = TaskUpdate(id=task_id, area_id="area-timeout", status="completed")
 
         mock_request = mocker.patch.object(
             client,
@@ -273,7 +292,7 @@ class TestLunaTaskClientUpdateTask:
         client = LunaTaskClient(config)
 
         task_id = "task-123"
-        update_data = TaskUpdate(status="completed")
+        update_data = TaskUpdate(id="id_1123232", status="completed", area_id="area_1")
 
         mock_request = mocker.patch.object(
             client,
@@ -293,13 +312,17 @@ class TestLunaTaskClientUpdateTask:
         client = LunaTaskClient(config)
 
         task_id = "parse-test-task"
-        update_data = TaskUpdate(priority=TEST_PRIORITY_HIGH, area_id="new-area")
+        update_data = TaskUpdate(
+            id=task_id,
+            area_id="new-area",
+            priority=TEST_PRIORITY_HIGH,
+        )
 
         mock_response_data: dict[str, Any] = {
             "task": {
                 "id": "parse-test-task",
                 "area_id": "new-area",
-                "status": "open",
+                "status": "started",
                 "priority": TEST_PRIORITY_HIGH,
                 "created_at": "2025-08-21T10:00:00Z",
                 "updated_at": "2025-08-21T12:00:00Z",
@@ -330,7 +353,7 @@ class TestLunaTaskClientUpdateTask:
         client = LunaTaskClient(config)
 
         task_id = "task-123"
-        update_data = TaskUpdate(status="completed")
+        update_data = TaskUpdate(id=task_id, area_id="area-parse", status="completed")
 
         # Mock response with invalid data that cannot be parsed into TaskResponse
         mock_response_data = {"invalid": "data", "missing": "required_fields"}
@@ -351,12 +374,14 @@ class TestLunaTaskClientUpdateTask:
         client = LunaTaskClient(config)
 
         task_id = "rate-limited-update"
-        update_data = TaskUpdate(status="completed")
+        update_data = TaskUpdate(id=task_id, area_id="area-rl-2", status="completed")
 
         mock_response_data: dict[str, Any] = {
             "task": {
                 "id": "rate-limited-update",
+                "area_id": "area-rl-2",
                 "status": "completed",
+                "priority": 0,
                 "created_at": "2025-08-21T10:00:00Z",
                 "updated_at": "2025-08-21T11:00:00Z",
             }
@@ -373,24 +398,32 @@ class TestLunaTaskClientUpdateTask:
 
         # Verify make_request was called (which applies rate limiting)
         mock_request.assert_called_once_with(
-            "PATCH", "tasks/rate-limited-update", data={"status": "completed"}
+            "PATCH",
+            "tasks/rate-limited-update",
+            data={
+                "id": task_id,
+                "area_id": "area-rl-2",
+                "status": "completed",
+            },
         )
         assert result.id == "rate-limited-update"
 
     @pytest.mark.asyncio
-    async def test_update_task_empty_update(self, mocker: MockerFixture) -> None:
-        """Test update_task with no fields set (all None) sends empty data."""
+    async def test_update_task_minimal_update_fields(self, mocker: MockerFixture) -> None:
+        """Test update_task with only required identifiers sends defaulted fields."""
         config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
         client = LunaTaskClient(config)
 
         task_id = "task-empty"
-        # Create TaskUpdate with all default None values
-        update_data = TaskUpdate()
+        # Create TaskUpdate with required identifiers only
+        update_data = TaskUpdate(id=task_id, area_id="area-empty")
 
         mock_response_data: dict[str, Any] = {
             "task": {
                 "id": "task-empty",
-                "status": "open",
+                "area_id": "area-empty",
+                "status": "later",
+                "priority": 0,
                 "created_at": "2025-08-21T10:00:00Z",
                 "updated_at": "2025-08-21T10:00:00Z",
             }
@@ -404,8 +437,12 @@ class TestLunaTaskClientUpdateTask:
 
         result = await client.update_task(task_id, update_data)
 
-        # Verify empty data object was sent (no None values)
-        mock_request.assert_called_once_with("PATCH", "tasks/task-empty", data={})
+        # Verify required identifiers were sent (no defaulted fields)
+        mock_request.assert_called_once_with(
+            "PATCH",
+            "tasks/task-empty",
+            data={"id": task_id, "area_id": "area-empty"},
+        )
         assert result.id == "task-empty"
 
     @pytest.mark.asyncio
@@ -417,13 +454,15 @@ class TestLunaTaskClientUpdateTask:
         client = LunaTaskClient(config)
 
         task_id = "task-encrypted-update"
-        update_data = TaskUpdate(status="completed")
+        update_data = TaskUpdate(id=task_id, area_id="area-enc", status="completed")
 
         # Response without encrypted fields (name, note) as expected from E2E encryption
         mock_response_data: dict[str, Any] = {
             "task": {
                 "id": "task-encrypted-update",
+                "area_id": "area-enc",
                 "status": "completed",
+                "priority": 0,
                 "created_at": "2025-08-21T10:00:00Z",
                 "updated_at": "2025-08-21T11:00:00Z",
                 # Note: 'name' and 'note' fields intentionally missing
@@ -452,12 +491,14 @@ class TestLunaTaskClientUpdateTask:
         client = LunaTaskClient(config)
 
         task_id = "task-with-special/chars"
-        update_data = TaskUpdate(status="completed")
+        update_data = TaskUpdate(id=task_id, area_id="area-special", status="completed")
 
         mock_response_data: dict[str, Any] = {
             "task": {
                 "id": "task-with-special/chars",
+                "area_id": "area-special",
                 "status": "completed",
+                "priority": 0,
                 "created_at": "2025-08-21T10:00:00Z",
                 "updated_at": "2025-08-21T11:00:00Z",
             }
@@ -473,7 +514,13 @@ class TestLunaTaskClientUpdateTask:
 
         assert result.id == "task-with-special/chars"
         mock_request.assert_called_once_with(
-            "PATCH", "tasks/task-with-special/chars", data={"status": "completed"}
+            "PATCH",
+            "tasks/task-with-special/chars",
+            data={
+                "id": task_id,
+                "area_id": "area-special",
+                "status": "completed",
+            },
         )
 
     @pytest.mark.asyncio
@@ -484,7 +531,7 @@ class TestLunaTaskClientUpdateTask:
         config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
         client = LunaTaskClient(config)
         task_id = "task-update-parse-error"
-        update_data = TaskUpdate(status="completed")
+        update_data = TaskUpdate(id=task_id, area_id="area-parse-2", status="completed")
 
         mock_response_data: dict[str, Any] = {"task": {"id": task_id, "status": "completed"}}
         mocker.patch.object(client, "make_request", return_value=mock_response_data)

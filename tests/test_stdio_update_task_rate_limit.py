@@ -10,10 +10,14 @@ from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
 
 # Constants for rate limiting tests
-MIN_REQUEST_TIME = 0.1
+# The client enforces ~0.12s stabilization delay on mutating requests
+# (POST/PATCH/DELETE). Use a slightly lower threshold to account for
+# scheduling variance while still catching missing rate limiting.
+MIN_REQUEST_TIME = 0.11
 MAX_TIMING_VARIANCE = 10.0
 
 
+@pytest.mark.integration
 class TestStdioUpdateTaskRateLimiting:
     """Integration test cases for rate limiter application."""
 
@@ -49,7 +53,14 @@ log_level = "DEBUG"
 
                 try:
                     await client.call_tool(
-                        "update_task", {"id": "rate-test-1", "name": "Rate Limit Test 1"}
+                        "update_task",
+                        {
+                            "id": "rate-test-1",
+                            "area_id": "test-area",
+                            "name": "Rate Limit Test 1",
+                            "status": "later",
+                            "priority": 0,
+                        },
                     )
                 except Exception as e:
                     logger.info("Request 1 completed with error (expected): %s", str(e)[:100])
@@ -66,7 +77,13 @@ log_level = "DEBUG"
                     try:
                         await client.call_tool(
                             "update_task",
-                            {"id": f"rate-test-{i + 2}", "name": f"Rate Limit Test {i + 2}"},
+                            {
+                                "id": f"rate-test-{i + 2}",
+                                "area_id": "test-area",
+                                "name": f"Rate Limit Test {i + 2}",
+                                "status": "later",
+                                "priority": 0,
+                            },
                         )
                     except Exception as e:
                         logger.info(

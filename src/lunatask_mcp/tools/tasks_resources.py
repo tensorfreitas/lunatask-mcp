@@ -376,7 +376,7 @@ def _filter_by_status(tasks: Sequence[TaskResponse], status: str | None) -> list
 
 def _filter_by_priority(tasks: Sequence[TaskResponse], min_priority: int) -> list[TaskResponse]:
     """Filter tasks by minimum priority threshold."""
-    return [t for t in tasks if t.priority is not None and t.priority >= min_priority]
+    return [t for t in tasks if t.priority >= min_priority]
 
 
 def _filter_by_completion_recent(
@@ -401,13 +401,13 @@ def _filter_now_rules(tasks: Sequence[TaskResponse], rules: dict[str, Any]) -> l
         if t.status in include_status:
             return True
         prio = t.priority
-        if prio is not None and prio in include_priority_exact:
+        if prio in include_priority_exact:
             return True
         mot = t.motivation
-        if mot is not None and mot in include_motivation:
+        if mot in include_motivation:
             return True
         eis = t.eisenhower
-        return eis is not None and eis in include_eisenhower_exact
+        return eis in include_eisenhower_exact
 
     return [t for t in tasks if should_include(t)]
 
@@ -572,7 +572,7 @@ def _sort_tasks_for_alias(alias: str, tasks: list[TaskResponse]) -> tuple[list[T
         sorted_tasks.sort(
             key=lambda t: (
                 ((0, int(t.scheduled_on.toordinal())) if t.scheduled_on else (1, 0)),
-                -(t.priority if t.priority is not None else -10),
+                -t.priority,
                 t.id,
             )
         )
@@ -587,7 +587,7 @@ def _sort_tasks_for_alias(alias: str, tasks: list[TaskResponse]) -> tuple[list[T
         return sorted_tasks, "completed_at.desc,id.asc"
     sorted_tasks.sort(
         key=lambda t: (
-            -(t.priority if t.priority is not None else -10),
+            -t.priority,
             ((0, int(t.scheduled_on.toordinal())) if t.scheduled_on else (1, 0)),
             t.id,
         )
@@ -665,7 +665,7 @@ async def list_tasks_global_alias(
         filtered_tasks.sort(
             key=lambda t: (  # scheduled_on.asc, priority.desc, id.asc
                 ((0, int(t.scheduled_on.toordinal())) if t.scheduled_on else (1, 0)),
-                -(t.priority if t.priority is not None else -10),
+                -t.priority,
                 t.id,
             )
         )
@@ -681,7 +681,7 @@ async def list_tasks_global_alias(
     else:
         filtered_tasks.sort(
             key=lambda t: (  # priority.desc, scheduled_on.asc, id.asc
-                -(t.priority if t.priority is not None else -10),
+                -t.priority,
                 ((0, int(t.scheduled_on.toordinal())) if t.scheduled_on else (1, 0)),
                 t.id,
             )

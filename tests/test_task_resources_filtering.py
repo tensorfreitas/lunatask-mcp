@@ -273,11 +273,8 @@ async def test_area_alias_filters_by_area_and_criteria(
     area2_high = create_task_response(
         task_id="area2-high", status="started", priority=2, area_id="area-2"
     )
-    no_area_high = create_task_response(
-        task_id="no-area-high", status="waiting", priority=2, area_id=None
-    )
 
-    all_tasks = [area1_high, area1_low, area2_high, no_area_high]
+    all_tasks = [area1_high, area1_low, area2_high]
     mocker.patch.object(client, "get_tasks", return_value=all_tasks)
     mocker.patch.object(client, "__aenter__", return_value=client)
     mocker.patch.object(client, "__aexit__", return_value=None)
@@ -306,12 +303,11 @@ async def test_area_alias_filters_by_area_and_criteria(
     # Should NOT include:
     assert "area1-low" not in returned_ids  # Area-1 but low priority
     assert "area2-high" not in returned_ids  # High priority but wrong area
-    assert "no-area-high" not in returned_ids  # High priority but no area
 
 
 def test_filter_by_status_none_returns_all() -> None:
     """tr._filter_by_status returns all tasks when status is None."""
-    t1 = create_task_response(task_id="t1", status="open")
+    t1 = create_task_response(task_id="t1", status="later")
     t2 = create_task_response(task_id="t2", status="completed")
     tasks = [t1, t2]
     result = tr._filter_by_status(tasks, None)  # pyright: ignore[reportPrivateUsage]

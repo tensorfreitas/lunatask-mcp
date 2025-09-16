@@ -37,8 +37,10 @@ class TestLunaTaskClientGetTasks:
                 {
                     "id": "task-1",
                     "area_id": "area-1",
-                    "status": "open",
+                    "status": "later",
                     "priority": 1,
+                    "motivation": "want",
+                    "eisenhower": 1,
                     "scheduled_on": "2025-08-20",
                     "created_at": "2025-08-19T10:00:00Z",
                     "updated_at": "2025-08-19T10:00:00Z",
@@ -46,9 +48,11 @@ class TestLunaTaskClientGetTasks:
                 },
                 {
                     "id": "task-2",
-                    "area_id": None,
+                    "area_id": "area-2",
                     "status": "completed",
-                    "priority": None,
+                    "priority": 0,
+                    "motivation": "unknown",
+                    "eisenhower": 0,
                     "scheduled_on": None,
                     "created_at": "2025-08-18T10:00:00Z",
                     "updated_at": "2025-08-19T09:00:00Z",
@@ -69,11 +73,11 @@ class TestLunaTaskClientGetTasks:
         assert len(result) == expected_task_count
         assert all(isinstance(task, TaskResponse) for task in result)
         assert result[0].id == "task-1"
-        assert result[0].status == "open"
+        assert result[0].status == "later"
         assert result[0].priority == 1
         assert result[1].id == "task-2"
         assert result[1].status == "completed"
-        assert result[1].priority is None
+        assert result[1].priority == 0
         mock_request.assert_called_once_with("GET", "tasks")
 
     @pytest.mark.asyncio
@@ -110,7 +114,11 @@ class TestLunaTaskClientGetTasks:
             "tasks": [
                 {
                     "id": "task-1",
-                    "status": "open",
+                    "area_id": "area-encrypted",
+                    "status": "started",
+                    "priority": 1,
+                    "motivation": "should",
+                    "eisenhower": 2,
                     "created_at": "2025-08-19T10:00:00Z",
                     "updated_at": "2025-08-19T10:00:00Z",
                     # Note: 'name' and 'note' fields intentionally missing
@@ -128,7 +136,7 @@ class TestLunaTaskClientGetTasks:
 
         assert len(result) == 1
         assert result[0].id == "task-1"
-        assert result[0].status == "open"
+        assert result[0].status == "started"
         # Encrypted fields should not be present in the model
         assert not hasattr(result[0], "name")
         assert not hasattr(result[0], "note")
@@ -205,14 +213,16 @@ class TestLunaTaskClientGetTasks:
             "tasks": [
                 {
                     "id": "task-1",
-                    "status": "open",
+                    "area_id": "area-1",
+                    "status": "next",
+                    "priority": 1,
                     "created_at": "2025-08-19T10:00:00Z",
                     "updated_at": "2025-08-19T10:00:00Z",
                     "goal_id": "goal-123",
                     "estimate": 60,  # Duration in minutes
                     "motivation": "must",
                     "eisenhower": 2,  # Quadrant 2: Important, not urgent
-                    "previous_status": "todo",
+                    "previous_status": "later",
                     "progress": 25,
                     "scheduled_on": "2025-08-20",
                     "completed_at": "2025-08-19T15:30:00Z",
@@ -250,7 +260,11 @@ class TestLunaTaskClientGetTasks:
             "tasks": [
                 {
                     "id": "task-1",
-                    "status": "open",
+                    "area_id": "area-1",
+                    "status": "waiting",
+                    "priority": 0,
+                    "motivation": "want",
+                    "eisenhower": 3,
                     "created_at": "2025-08-21T10:00:00Z",
                     "updated_at": "2025-08-21T10:00:00Z",
                 }
@@ -276,7 +290,7 @@ class TestLunaTaskClientGetTasks:
             "tasks": [
                 {
                     "id": "task-2",
-                    "status": "open",
+                    "status": "started",
                     # created_at / updated_at missing intentionally
                 }
             ]

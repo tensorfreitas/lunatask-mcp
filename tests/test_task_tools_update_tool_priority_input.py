@@ -52,7 +52,7 @@ class TestUpdateTaskToolPriorityInput:
 
         async_ctx = mocker.AsyncMock()
 
-        updated_task = create_task_response(task_id="task-123", status="open", priority=expected)
+        updated_task = create_task_response(task_id="task-123", status="next", priority=expected)
         mocker.patch.object(client, "update_task", return_value=updated_task)
         mocker.patch.object(client, "__aenter__", return_value=client)
         mocker.patch.object(client, "__aexit__", return_value=None)
@@ -132,7 +132,7 @@ class TestUpdateTaskToolEisenhowerInput:
     ) -> None:
         """Valid eisenhower strings are coerced to ints and sent to API."""
         client = task_tools.lunatask_client
-        updated_task = create_task_response(task_id="task-123", status="open", eisenhower=expected)
+        updated_task = create_task_response(task_id="task-123", status="next", eisenhower=expected)
         mocker.patch.object(client, "update_task", return_value=updated_task)
         mocker.patch.object(client, "__aenter__", return_value=client)
         mocker.patch.object(client, "__aexit__", return_value=None)

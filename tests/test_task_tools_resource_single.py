@@ -68,7 +68,7 @@ class TestSingleTaskResource:
         # Create sample task data
         sample_task = create_task_response(
             task_id="task-123",
-            status="open",
+            status="next",
             created_at=datetime(2025, 8, 20, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 20, 10, 30, 0, tzinfo=UTC),
             priority=2,
@@ -91,7 +91,7 @@ class TestSingleTaskResource:
 
         task_data = result["task"]
         assert task_data["id"] == "task-123"
-        assert task_data["status"] == "open"
+        assert task_data["status"] == "next"
         expected_priority = 2
         assert task_data["priority"] == expected_priority
         assert task_data["scheduled_on"] == "2025-08-25"
@@ -142,9 +142,9 @@ class TestSingleTaskResource:
         task_data = result["task"]
         assert task_data["id"] == "task-minimal"
         assert task_data["status"] == "completed"
-        assert task_data["priority"] is None
+        assert task_data["priority"] == 0
         assert task_data["scheduled_on"] is None
-        assert task_data["area_id"] is None
+        assert task_data["area_id"] == "default-area"
         assert task_data["source"] is None
 
     @pytest.mark.asyncio
@@ -402,7 +402,7 @@ class TestSingleTaskResource:
         # Create task with special characters in ID
         special_task = create_task_response(
             task_id="task-with-special/chars",
-            status="open",
+            status="next",
             created_at=datetime(2025, 8, 20, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 20, 10, 30, 0, tzinfo=UTC),
         )
@@ -435,7 +435,7 @@ class TestSingleTaskResource:
         # Create task without encrypted fields (as expected from E2E encryption)
         encrypted_task = create_task_response(
             task_id="task-encrypted",
-            status="open",
+            status="next",
             created_at=datetime(2025, 8, 20, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 20, 10, 30, 0, tzinfo=UTC),
         )
@@ -448,7 +448,7 @@ class TestSingleTaskResource:
 
         task_data = result["task"]
         assert task_data["id"] == "task-encrypted"
-        assert task_data["status"] == "open"
+        assert task_data["status"] == "next"
         # Encrypted fields should not be present
         assert "name" not in task_data
         assert "note" not in task_data

@@ -78,6 +78,7 @@ class TestUpdateTaskTool:
 
         # Verify call arguments using assert_called_with for type safety
         expected_update = TaskUpdate(
+            id="update-task-123",
             name=None,
             note=None,
             area_id=None,
@@ -132,6 +133,7 @@ class TestUpdateTaskTool:
         # Mock object dynamically added by pytest-mock, hence type ignore needed
         mock_update_task = client.update_task  # type: ignore[attr-defined] # Mock method reference added by mocker.patch.object
         expected_update = TaskUpdate(
+            id="date-task-789",
             name=None,
             note=None,
             area_id=None,

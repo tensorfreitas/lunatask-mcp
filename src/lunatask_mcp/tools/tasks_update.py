@@ -158,16 +158,26 @@ async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
                 motivation if motivation in ("must", "should", "want", "unknown") else None
             )
 
-        task_update = TaskUpdate(
-            name=name,
-            note=note,
-            area_id=area_id,
-            status=task_status,  # type: ignore[arg-type]
-            priority=coerced_priority,
-            scheduled_on=parsed_scheduled_on,
-            motivation=task_motivation,  # type: ignore[arg-type]
-            eisenhower=coerced_eisenhower,
-        )
+        # Build kwargs to avoid passing None (preserve model defaults and PATCH semantics)
+        update_kwargs: dict[str, Any] = {"id": id}
+        if area_id is not None:
+            update_kwargs["area_id"] = area_id
+        if name is not None:
+            update_kwargs["name"] = name
+        if note is not None:
+            update_kwargs["note"] = note
+        if task_status is not None:
+            update_kwargs["status"] = task_status
+        if coerced_priority is not None:
+            update_kwargs["priority"] = coerced_priority
+        if parsed_scheduled_on is not None:
+            update_kwargs["scheduled_on"] = parsed_scheduled_on
+        if task_motivation is not None:
+            update_kwargs["motivation"] = task_motivation
+        if coerced_eisenhower is not None:
+            update_kwargs["eisenhower"] = coerced_eisenhower
+
+        task_update = TaskUpdate(**update_kwargs)
 
         # Use LunaTask client to update the task
         async with lunatask_client as client:

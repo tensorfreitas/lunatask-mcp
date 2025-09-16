@@ -87,7 +87,7 @@ class TestAreaAliasBehavior:
         # Sample tasks
         t1 = create_task_response(
             task_id="t1",
-            status="open",
+            status="started",
             area_id="area-1",
             created_at=datetime(2025, 8, 20, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 20, 11, 0, 0, tzinfo=UTC),
@@ -152,35 +152,35 @@ class TestAreaAliasBehavior:
         # Mixed tasks across areas and days; upstream might ignore filters
         t_today_a = create_task_response(
             task_id="a-today-2",
-            status="open",
+            status="started",
             priority=2,
             area_id=target_area,
             scheduled_on=today.date(),
         )
         t_today_b = create_task_response(
             task_id="a-today-0",
-            status="open",
+            status="started",
             priority=0,
             area_id=target_area,
             scheduled_on=today.date(),
         )
         t_other_area_today = create_task_response(
             task_id="b-today",
-            status="open",
+            status="started",
             priority=2,
             area_id=other_area,
             scheduled_on=today.date(),
         )
         t_other_area_tomorrow = create_task_response(
             task_id="b-tmr",
-            status="open",
+            status="started",
             priority=1,
             area_id=other_area,
             scheduled_on=tomorrow.date(),
         )
         t_unscheduled_same_area = create_task_response(
             task_id="a-none",
-            status="open",
+            status="started",
             priority=1,
             area_id=target_area,
             scheduled_on=None,

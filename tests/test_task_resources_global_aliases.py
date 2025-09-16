@@ -87,7 +87,7 @@ class TestGlobalAliasBehavior:
         # All scheduled for today to pass the "today" window filter
         t1 = create_task_response(
             task_id="a",
-            status="open",
+            status="next",
             priority=0,
             scheduled_on=datetime.now(UTC).date(),
             created_at=datetime(2025, 8, 20, 10, 0, 0, tzinfo=UTC),
@@ -95,7 +95,7 @@ class TestGlobalAliasBehavior:
         )
         t2 = create_task_response(
             task_id="b",
-            status="open",
+            status="next",
             priority=2,
             scheduled_on=datetime.now(UTC).date(),
             created_at=datetime(2025, 8, 19, 10, 0, 0, tzinfo=UTC),
@@ -103,7 +103,7 @@ class TestGlobalAliasBehavior:
         )
         t3 = create_task_response(
             task_id="c",
-            status="open",
+            status="next",
             priority=2,
             scheduled_on=datetime.now(UTC).date(),
             created_at=datetime(2025, 8, 18, 10, 0, 0, tzinfo=UTC),
@@ -222,31 +222,31 @@ class TestGlobalAliasBehavior:
         # Two tasks scheduled today, two for tomorrow, one unscheduled
         t_today_hi = create_task_response(
             task_id="t-today-2",
-            status="open",
+            status="next",
             priority=2,
             scheduled_on=today.date(),
         )
         t_today_lo = create_task_response(
             task_id="t-today-0",
-            status="open",
+            status="next",
             priority=0,
             scheduled_on=today.date(),
         )
         t_tomorrow = create_task_response(
             task_id="t-tomorrow",
-            status="open",
+            status="next",
             priority=2,
             scheduled_on=tomorrow.date(),
         )
         t_tomorrow2 = create_task_response(
             task_id="t-tomorrow-2",
-            status="open",
+            status="next",
             priority=1,
             scheduled_on=tomorrow.date(),
         )
         t_unscheduled = create_task_response(
             task_id="t-none",
-            status="open",
+            status="next",
             priority=1,
             scheduled_on=None,
         )

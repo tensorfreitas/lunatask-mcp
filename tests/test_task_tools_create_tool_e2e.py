@@ -79,11 +79,11 @@ class TestCreateTaskToolEndToEnd:
         mock_ctx = mocker.AsyncMock()
         created_task = create_task_response(
             task_id="e2e-task-123",
-            status="open",
+            status="started",
             created_at=datetime(2025, 8, 22, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 22, 10, 0, 0, tzinfo=UTC),
             area_id="work-area",
-            priority=3,
+            priority=2,
         )
 
         mocker.patch.object(client, "create_task", return_value=created_task)
@@ -150,6 +150,7 @@ class TestCreateTaskToolEndToEnd:
         result = await task_tools.create_task_tool(
             ctx=mock_ctx,
             name="",  # Invalid empty name
+            area_id="test-area-id",
         )
 
         # Verify error response format

@@ -42,8 +42,10 @@ class TestLunaTaskClientGetTask:
             "task": {
                 "id": "task-123",
                 "area_id": "area-456",
-                "status": "open",
+                "status": "later",
                 "priority": 2,
+                "motivation": "want",
+                "eisenhower": 1,
                 "scheduled_on": "2025-08-25",
                 "created_at": "2025-08-20T10:00:00Z",
                 "updated_at": "2025-08-20T11:00:00Z",
@@ -62,7 +64,7 @@ class TestLunaTaskClientGetTask:
         assert isinstance(result, TaskResponse)
         assert result.id == "task-123"
         assert result.area_id == "area-456"
-        assert result.status == "open"
+        assert result.status == "later"
         expected_priority = 2
         assert result.priority == expected_priority
         assert result.scheduled_on is not None
@@ -82,15 +84,17 @@ class TestLunaTaskClientGetTask:
         client = LunaTaskClient(config)
         task_id = "task-minimal"
 
-        # Mock response with only required fields
+        # Mock response with minimal required fields
         mock_response_data: dict[str, Any] = {
             "task": {
                 "id": "task-minimal",
+                "area_id": "area-minimal",
                 "status": "completed",
+                "priority": 0,
+                "motivation": "unknown",
+                "eisenhower": 0,
                 "created_at": "2025-08-20T10:00:00Z",
                 "updated_at": "2025-08-20T10:00:00Z",
-                "area_id": None,
-                "priority": None,
                 "scheduled_on": None,
                 "source": None,
             }
@@ -107,8 +111,8 @@ class TestLunaTaskClientGetTask:
         assert isinstance(result, TaskResponse)
         assert result.id == "task-minimal"
         assert result.status == "completed"
-        assert result.area_id is None
-        assert result.priority is None
+        assert result.area_id == "area-minimal"
+        assert result.priority == 0
         assert result.scheduled_on is None
         assert result.source is None
         mock_request.assert_called_once_with("GET", "tasks/task-minimal")
@@ -127,7 +131,11 @@ class TestLunaTaskClientGetTask:
         mock_response_data: dict[str, Any] = {
             "task": {
                 "id": "task-encrypted",
-                "status": "open",
+                "area_id": "area-encrypted",
+                "status": "started",
+                "priority": 1,
+                "motivation": "should",
+                "eisenhower": 2,
                 "created_at": "2025-08-20T10:00:00Z",
                 "updated_at": "2025-08-20T10:00:00Z",
                 # Note: 'name' and 'note' fields intentionally missing due to E2E encryption
@@ -144,7 +152,7 @@ class TestLunaTaskClientGetTask:
 
         assert isinstance(result, TaskResponse)
         assert result.id == "task-encrypted"
-        assert result.status == "open"
+        assert result.status == "started"
         # Encrypted fields should not be present in the model
         assert not hasattr(result, "name")
         assert not hasattr(result, "note")
@@ -302,7 +310,11 @@ class TestLunaTaskClientGetTask:
         mock_response_data: dict[str, Any] = {
             "task": {
                 "id": "task-123",
-                "status": "open",
+                "area_id": "area-123",
+                "status": "next",
+                "priority": 1,
+                "motivation": "must",
+                "eisenhower": 3,
                 "created_at": "2025-08-20T10:00:00Z",
                 "updated_at": "2025-08-20T10:00:00Z",
             }
@@ -353,7 +365,11 @@ class TestLunaTaskClientGetTask:
         mock_response_data: dict[str, Any] = {
             "task": {
                 "id": "task-with-special/chars",
-                "status": "open",
+                "area_id": "area-special",
+                "status": "waiting",
+                "priority": -1,
+                "motivation": "want",
+                "eisenhower": 4,
                 "created_at": "2025-08-20T10:00:00Z",
                 "updated_at": "2025-08-20T10:00:00Z",
             }
@@ -383,8 +399,8 @@ class TestLunaTaskClientGetTask:
         mock_response_data: dict[str, Any] = {
             "task": {
                 "id": task_id,
-                "status": "open",
-                # missing created_at / updated_at
+                "status": "started",
+                # missing created_at / updated_at - these are required fields
             }
         }
 

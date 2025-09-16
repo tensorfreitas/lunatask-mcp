@@ -21,26 +21,33 @@ from lunatask_mcp.api.models import (
 
 
 def test_task_payload_optional_fields_default_none() -> None:
-    payload = TaskPayload()
+    # area_id is required, so we need to provide it
+    payload = TaskPayload(area_id="test-area")
+
+    # Required relational fields
+    assert payload.area_id == "test-area"
 
     # Optional relational/content fields
-    assert payload.area_id is None
     assert payload.goal_id is None
-    assert payload.name is None
-    assert payload.note is None
 
-    # Optional prioritization/scheduling fields
-    assert payload.status is None
+    # Fields with defaults
+    assert payload.status == TaskStatus.LATER  # Has default
+    assert payload.priority == 0  # Has default
+
+    # Optional prioritization/scheduling fields (default None)
+    assert payload.estimate is None
+    assert payload.progress is None
     assert payload.motivation is None
     assert payload.eisenhower is None
-    assert payload.priority is None
     assert payload.scheduled_on is None
-    assert payload.completed_at is None
     assert payload.source is None
 
 
 def test_task_payload_serializes_enum_values() -> None:
-    payload = TaskPayload(status=TaskStatus.NEXT, motivation=TaskMotivation.SHOULD)
+    # area_id is required, so we need to provide it
+    payload = TaskPayload(
+        area_id="test-area", status=TaskStatus.NEXT, motivation=TaskMotivation.SHOULD
+    )
     dumped = payload.model_dump()
 
     # Pydantic should serialize enums to their string values
@@ -54,7 +61,7 @@ def test_task_payload_serializes_enum_values() -> None:
 )
 def test_task_payload_priority_bounds(priority: int) -> None:
     with pytest.raises(ValidationError):
-        TaskPayload(priority=priority)
+        TaskPayload(area_id="test-area", priority=priority)
 
 
 @pytest.mark.parametrize(
@@ -63,7 +70,7 @@ def test_task_payload_priority_bounds(priority: int) -> None:
 )
 def test_task_payload_eisenhower_bounds(eisenhower: int) -> None:
     with pytest.raises(ValidationError):
-        TaskPayload(eisenhower=eisenhower)
+        TaskPayload(area_id="test-area", eisenhower=eisenhower)
 
 
 def test_task_payload_status_rejects_invalid_string() -> None:

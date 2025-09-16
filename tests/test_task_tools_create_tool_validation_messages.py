@@ -56,6 +56,7 @@ async def test_create_task_tool_pydantic_error_message_mapping(mocker: MockerFix
     result = await task_tools.create_task_tool(
         mock_ctx,
         name="Test Task",
+        area_id="test-area-id",
         status="invalid-status",  # gets coerced, but error is raised by client
         motivation="invalid-motivation",  # coerced, message mapping still applied
     )
@@ -87,7 +88,7 @@ async def test_create_task_tool_unexpected_error_fallback(mocker: MockerFixture)
     mocker.patch.object(client, "__aenter__", return_value=client)
     mocker.patch.object(client, "__aexit__", return_value=None)
 
-    result = await task_tools.create_task_tool(mock_ctx, name="Test Task")
+    result = await task_tools.create_task_tool(mock_ctx, name="Test Task", area_id="test-area-id")
 
     assert result["success"] is False
     assert result["error"] == "unexpected_error"
@@ -109,7 +110,9 @@ async def test_create_task_tool_invalid_priority_type_error(
 
     mock_ctx = mocker.AsyncMock()
 
-    result = await task_tools.create_task_tool(mock_ctx, name="Test Task", priority="high")
+    result = await task_tools.create_task_tool(
+        mock_ctx, name="Test Task", area_id="test-area-id", priority="high"
+    )
 
     assert result["success"] is False
     assert result["error"] == "validation_error"
@@ -132,7 +135,9 @@ async def test_create_task_tool_invalid_eisenhower_type_error(
 
     mock_ctx = mocker.AsyncMock()
 
-    result = await task_tools.create_task_tool(mock_ctx, name="Test Task", eisenhower="urgent")
+    result = await task_tools.create_task_tool(
+        mock_ctx, name="Test Task", area_id="test-area-id", eisenhower="urgent"
+    )
 
     assert result["success"] is False
     assert result["error"] == "validation_error"

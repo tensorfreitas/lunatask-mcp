@@ -46,7 +46,7 @@ class TestTaskResourceRetrieval:
         # Create sample task data
         sample_task = create_task_response(
             task_id="task-1",
-            status="open",
+            status="started",
             created_at=datetime(2025, 8, 20, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 20, 10, 30, 0, tzinfo=UTC),
             priority=1,
@@ -70,7 +70,7 @@ class TestTaskResourceRetrieval:
 
         task_data = result["tasks"][0]
         assert task_data["id"] == "task-1"
-        assert task_data["status"] == "open"
+        assert task_data["status"] == "started"
         assert task_data["priority"] == 1
         assert task_data["scheduled_on"] == "2025-08-25"
         assert task_data["created_at"] == "2025-08-20T10:00:00+00:00"
@@ -205,9 +205,11 @@ class TestTaskResourceRetrieval:
         task_data = result["tasks"][0]
         assert task_data["id"] == "task-2"
         assert task_data["status"] == "completed"
-        assert task_data["priority"] is None
+        # TaskResponse now enforces priority as an int; default from factory is 0
+        assert task_data["priority"] == 0
         assert task_data["scheduled_on"] is None
-        assert task_data["area_id"] is None
+        # area_id is required and defaults to "default-area" in the factory
+        assert task_data["area_id"] == "default-area"
         assert task_data["source"] is None
 
     @pytest.mark.asyncio

@@ -95,10 +95,10 @@ class TestEndToEndResourceValidation:
         # Create realistic task data that would come from LunaTask API
         test_task = create_task_response(
             task_id="e2e-test-task-456",
-            status="in_progress",
+            status="started",
             created_at=datetime(2025, 8, 21, 9, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 21, 11, 30, 0, tzinfo=UTC),
-            priority=3,
+            priority=2,
             scheduled_on=date(2025, 8, 28),
             area_id="work-area-789",
             source=create_source("integration", "github_issue"),
@@ -120,8 +120,8 @@ class TestEndToEndResourceValidation:
         # Validate task data structure and content
         task_data = result["task"]
         assert task_data["id"] == "e2e-test-task-456"
-        assert task_data["status"] == "in_progress"
-        expected_priority = 3
+        assert task_data["status"] == "started"
+        expected_priority = 2
         assert task_data["priority"] == expected_priority
         assert task_data["scheduled_on"] == "2025-08-28"
         assert task_data["area_id"] == "work-area-789"
@@ -300,7 +300,7 @@ class TestEndToEndResourceValidation:
         test_task_id = "complex-task-id-with-dashes-123"
         test_task = create_task_response(
             task_id=test_task_id,
-            status="open",
+            status="later",
             created_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
         )
@@ -337,7 +337,7 @@ class TestEndToEndResourceValidation:
         # Create task that simulates E2E encryption (missing name/note fields)
         encrypted_task = create_task_response(
             task_id="encrypted-task-e2e",
-            status="open",
+            status="waiting",
             created_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             priority=1,
@@ -360,7 +360,7 @@ class TestEndToEndResourceValidation:
 
         # Validate that other fields are present
         assert task_data["id"] == "encrypted-task-e2e"
-        assert task_data["status"] == "open"
+        assert task_data["status"] == "waiting"
         assert task_data["priority"] == 1
         assert task_data["area_id"] == "secure-area"
 

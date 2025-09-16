@@ -1,4 +1,4 @@
-"""Tests for LunaTaskClient.create_task()."""
+"""Tests for LunaTaskClient.create_task() aligned with refactored models."""
 # pyright: reportPrivateUsage=false
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from lunatask_mcp.api.exceptions import (
     LunaTaskTimeoutError,
     LunaTaskValidationError,
 )
-from lunatask_mcp.api.models import TaskCreate, TaskResponse
+from lunatask_mcp.api.models import TaskCreate, TaskMotivation, TaskResponse, TaskStatus
 from lunatask_mcp.config import ServerConfig
 from tests.test_api_client_common import (
     DEFAULT_API_URL,
@@ -37,14 +37,26 @@ class TestLunaTaskClientCreateTask:
         config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
         client = LunaTaskClient(config)
 
-        task_data = TaskCreate(name="Test Task")
+        # Minimal TaskCreate now requires area_id, goal_id, motivation explicitly
+        task_data = TaskCreate(
+            name="Test Task",
+            area_id="area-001",
+            goal_id="goal-001",
+            motivation="unknown",
+        )
 
+        # Response must conform to TaskResponse (enum status, required area_id/goal_id/motivation)
         mock_response_data: dict[str, Any] = {
             "task": {
-                "id": "task-123",
-                "status": "open",
-                "created_at": "2025-08-21T10:00:00Z",
-                "updated_at": "2025-08-21T10:00:00Z",
+                "id": "task-min-123",
+                "area_id": "area-001",
+                "goal_id": "goal-001",
+                "status": "later",
+                "motivation": "unknown",
+                "priority": 0,
+                "eisenhower": 0,
+                "created_at": "2023-01-01T10:00:00Z",
+                "updated_at": "2023-01-01T10:00:00Z",
             }
         }
 
@@ -56,12 +68,22 @@ class TestLunaTaskClientCreateTask:
 
         result = await client.create_task(task_data)
 
-        assert result.id == "task-123"
-        assert result.status == "open"
+        assert result.area_id == "area-001"
+        assert result.goal_id == "goal-001"
+        assert result.status == TaskStatus.LATER
+        assert result.motivation == TaskMotivation.UNKNOWN
+        assert result.priority == 0
         mock_request.assert_called_once_with(
             "POST",
             "tasks",
-            data={"name": "Test Task", "status": "later", "priority": 0, "motivation": "unknown"},
+            data={
+                "name": "Test Task",
+                "area_id": "area-001",
+                "goal_id": "goal-001",
+                "status": "later",
+                "priority": 0,
+                "motivation": "unknown",
+            },
         )
 
     @pytest.mark.asyncio
@@ -74,18 +96,23 @@ class TestLunaTaskClientCreateTask:
             name="Full Test Task",
             note="These are test note",
             area_id="area-456",
+            goal_id="goal-789",
             status="later",
             priority=1,
+            motivation="must",
         )
 
         mock_response_data: dict[str, Any] = {
             "task": {
                 "id": "task-456",
                 "area_id": "area-456",
-                "status": "open",
+                "goal_id": "goal-789",
+                "status": "started",
+                "motivation": "must",
                 "priority": 1,
-                "created_at": "2025-08-21T10:00:00Z",
-                "updated_at": "2025-08-21T10:00:00Z",
+                "eisenhower": 0,
+                "created_at": "2023-01-01T10:00:00Z",
+                "updated_at": "2023-01-01T10:00:00Z",
             }
         }
 
@@ -97,9 +124,10 @@ class TestLunaTaskClientCreateTask:
 
         result = await client.create_task(task_data)
 
-        assert result.id == "task-456"
         assert result.area_id == "area-456"
-        assert result.status == "open"
+        assert result.goal_id == "goal-789"
+        assert result.status == TaskStatus.STARTED
+        assert result.motivation == TaskMotivation.MUST
         assert result.priority == 1
         mock_request.assert_called_once_with(
             "POST",
@@ -108,9 +136,10 @@ class TestLunaTaskClientCreateTask:
                 "name": "Full Test Task",
                 "note": "These are test note",
                 "area_id": "area-456",
+                "goal_id": "goal-789",
                 "status": "later",
                 "priority": 1,
-                "motivation": "unknown",
+                "motivation": "must",
             },
         )
 
@@ -120,7 +149,12 @@ class TestLunaTaskClientCreateTask:
         config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
         client = LunaTaskClient(config)
 
-        task_data = TaskCreate(name="Invalid Task")
+        task_data = TaskCreate(
+            name="Invalid Task",
+            area_id="area-001",
+            goal_id="goal-001",
+            motivation="unknown",
+        )
 
         mock_request = mocker.patch.object(
             client,
@@ -139,7 +173,12 @@ class TestLunaTaskClientCreateTask:
         config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
         client = LunaTaskClient(config)
 
-        task_data = TaskCreate(name="Test Task")
+        task_data = TaskCreate(
+            name="Test Task",
+            area_id="area-001",
+            goal_id="goal-001",
+            motivation="unknown",
+        )
 
         mock_request = mocker.patch.object(
             client,
@@ -160,7 +199,12 @@ class TestLunaTaskClientCreateTask:
         )
         client = LunaTaskClient(config)
 
-        task_data = TaskCreate(name="Test Task")
+        task_data = TaskCreate(
+            name="Test Task",
+            area_id="area-001",
+            goal_id="goal-001",
+            motivation="unknown",
+        )
 
         mock_request = mocker.patch.object(
             client,
@@ -179,7 +223,12 @@ class TestLunaTaskClientCreateTask:
         config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
         client = LunaTaskClient(config)
 
-        task_data = TaskCreate(name="Test Task")
+        task_data = TaskCreate(
+            name="Test Task",
+            area_id="area-001",
+            goal_id="goal-001",
+            motivation="unknown",
+        )
 
         mock_request = mocker.patch.object(
             client,
@@ -198,7 +247,12 @@ class TestLunaTaskClientCreateTask:
         config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
         client = LunaTaskClient(config)
 
-        task_data = TaskCreate(name="Test Task")
+        task_data = TaskCreate(
+            name="Test Task",
+            area_id="area-001",
+            goal_id="goal-001",
+            motivation="unknown",
+        )
 
         mock_request = mocker.patch.object(
             client,
@@ -217,7 +271,12 @@ class TestLunaTaskClientCreateTask:
         config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
         client = LunaTaskClient(config)
 
-        task_data = TaskCreate(name="Test Task")
+        task_data = TaskCreate(
+            name="Test Task",
+            area_id="area-001",
+            goal_id="goal-001",
+            motivation="unknown",
+        )
 
         mock_request = mocker.patch.object(
             client,
@@ -232,20 +291,28 @@ class TestLunaTaskClientCreateTask:
 
     @pytest.mark.asyncio
     async def test_create_task_response_parsing_success(self, mocker: MockerFixture) -> None:
-        """Test create_task correctly parses task response with assigned ID."""
+        """Test create_task correctly parses task response with valid fields."""
         config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
         client = LunaTaskClient(config)
 
-        task_data = TaskCreate(name="Parse Test Task")
+        task_data = TaskCreate(
+            name="Parse Test Task",
+            area_id="area-001",
+            goal_id="goal-001",
+            motivation="unknown",
+        )
 
         mock_response_data: dict[str, Any] = {
             "task": {
                 "id": "newly-assigned-id-123",
                 "area_id": "test-area",
-                "status": "open",
+                "goal_id": "goal-001",
+                "status": "started",
+                "motivation": "unknown",
                 "priority": TEST_PRIORITY_HIGH,
-                "created_at": "2025-08-21T11:30:00Z",
-                "updated_at": "2025-08-21T11:30:00Z",
+                "eisenhower": 0,
+                "created_at": "2023-01-01T10:00:00Z",
+                "updated_at": "2023-01-01T10:00:00Z",
                 "source": {"type": "api", "value": "mcp-client"},
             }
         }
@@ -259,9 +326,9 @@ class TestLunaTaskClientCreateTask:
         result = await client.create_task(task_data)
 
         assert isinstance(result, TaskResponse)
-        assert result.id == "newly-assigned-id-123"
         assert result.area_id == "test-area"
-        assert result.status == "open"
+        assert result.goal_id == "goal-001"
+        assert result.status == TaskStatus.STARTED
         assert result.priority == TEST_PRIORITY_HIGH
         assert result.source is not None
         assert result.source.type == "api"
@@ -273,14 +340,24 @@ class TestLunaTaskClientCreateTask:
         config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
         client = LunaTaskClient(config)
 
-        task_data = TaskCreate(name="Rate Limited Task")
+        task_data = TaskCreate(
+            name="Rate Limited Task",
+            area_id="area-001",
+            goal_id="goal-001",
+            motivation="unknown",
+        )
 
         mock_response_data: dict[str, Any] = {
             "task": {
                 "id": "rate-limited-task",
-                "status": "open",
-                "created_at": "2025-08-21T10:00:00Z",
-                "updated_at": "2025-08-21T10:00:00Z",
+                "area_id": "area-001",
+                "goal_id": "goal-001",
+                "status": "later",
+                "motivation": "unknown",
+                "priority": 0,
+                "eisenhower": 0,
+                "created_at": "2023-01-01T10:00:00Z",
+                "updated_at": "2023-01-01T10:00:00Z",
             }
         }
 
@@ -291,7 +368,7 @@ class TestLunaTaskClientCreateTask:
             return_value=mock_response_data,
         )
 
-        result = await client.create_task(task_data)
+        _ = await client.create_task(task_data)
 
         # Verify make_request was called (which applies rate limiting)
         mock_request.assert_called_once_with(
@@ -299,12 +376,13 @@ class TestLunaTaskClientCreateTask:
             "tasks",
             data={
                 "name": "Rate Limited Task",
+                "area_id": "area-001",
+                "goal_id": "goal-001",
                 "status": "later",
                 "priority": 0,
                 "motivation": "unknown",
             },
         )
-        assert result.id == "rate-limited-task"
 
     @pytest.mark.asyncio
     async def test_create_task_missing_task_key_raises_parse_error(
@@ -314,7 +392,12 @@ class TestLunaTaskClientCreateTask:
         config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
         client = LunaTaskClient(config)
 
-        task_data = TaskCreate(name="Sample")
+        task_data = TaskCreate(
+            name="Sample",
+            area_id="area-001",
+            goal_id="goal-001",
+            motivation="unknown",
+        )
 
         mocker.patch.object(client, "make_request", return_value={"message": "ok"})
 
@@ -331,9 +414,27 @@ class TestLunaTaskClientCreateTask:
         config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
         client = LunaTaskClient(config)
 
-        task_data = TaskCreate(name="Another")
+        task_data = TaskCreate(
+            name="Another",
+            area_id="area-001",
+            goal_id="goal-001",
+            motivation="unknown",
+        )
 
-        mock_response_data: dict[str, Any] = {"task": {"id": "x", "status": "open"}}
+        # Invalid status 'open' should cause parse error in TaskResponse
+        mock_response_data: dict[str, Any] = {
+            "task": {
+                "id": "invalid-task",
+                "status": "open",
+                "area_id": "area-001",
+                "goal_id": "goal-001",
+                "motivation": "unknown",
+                "priority": 0,
+                "eisenhower": 0,
+                "created_at": "2023-01-01T10:00:00Z",
+                "updated_at": "2023-01-01T10:00:00Z",
+            }
+        }
         mocker.patch.object(client, "make_request", return_value=mock_response_data)
 
         with pytest.raises(LunaTaskAPIError) as exc_info:

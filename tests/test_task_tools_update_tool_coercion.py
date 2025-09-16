@@ -26,7 +26,7 @@ class TestUpdateTaskToolCoercion:
     ) -> None:
         """Invalid status input is coerced to None and not sent to API."""
         # Arrange
-        updated_task = create_task_response(task_id="task-123", status="open")
+        updated_task = create_task_response(task_id="task-123", status="next")
         mocker.patch.object(client, "update_task", return_value=updated_task)
         mocker.patch.object(client, "__aenter__", return_value=client)
         mocker.patch.object(client, "__aexit__", return_value=None)
@@ -55,7 +55,7 @@ class TestUpdateTaskToolCoercion:
     ) -> None:
         """Invalid motivation input is coerced to None and not sent."""
         # Arrange
-        updated_task = create_task_response(task_id="task-456", status="open")
+        updated_task = create_task_response(task_id="task-456", status="next")
         mocker.patch.object(client, "update_task", return_value=updated_task)
         mocker.patch.object(client, "__aenter__", return_value=client)
         mocker.patch.object(client, "__aexit__", return_value=None)

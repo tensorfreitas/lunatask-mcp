@@ -44,7 +44,7 @@ class TestCreateTaskTool:
 
         created_task = create_task_response(
             task_id="new-task-123",
-            status="open",
+            status="later",
             created_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
         )
@@ -54,7 +54,7 @@ class TestCreateTaskTool:
         mocker.patch.object(client, "__aexit__", return_value=None)
 
         # Execute the create_task tool
-        result = await task_tools.create_task_tool(mock_ctx, name="Test Task")
+        result = await task_tools.create_task_tool(mock_ctx, name="Test Task", area_id="test-area")
 
         # Verify the result contains the task ID
         assert result["success"] is True
@@ -66,6 +66,7 @@ class TestCreateTaskTool:
         call_args = client.create_task.call_args[0][0]  # type: ignore[attr-defined] # Mock attribute added by mocker.patch.object
         assert isinstance(call_args, TaskCreate)
         assert call_args.name == "Test Task"
+        assert call_args.area_id == "test-area"
 
     @pytest.mark.asyncio
     async def test_create_task_tool_success_full_data(self, mocker: MockerFixture) -> None:
@@ -84,7 +85,7 @@ class TestCreateTaskTool:
         created_task = create_task_response(
             task_id="full-task-456",
             area_id="area-123",
-            status="open",
+            status="started",
             priority=1,
             created_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
@@ -140,7 +141,7 @@ class TestCreateTaskTool:
         mocker.patch.object(client, "__aexit__", return_value=None)
 
         # Execute the create_task tool
-        result = await task_tools.create_task_tool(mock_ctx, name="")
+        result = await task_tools.create_task_tool(mock_ctx, name="", area_id="test-area")
 
         # Verify error response
         assert result["success"] is False
@@ -172,7 +173,7 @@ class TestCreateTaskTool:
         mocker.patch.object(client, "__aexit__", return_value=None)
 
         # Execute the create_task tool
-        result = await task_tools.create_task_tool(mock_ctx, name="Test Task")
+        result = await task_tools.create_task_tool(mock_ctx, name="Test Task", area_id="test-area")
 
         # Verify error response
         assert result["success"] is False
@@ -200,7 +201,7 @@ class TestCreateTaskTool:
         mocker.patch.object(client, "__aexit__", return_value=None)
 
         # Execute the create_task tool
-        result = await task_tools.create_task_tool(mock_ctx, name="Test Task")
+        result = await task_tools.create_task_tool(mock_ctx, name="Test Task", area_id="test-area")
 
         # Verify error response
         assert result["success"] is False
@@ -228,7 +229,7 @@ class TestCreateTaskTool:
         mocker.patch.object(client, "__aexit__", return_value=None)
 
         # Execute the create_task tool
-        result = await task_tools.create_task_tool(mock_ctx, name="Test Task")
+        result = await task_tools.create_task_tool(mock_ctx, name="Test Task", area_id="test-area")
 
         # Verify error response
         assert result["success"] is False
@@ -256,7 +257,7 @@ class TestCreateTaskTool:
         mocker.patch.object(client, "__aexit__", return_value=None)
 
         # Execute the create_task tool
-        result = await task_tools.create_task_tool(mock_ctx, name="Test Task")
+        result = await task_tools.create_task_tool(mock_ctx, name="Test Task", area_id="test-area")
 
         # Verify error response
         assert result["success"] is False
@@ -284,7 +285,7 @@ class TestCreateTaskTool:
         mocker.patch.object(client, "__aexit__", return_value=None)
 
         # Execute the create_task tool
-        result = await task_tools.create_task_tool(mock_ctx, name="Test Task")
+        result = await task_tools.create_task_tool(mock_ctx, name="Test Task", area_id="test-area")
 
         # Verify error response
         assert result["success"] is False
@@ -307,7 +308,7 @@ class TestCreateTaskTool:
         # Mock successful task creation response
         created_task = create_task_response(
             task_id="param-test-789",
-            status="open",
+            status="later",
             created_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 8, 21, 10, 0, 0, tzinfo=UTC),
         )
@@ -317,7 +318,9 @@ class TestCreateTaskTool:
         mocker.patch.object(client, "__aexit__", return_value=None)
 
         # Test with only name (required parameter)
-        result = await task_tools.create_task_tool(mock_ctx, name="Required Only")
+        result = await task_tools.create_task_tool(
+            mock_ctx, name="Required Only", area_id="test-area"
+        )
         assert result["success"] is True
 
         # Reset mock to check next call
@@ -325,7 +328,7 @@ class TestCreateTaskTool:
 
         # Test with optional parameters as None (should be excluded)
         result = await task_tools.create_task_tool(
-            mock_ctx, name="Test with Nones", note=None, area_id=None
+            mock_ctx, name="Test with Nones", note=None, area_id="test-area"
         )
         assert result["success"] is True
 
@@ -360,7 +363,9 @@ class TestCreateTaskTool:
         mocker.patch.object(client, "__aexit__", return_value=None)
 
         # Execute the create_task tool with motivation
-        result = await task_tools.create_task_tool(mock_ctx, name="Test Task", motivation="must")
+        result = await task_tools.create_task_tool(
+            mock_ctx, name="Test Task", area_id="test-area", motivation="must"
+        )
 
         # Verify success
         assert result["success"] is True
@@ -400,7 +405,9 @@ class TestCreateTaskTool:
         mocker.patch.object(client, "__aexit__", return_value=None)
 
         # Execute the create_task tool with eisenhower
-        result = await task_tools.create_task_tool(mock_ctx, name="Test Task", eisenhower=2)
+        result = await task_tools.create_task_tool(
+            mock_ctx, name="Test Task", area_id="test-area", eisenhower=2
+        )
 
         # Verify success
         assert result["success"] is True
@@ -437,7 +444,9 @@ class TestCreateTaskTool:
         mocker.patch.object(client, "__aexit__", return_value=None)
 
         # Execute with invalid motivation enum - this should fail with Pydantic validation error
-        result = await task_tools.create_task_tool(mock_ctx, name="Test Task", motivation="invalid")
+        result = await task_tools.create_task_tool(
+            mock_ctx, name="Test Task", area_id="test-area", motivation="invalid"
+        )
 
         # Verify structured MCP error response
         assert result["success"] is False
@@ -460,7 +469,9 @@ class TestCreateTaskTool:
         mock_ctx = mocker.AsyncMock()
 
         # Execute with invalid eisenhower range - this should fail with Pydantic validation error
-        result = await task_tools.create_task_tool(mock_ctx, name="Test Task", eisenhower=5)
+        result = await task_tools.create_task_tool(
+            mock_ctx, name="Test Task", area_id="test-area", eisenhower=5
+        )
 
         # Verify structured MCP error response
         assert result["success"] is False

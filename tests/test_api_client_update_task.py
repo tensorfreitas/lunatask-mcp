@@ -65,7 +65,7 @@ class TestLunaTaskClientUpdateTask:
         mock_request.assert_called_once_with(
             "PATCH",
             "tasks/task-123",
-            data={"id": task_id, "area_id": "area-1", "status": "completed"},
+            data={"id": task_id, "area_id": "area-1", "priority": 0, "status": "completed"},
         )
 
     @pytest.mark.asyncio
@@ -155,7 +155,7 @@ class TestLunaTaskClientUpdateTask:
         mock_request.assert_called_once_with(
             "PATCH",
             "tasks/task-partial",
-            data={"id": task_id, "area_id": "area-3", "status": "completed"},
+            data={"id": task_id, "area_id": "area-3", "priority": 0, "status": "completed"},
         )
         assert result.status == "completed"
 
@@ -403,6 +403,7 @@ class TestLunaTaskClientUpdateTask:
             data={
                 "id": task_id,
                 "area_id": "area-rl-2",
+                "priority": 0,
                 "status": "completed",
             },
         )
@@ -441,7 +442,7 @@ class TestLunaTaskClientUpdateTask:
         mock_request.assert_called_once_with(
             "PATCH",
             "tasks/task-empty",
-            data={"id": task_id, "area_id": "area-empty"},
+            data={"id": task_id, "area_id": "area-empty", "priority": 0, "status": "later"},
         )
         assert result.id == "task-empty"
 
@@ -519,6 +520,7 @@ class TestLunaTaskClientUpdateTask:
             data={
                 "id": task_id,
                 "area_id": "area-special",
+                "priority": 0,
                 "status": "completed",
             },
         )

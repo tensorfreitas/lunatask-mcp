@@ -158,7 +158,7 @@ The server provides the following tools:
 - **Stdio Transport**: Communicates over standard input/output streams
 
 ## Tools Available
-`create_task`: Creates a new task in LunaTask with the specified parameters. Returns the newly assigned task ID
+- `create_task`: Creates a new task in LunaTask with the specified parameters. Returns the newly assigned task ID
 - `update_task`: Updates an existing task in LunaTask with the specified parameters. Returns the updated task data. **You can update just one field** (e.g., only status) without affecting other fields.
 - `delete_task`: Deletes an existing task from LunaTask permanently. Returns the deleted task ID. **Deleted tasks cannot be recovered**: use with caution as this action is irreversible
 - `track_habit`: Track an activity for a specific habit id on a given date. Returns: `{ "ok": true, "message": "Successfully tracked habit <id> on <date>" }` on success
@@ -232,3 +232,25 @@ Unlike Claude Code, in Codex you add an MCP server globally and not per project.
 command = "uvx"
 args = ["--from", " git+https://github.com/tensorfreitas/lunatask-mcp", "--config-file", "/your/path/to/lunatask_mcp_config.toml"]
 ```
+
+## To Be Implemented
+1. Extra Task Resource Filters
+- [ ] resource filters by `goal_id`
+- [ ] filters for all priority types
+- [ ] filters for all motivation types
+- [ ] filters for all eisenhower types
+- [ ] filters for specific dates
+- [ ] filters for completed tasks in a range of dates
+2. Extra tools
+- [ ] Implement [`create_note` tool](https://lunatask.app/api/notes-api/create)
+- [ ] Implement [`create_entry_journal` tool](https://lunatask.app/api/journal-api/create)
+- [ ] Implement [`create_person` tool](https://lunatask.app/api/people-api/create)
+- [ ] Implement [`delete_person` tool](https://lunatask.app/api/people-api/delete)
+- [ ] Implement [`create_person_timeline_note` tool](https://lunatask.app/api/person-timeline-notes-api/create)
+3. Extra Resources
+- [ ] Implement [Retrieve person](https://lunatask.app/api/person-timeline-notes-api/create) resource
+- [ ] Implement [Retrieve all people](https://lunatask.app/api/people-api/list) resource
+
+## Disclaimer
+
+This project was developed with the assistance of AI. The purpose was to test various workflows using different LLMs and identify the most effective approach for me. Since I’m doing this on my free time, this was the only feasible option. Consequently, some of the documentation or code may not be entirely accurate. I’ve made every effort to review everything, but there might have been some errors that I overlooked. If you discover any issues that require correction, please create an issue on GitHub.

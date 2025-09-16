@@ -21,6 +21,8 @@ from lunatask_mcp.tools.tasks_common import serialize_task_response
 logger = logging.getLogger(__name__)
 
 
+# TODO: Refactor update_task_tool response with `TypedDict` to avoid too many arguments
+# and reduce it's complexity
 async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
     lunatask_client: LunaTaskClient,
     ctx: Context,

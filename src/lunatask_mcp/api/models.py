@@ -62,7 +62,6 @@ class TaskPayload(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
     # Shared relational/context fields
-    area_id: str = Field(description="Area ID the task belongs to")
     goal_id: str | None = Field(
         default=None,
         description=(
@@ -95,6 +94,11 @@ class TaskPayload(BaseModel):
         default=None, description="Date when task is scheduled (YYYY-MM-DD format, date-only)"
     )
     source: Source | None = Field(default=None, description="Task source information")
+    # Optional encrypted content fields
+    name: str | None = Field(default=None, description="Task name (gets encrypted client-side)")
+    note: str | None = Field(
+        default=None, description="Task note in Markdown (encrypted client-side)"
+    )
 
 
 class TaskResponse(BaseModel):
@@ -146,20 +150,14 @@ class TaskCreate(TaskPayload):
     # Ensure outbound JSON uses enum string values
     model_config = ConfigDict(use_enum_values=True)
 
-    # Encrypted content fields (present in write payloads only)
-    name: str = Field(description="Task name (gets encrypted client-side)")
-    note: str | None = Field(
-        default=None, description="Task note in Markdown (encrypted client-side)"
-    )
-
-    status: TaskStatus = Field(default=TaskStatus.LATER, description="Task status")
+    area_id: str = Field(description="Area ID the task belongs to")
 
     def __init__(self, **data: object) -> None:
         """Pydantic-compatible initializer with permissive typing for tools/tests."""
         super().__init__(**data)  # type: ignore[arg-type]
 
 
-class TaskUpdate(BaseModel):
+class TaskUpdate(TaskPayload):
     """Partial update payload for existing tasks.
 
     All fields are optional to support PATCH semantics. Outbound serialization
@@ -172,44 +170,7 @@ class TaskUpdate(BaseModel):
 
     # Required field for updates
     id: str = Field(description="The ID of the task (UUID)")
-
-    # Optional relational/context fields
-    area_id: str | None = Field(None, description="Area ID the task belongs to")
-    goal_id: str | None = Field(
-        None,
-        description=(
-            "ID of the goal where the task should belong to (optional, "
-            "can be found in our apps in the goal's settings)"
-        ),
-    )
-
-    # Optional encrypted content fields
-    name: str | None = Field(None, description="Task name (gets encrypted client-side)")
-    note: str | None = Field(None, description="Task note in Markdown (encrypted client-side)")
-
-    # Optional state and prioritization fields
-    status: TaskStatus | None = Field(None, description="Task status")
-    estimate: int | None = Field(None, description="Estimated duration in minutes")
-    priority: int | None = Field(
-        None,
-        ge=MIN_PRIORITY,
-        le=MAX_PRIORITY,
-        description=f"Task priority level [{MIN_PRIORITY}, {MAX_PRIORITY}]",
-    )
-    progress: int | None = Field(None, description="Task completion percentage")
-    motivation: TaskMotivation | None = Field(
-        None, description="Task motivation level (must, should, want, unknown)"
-    )
-    eisenhower: int | None = Field(
-        None,
-        ge=MIN_EISENHOWER,
-        le=MAX_EISENHOWER,
-        description=f"Eisenhower matrix quadrant [{MIN_EISENHOWER}, {MAX_EISENHOWER}]",
-    )
-    scheduled_on: date | None = Field(
-        None, description="Date when task is scheduled (YYYY-MM-DD format, date-only)"
-    )
-    source: Source | None = Field(None, description="Task source information")
+    area_id: str | None = Field(default=None, description="Area ID the task belongs to")
 
     def __init__(self, **data: object) -> None:
         """Pydantic-compatible initializer with permissive typing for tools/tests."""

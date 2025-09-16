@@ -22,10 +22,7 @@ from lunatask_mcp.api.models import (
 
 def test_task_payload_optional_fields_default_none() -> None:
     # area_id is required, so we need to provide it
-    payload = TaskPayload(area_id="test-area")
-
-    # Required relational fields
-    assert payload.area_id == "test-area"
+    payload = TaskPayload()
 
     # Optional relational/content fields
     assert payload.goal_id is None
@@ -41,13 +38,13 @@ def test_task_payload_optional_fields_default_none() -> None:
     assert payload.eisenhower is None
     assert payload.scheduled_on is None
     assert payload.source is None
+    assert payload.name is None
+    assert payload.note is None
 
 
 def test_task_payload_serializes_enum_values() -> None:
     # area_id is required, so we need to provide it
-    payload = TaskPayload(
-        area_id="test-area", status=TaskStatus.NEXT, motivation=TaskMotivation.SHOULD
-    )
+    payload = TaskPayload(status=TaskStatus.NEXT, motivation=TaskMotivation.SHOULD)
     dumped = payload.model_dump()
 
     # Pydantic should serialize enums to their string values
@@ -61,7 +58,7 @@ def test_task_payload_serializes_enum_values() -> None:
 )
 def test_task_payload_priority_bounds(priority: int) -> None:
     with pytest.raises(ValidationError):
-        TaskPayload(area_id="test-area", priority=priority)
+        TaskPayload(priority=priority)
 
 
 @pytest.mark.parametrize(
@@ -70,7 +67,7 @@ def test_task_payload_priority_bounds(priority: int) -> None:
 )
 def test_task_payload_eisenhower_bounds(eisenhower: int) -> None:
     with pytest.raises(ValidationError):
-        TaskPayload(area_id="test-area", eisenhower=eisenhower)
+        TaskPayload(eisenhower=eisenhower)
 
 
 def test_task_payload_status_rejects_invalid_string() -> None:

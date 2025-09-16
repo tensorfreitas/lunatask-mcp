@@ -31,14 +31,14 @@ class TaskResponse(BaseModel):
     """Response model for task data received from LunaTask API.
 
     Note: Encrypted fields like 'name' and 'note' are absent in GET responses
-    due to end-to-end encryption. This model is intentionally permissive to
-    accommodate upstream values (e.g., status like "open").
+    due to end-to-end encryption. This model validates status values using
+    the TaskStatus enum to ensure data integrity.
     """
 
     id: str
     area_id: Optional[str] = None
-    status: str  # permissive: accepts upstream strings
-    priority: Optional[int] = 0  # permissive: no bounds enforced in response
+    status: TaskStatus  # validates using TaskStatus enum
+    priority: Optional[int] = 0  # strict validation: bounds [-2, 2] enforced
     scheduled_on: Optional[date] = None
     created_at: datetime
     updated_at: datetime

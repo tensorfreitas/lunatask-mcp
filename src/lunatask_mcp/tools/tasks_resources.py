@@ -78,7 +78,6 @@ async def tasks_discovery_resource(
             "priority",
             "status",
             "area_id",
-            "list_id",
             "detail_uri",
         ],
         "sorts": {

@@ -17,7 +17,7 @@ The project will be organized using a standard, installable Python package layou
 │       ├── api/models.py     # Pydantic data models (tasks, habits)
 │       └── tools/            # Components defining MCP tools
 │           ├── __init__.py
-│           ├── habits.py               # Habit-related tools (future)
+│           ├── habits.py               # Habit tracking tools (track_habit tool)
 │           ├── tasks.py                # TaskTools delegator/registration
 │           ├── tasks_common.py         # Shared task helpers (serialization)
 │           ├── tasks_resources.py      # Task list/single MCP resources

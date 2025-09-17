@@ -21,10 +21,14 @@ This project has one critical external dependency: the LunaTask API. All core fu
 
 1. **GET /v1/tasks** - Retrieve All Tasks
    - **Purpose**: Get a list of all tasks for the authenticated user
-   - **Implementation**: `LunaTaskClient.get_tasks()` method; MCP resource handler in `tools/tasks_resources.py:get_tasks_resource`
-   - **MCP Resource**: `lunatask://tasks`
+   - **Implementation**: `LunaTaskClient.get_tasks()` method
+   - **MCP Resource Discovery**: `lunatask://tasks` (returns discovery document)
+   - **MCP Resource Access**: Via alias resources (area/global families)
    - **Response Model**: Array of `TaskResponse` objects
    - **Features**: Supports pagination and filtering parameters
+   - **Alias Resources**:
+     - Area family: `lunatask://area/{area_id}/now`, `lunatask://area/{area_id}/today`, `lunatask://area/{area_id}/overdue`, `lunatask://area/{area_id}/next-7-days`, `lunatask://area/{area_id}/high-priority`, `lunatask://area/{area_id}/recent-completions`
+     - Global family: `lunatask://global/now`, `lunatask://global/today`, `lunatask://global/overdue`, `lunatask://global/next-7-days`, `lunatask://global/high-priority`, `lunatask://global/recent-completions`
 
 2. **GET /v1/tasks/{id}** - Retrieve Single Task
    - **Purpose**: Get details of a specific task by its unique ID  
@@ -82,5 +86,153 @@ All implemented endpoints respect LunaTask's E2E encryption constraints:
 - Only structural and metadata fields are available
 - Error responses are properly translated to MCP error format
 - Rate limiting is applied to all requests via `TokenBucketLimiter`
+
+## Alias Resource Semantics and Deterministic Sorting
+
+### Alias Definitions
+
+Each alias applies specific filters and client-side heuristics:
+
+- **`now`**: Client-side only filter for unscheduled tasks that meet urgency criteria:
+  - Tasks with `status == "started"` (in progress)
+  - Tasks with `priority == 2` (highest priority)
+  - Tasks with `motivation == "must"` (must-do tasks)
+  - Tasks with `eisenhower == 1` (urgent and important)
+  - Default limit: 25 items
+
+- **`today`**: Tasks scheduled for today (UTC timezone)
+  - Filter: `scheduled_on == today's date`
+  - Default limit: 50 items
+
+- **`overdue`**: Tasks scheduled before today
+  - Filter: `scheduled_on < today's date`
+  - Default limit: 50 items
+
+- **`next-7-days`**: Tasks scheduled within the next 7 days (excluding today)
+  - Filter: `today < scheduled_on <= today + 7 days`
+  - Default limit: 50 items
+
+- **`high-priority`**: Tasks with high priority values
+  - Filter: `priority >= 1` (priority 1 or 2)
+  - Default limit: 50 items
+
+- **`recent-completions`**: Recently completed tasks
+  - Filter: `completed_at` within last 72 hours
+  - Default limit: 50 items
+
+### Deterministic Sorting
+
+Each alias applies consistent sorting to ensure deterministic results:
+
+- **Default sorting**: `priority.desc,scheduled_on.asc,id.asc`
+  - Primary: Higher priority first
+  - Secondary: Earlier scheduled date first
+  - Tertiary: Lexicographic ID order
+
+- **`overdue` sorting**: `scheduled_on.asc,priority.desc,id.asc`
+  - Primary: Earliest overdue date first
+  - Secondary: Higher priority first
+  - Tertiary: Lexicographic ID order
+
+- **`recent-completions` sorting**: `completed_at.desc,id.asc`
+  - Primary: Most recently completed first
+  - Secondary: Lexicographic ID order
+
+### Response Format
+
+All alias resources return:
+- Array of serialized `TaskResponse` objects
+- Each item includes a `detail_uri` field for single-task access
+- Consistent field projection across all aliases
+- Client-side filtering applied where necessary for accuracy
+
+### Discovery Document Structure
+
+The discovery resource (`lunatask://tasks`) returns a comprehensive document describing list resource capabilities:
+
+```json
+{
+  "resource_type": "lunatask_tasks_discovery",
+  "params": {
+    "area_id": "string",
+    "scope": "global",
+    "window": "today|overdue|next_7_days|now",
+    "status": "later|next|started|waiting|completed|open",
+    "min_priority": "low|medium|high",
+    "priority": ["low", "medium", "high"],
+    "completed_since": "-72h|ISO8601",
+    "tz": "UTC",
+    "q": "string",
+    "limit": 50,
+    "cursor": "opaque",
+    "sort": "priority.desc,scheduled_on.asc,id.asc"
+  },
+  "defaults": {
+    "status": "open",
+    "limit": 50,
+    "sort": "priority.desc,scheduled_on.asc,id.asc",
+    "tz": "UTC"
+  },
+  "limits": {
+    "max_limit": 50,
+    "dense_cap": 25
+  },
+  "projection": [
+    "id", "scheduled_on", "priority", "status", "area_id", "detail_uri"
+  ],
+  "sorts": {
+    "default": "priority.desc,scheduled_on.asc,id.asc",
+    "overdue": "scheduled_on.asc,priority.desc,id.asc",
+    "recent_completions": "completed_at.desc,id.asc"
+  },
+  "aliases": [
+    {
+      "family": "area",
+      "name": "now",
+      "uri": "lunatask://area/{area_id}/now",
+      "canonical": "lunatask://tasks?area_id={area_id}&limit=25&status=open"
+    },
+    {
+      "family": "global",
+      "name": "overdue",
+      "uri": "lunatask://global/overdue",
+      "canonical": "lunatask://tasks?limit=50&scope=global&sort=scheduled_on.asc,priority.desc,id.asc&status=open&window=overdue"
+    }
+  ],
+  "guardrails": {
+    "unscoped_error_code": "LUNA_TASKS/UNSCOPED_LIST",
+    "message": "Provide area_id or scope=global for list views.",
+    "examples": [
+      "lunatask://area/AREA123/today",
+      "lunatask://global/next-7-days"
+    ]
+  }
+}
+```
+
+**Key Fields:**
+- `params`: Supported query parameters with types/constraints
+- `defaults`: Default values applied when parameters are omitted
+- `limits`: Pagination and result set constraints
+- `projection`: Fields included in each task object
+- `sorts`: Available sorting options by alias type
+- `aliases`: Complete list of available alias URIs with canonical mappings
+- `guardrails`: Error handling and usage guidance
+
+### Status Parameter: Composite "open" Filter
+
+The `status` parameter supports both individual LunaTask statuses and a special composite value:
+
+**Individual Statuses (sent to upstream API):**
+- `later` - Tasks in "Later" status
+- `next` - Tasks in "Next" status
+- `started` - Tasks in "Started" status
+- `waiting` - Tasks in "Waiting" status
+- `completed` - Completed tasks
+
+**Composite Filter (client-side only):**
+- `open` - **Not sent upstream**. Applied client-side to include all non-completed tasks (`later|next|started|waiting`). This is the default filter when no status is specified.
+
+**Implementation Note:** When `status=open` is requested, the MCP server fetches all tasks from the upstream API and applies the composite filter locally, excluding only tasks with `status=completed`.
 
 ---

@@ -16,7 +16,7 @@
 ## **Story 3.2: Finalize Documentation**
 **As a** new user, **I want** clear, comprehensive documentation in the `README.md` file, **so that** I can quickly understand how to install, configure, and run the server.
 ### Acceptance Criteria
-1. The `README.md` is updated with complete installation instructions using `uv` and `pip`.
+1. The `README.md` is updated with complete installation instructions using `uv` (standardized package manager until PyPI publish).
 2. Configuration instructions are provided, explaining all options for the config file and command-line arguments.
 3. A "Getting Started" or "Usage" section is added, showing a clear example of how to run the server and call a tool.
 4. All available MCP tools and resources are documented.

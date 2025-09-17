@@ -13,14 +13,18 @@ The application will be structured around a few key logical components, each wit
 *   `async def create_task(task_data: TaskCreate) -> TaskResponse`
 *   `async def update_task(task_id: str, task_data: TaskUpdate) -> TaskResponse`
 *   `async def delete_task(task_id: str) -> bool`
-*   `async def track_habit(habit_id: str, track_data: HabitTrackRequest) -> None`
+*   `async def track_habit(habit_id: str, track_date: date) -> None`
 
 **Dependencies**: `httpx`, `pydantic` models.
 
 ## 2. `TaskTools` (MCP Interface Component)
 
 **Responsibility**: This component exposes Task functionality to clients by defining MCP **resources** for reads and **tools** for writes.
-- Resources: `lunatask://tasks`, `lunatask://tasks/{task_id}`.
+- Resources:
+  - Discovery: `lunatask://tasks`, `lunatask://tasks/discovery`
+  - Single task: `lunatask://tasks/{task_id}`
+  - Area aliases: `lunatask://area/{area_id}/now`, `lunatask://area/{area_id}/today`, `lunatask://area/{area_id}/overdue`, `lunatask://area/{area_id}/next-7-days`, `lunatask://area/{area_id}/high-priority`, `lunatask://area/{area_id}/recent-completions`
+  - Global aliases: `lunatask://global/now`, `lunatask://global/today`, `lunatask://global/overdue`, `lunatask://global/next-7-days`, `lunatask://global/high-priority`, `lunatask://global/recent-completions`
 - Tools: `create_task`, `update_task`, `delete_task`.
 
 **Implementation Layout**:
@@ -59,7 +63,7 @@ This architecture aligns with the stated dependency injection and repository pat
 
 **Key Interfaces (as MCP Tools)**:
 
-*   **Tool**: `track_habit(...)` (Calls `LunaTaskClient.track_habit`)
+*   **Tool**: `track_habit(id: str, date: str)` (Calls `LunaTaskClient.track_habit`)
 
 **Dependencies**: `LunaTaskClient`, `fastmcp`.
 

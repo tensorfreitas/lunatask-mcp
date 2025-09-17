@@ -11,7 +11,7 @@
    - Global: `lunatask://global/now|today|overdue|next-7-days|high-priority|recent-completions`.
    - Now semantics: client-side only; includes UNDated tasks matching ANY of {status=started, priority=2,
      motivation=must, eisenhower=1}; completed tasks excluded.
-3. Defaults and caps: `status=open`, minimal projection (`id,scheduled_on,priority,status,area_id,list_id,detail_uri`), deterministic sort (`priority.desc,scheduled_on.asc,id.asc`), `limit<=50` (default 25 for `now`), and `tz=UTC` by default.
+3. Defaults and caps: `status=later`, minimal projection (`id,scheduled_on,priority,status,area_id,detail_uri`), deterministic sort (`priority.desc,scheduled_on.asc,id.asc`), `limit<=50` (default 25 for `now`), and `tz=UTC` by default.
 4. Sorting variants: Overdue uses `scheduled_on.asc,priority.desc,id.asc`; Recent completions uses `completed_at.desc,id.asc`; null `scheduled_on` placed last for non‑overdue; null priority treated as lowest.
 5. Discovery: `lunatask://tasks` becomes discovery‑only and returns params, defaults (including `tz`), limits, canonical examples for both families, sorts, projection, and guardrails.
 6. Backwards compatibility: `lunatask://tasks/{id}` unchanged; creation/update/delete tools unchanged; multi‑area CSV is not supported.
@@ -29,7 +29,7 @@
 **As a** user, **I want** to create a new task in LunaTask using an MCP tool, **so that** I can add to-dos from my integrated AI applications.
 ### Acceptance Criteria
 1. An MCP `tool` named `create_task` is implemented, corresponding to `POST /v1/tasks`.
-2. The tool accepts all necessary parameters to create a LunaTask task (e.g., `listId`, `name`, `note`).
+2. The tool accepts all necessary parameters to create a LunaTask task (e.g., `area_id`, `name`, `note`, `status`, `priority`, `motivation`, `eisenhower`).
 3. A successful API call results in an MCP response containing the ID of the newly created task.
 
 ## **Story 2.4: Update Task Tool**

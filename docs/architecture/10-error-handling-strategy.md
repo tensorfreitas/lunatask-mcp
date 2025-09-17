@@ -23,3 +23,71 @@ The server will use a layered error handling approach based on a hierarchy of cu
 A dedicated module will define our application's exception hierarchy.
 
 ```python
+# Base exception class
+class LunaTaskAPIError(Exception):
+    """Base exception for all LunaTask API errors."""
+
+    def __init__(self, message: str, status_code: int | None = None) -> None:
+        self.status_code = status_code
+        super().__init__(message)
+
+# Specific HTTP status code exceptions
+class LunaTaskBadRequestError(LunaTaskAPIError):          # 400
+class LunaTaskAuthenticationError(LunaTaskAPIError):      # 401
+class LunaTaskSubscriptionRequiredError(LunaTaskAPIError): # 402
+class LunaTaskNotFoundError(LunaTaskAPIError):            # 404
+class LunaTaskValidationError(LunaTaskAPIError):          # 422
+class LunaTaskRateLimitError(LunaTaskAPIError):           # 429
+class LunaTaskServerError(LunaTaskAPIError):              # 5xx
+class LunaTaskServiceUnavailableError(LunaTaskAPIError):  # 503
+
+# Network-level exceptions
+class LunaTaskNetworkError(LunaTaskAPIError):             # Network failures
+class LunaTaskTimeoutError(LunaTaskAPIError):             # Request timeouts
+```
+
+### HTTP Status Code Mapping
+
+The `LunaTaskClient` maps HTTP status codes to specific exceptions:
+
+```python
+# Example from client error handling
+if status_code == 400:
+    raise LunaTaskBadRequestError from error
+elif status_code == 401:
+    raise LunaTaskAuthenticationError from error
+elif status_code == 402:
+    raise LunaTaskSubscriptionRequiredError from error
+elif status_code == 404:
+    raise LunaTaskNotFoundError from error
+elif status_code == 422:
+    raise LunaTaskValidationError from error
+elif status_code == 429:
+    raise LunaTaskRateLimitError from error
+elif status_code == 503:
+    raise LunaTaskServiceUnavailableError from error
+elif 500 <= status_code < 600:
+    raise LunaTaskServerError("", status_code) from error
+```
+
+### MCP Tool Error Translation
+
+MCP tools catch these exceptions and translate them into structured responses:
+
+```python
+try:
+    # API operation
+    result = await client.create_task(task_data)
+except LunaTaskValidationError as e:
+    return {
+        "success": False,
+        "error": "validation_error",
+        "message": f"Task validation failed: {e}"
+    }
+except LunaTaskAuthenticationError as e:
+    return {
+        "success": False,
+        "error": "authentication_error",
+        "message": f"Authentication failed: {e}"
+    }
+```

@@ -50,7 +50,7 @@ The LunaTask MCP server supports flexible configuration through TOML files and c
 
 1. Copy the example configuration file to a path you prefer:
 ```bash
-cp config.example.toml ~/path/to/your/lunatas_mcp_config.toml
+cp config.example.toml ~/path/to/your/lunatask_mcp_config.toml
 ```
 
 2. Edit `config.toml` and add your LunaTask API bearer token:
@@ -230,24 +230,25 @@ Unlike Claude Code, in Codex you add an MCP server globally and not per project.
 ```toml
 [mcp_servers.lunatask-mcp]
 command = "uvx"
-args = ["--from", " git+https://github.com/tensorfreitas/lunatask-mcp", "--config-file", "/your/path/to/lunatask_mcp_config.toml"]
+args = ["--from", "git+https://github.com/tensorfreitas/lunatask-mcp", "--config-file", "/your/path/to/lunatask_mcp_config.toml"]
 ```
 
 ## To Be Implemented
-1. Extra Task Resource Filters
+1. Implementation of MCp Server-Sent Events (SSE) for HTTP-based clients
+2. Extra Task Resource Filters
 - [ ] resource filters by `goal_id`
 - [ ] filters for all priority types
 - [ ] filters for all motivation types
 - [ ] filters for all eisenhower types
 - [ ] filters for specific dates
 - [ ] filters for completed tasks in a range of dates
-2. Extra tools
+3. Extra tools
 - [ ] Implement [`create_note` tool](https://lunatask.app/api/notes-api/create)
 - [ ] Implement [`create_entry_journal` tool](https://lunatask.app/api/journal-api/create)
 - [ ] Implement [`create_person` tool](https://lunatask.app/api/people-api/create)
 - [ ] Implement [`delete_person` tool](https://lunatask.app/api/people-api/delete)
 - [ ] Implement [`create_person_timeline_note` tool](https://lunatask.app/api/person-timeline-notes-api/create)
-3. Extra Resources
+4. Extra Resources
 - [ ] Implement [Retrieve person](https://lunatask.app/api/person-timeline-notes-api/create) resource
 - [ ] Implement [Retrieve all people](https://lunatask.app/api/people-api/list) resource
 

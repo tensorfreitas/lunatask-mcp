@@ -21,7 +21,6 @@
       - [TaskCreate (Request Model)](./4-data-models.md#taskcreate-request-model)
       - [TaskUpdate (Request Model)](./4-data-models.md#taskupdate-request-model)
     - [Habit Models](./4-data-models.md#habit-models)
-      - [HabitTrackRequest (Request Model)](./4-data-models.md#habittrackerequest-request-model)
   - [5. Components](./5-components.md)
     - [1. LunaTaskClient (Service Component)](./5-components.md#1-lunataskclient-service-component)
     - [2. TaskTools (MCP Interface Component)](./5-components.md#2-tasktools-mcp-interface-component)

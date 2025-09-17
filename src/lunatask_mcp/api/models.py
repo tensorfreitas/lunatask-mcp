@@ -72,10 +72,10 @@ class TaskPayload(BaseModel):
 
     # State and prioritization - kept as None for TaskUpdate's PATCH semantics
     # TaskCreate will override these with proper defaults
-    status: TaskStatus = Field(default=TaskStatus.LATER, description="Task status")
+    status: TaskStatus | None = Field(default=None, description="Task status")
     estimate: int | None = Field(default=None, description="Estimated duration in minutes")
-    priority: int = Field(
-        default=0,
+    priority: int | None = Field(
+        default=None,
         ge=MIN_PRIORITY,
         le=MAX_PRIORITY,
         description=f"Task priority level [{MIN_PRIORITY}, {MAX_PRIORITY}]",
@@ -121,7 +121,7 @@ class TaskResponse(BaseModel):
     # Fields that overlap with payloads but may have different validation (e.g., non-nullable)
     area_id: str = Field(..., description="The ID of the area the task belongs in")
     goal_id: str | None = Field(None, description="The ID of the goal the task belongs in")
-    status: TaskStatus = Field(description="Task status")
+    status: TaskStatus = Field(default=TaskStatus.LATER, description="Task status")
     estimate: int | None = Field(None, description="Estimated duration in minutes")
     priority: int = Field(..., ge=MIN_PRIORITY, le=MAX_PRIORITY, description="Current priority")
     progress: int | None = Field(None, description="Task completion percentage")
@@ -160,17 +160,33 @@ class TaskCreate(TaskPayload):
 class TaskUpdate(TaskPayload):
     """Partial update payload for existing tasks.
 
-    All fields are optional to support PATCH semantics. Outbound serialization
-    relies on `model_dump(exclude_none=True)` at call sites to send only changed
-    fields. Field validation constraints are maintained from TaskPayload.
+    Keeps inheritance from ``TaskPayload`` while preserving PATCH semantics:
+    - Override update-sensitive fields to be optional (``None`` by default) so that
+      omitted values are not serialized and do not reset server state.
+    - Call sites serialize with ``model_dump(exclude_none=True)``; with these
+      overrides, missing fields remain ``None`` and are excluded.
+
+    This approach avoids unintentional resets like ``status='later'`` or
+    ``priority=0`` being sent when the caller didn't set those fields.
     """
 
     # Ensure outbound JSON uses enum string values
     model_config = ConfigDict(use_enum_values=True)
 
-    # Required field for updates
+    # Required identifier for updates
     id: str = Field(description="The ID of the task (UUID)")
+
+    # Optional relation for moves
     area_id: str | None = Field(default=None, description="Area ID the task belongs to")
+
+    # Override update-sensitive fields from TaskPayload to support partial updates
+    status: TaskStatus | None = Field(default=None, description="Task status")
+    priority: int | None = Field(
+        default=None,
+        ge=MIN_PRIORITY,
+        le=MAX_PRIORITY,
+        description=f"Task priority level [{MIN_PRIORITY}, {MAX_PRIORITY}]",
+    )
 
     def __init__(self, **data: object) -> None:
         """Pydantic-compatible initializer with permissive typing for tools/tests."""

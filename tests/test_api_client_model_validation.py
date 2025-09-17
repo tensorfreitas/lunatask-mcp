@@ -33,9 +33,10 @@ class TestTaskModelValidationAndDefaults:
         # Test defaults: status="later", priority=0, motivation=None
         task = TaskCreate(name="Test Task", area_id="area-xyz")
 
-        assert task.status == TaskStatus.LATER
-        assert task.priority == 0
+        assert task.area_id == "area-xyz"
+        assert task.name == "Test Task"
         assert task.motivation is None
+        assert task.priority is None
 
     def test_task_create_status_enum_validation(self) -> None:
         """Test TaskCreate validates status enum values (AC: 1)."""

@@ -28,8 +28,8 @@ def test_task_payload_optional_fields_default_none() -> None:
     assert payload.goal_id is None
 
     # Fields with defaults
-    assert payload.status == TaskStatus.LATER  # Has default
-    assert payload.priority == 0  # Has default
+    assert payload.status is None  # Has default
+    assert payload.priority is None  # Has default
 
     # Optional prioritization/scheduling fields (default None)
     assert payload.estimate is None

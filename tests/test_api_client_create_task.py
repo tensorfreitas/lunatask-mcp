@@ -37,20 +37,17 @@ class TestLunaTaskClientCreateTask:
         config = ServerConfig(lunatask_bearer_token=VALID_TOKEN, lunatask_base_url=DEFAULT_API_URL)
         client = LunaTaskClient(config)
 
-        # Minimal TaskCreate now requires area_id, goal_id, motivation explicitly
+        # Minimal TaskCreate now requires area_id and name
         task_data = TaskCreate(
             name="Test Task",
             area_id="area-001",
-            goal_id="goal-001",
-            motivation="unknown",
         )
 
-        # Response must conform to TaskResponse (enum status, required area_id/goal_id/motivation)
+        # Response must conform to TaskResponse
         mock_response_data: dict[str, Any] = {
             "task": {
                 "id": "task-min-123",
                 "area_id": "area-001",
-                "goal_id": "goal-001",
                 "status": "later",
                 "motivation": "unknown",
                 "priority": 0,
@@ -69,7 +66,6 @@ class TestLunaTaskClientCreateTask:
         result = await client.create_task(task_data)
 
         assert result.area_id == "area-001"
-        assert result.goal_id == "goal-001"
         assert result.status == TaskStatus.LATER
         assert result.motivation == TaskMotivation.UNKNOWN
         assert result.priority == 0
@@ -79,10 +75,6 @@ class TestLunaTaskClientCreateTask:
             data={
                 "name": "Test Task",
                 "area_id": "area-001",
-                "goal_id": "goal-001",
-                "status": "later",
-                "priority": 0,
-                "motivation": "unknown",
             },
         )
 
@@ -378,8 +370,6 @@ class TestLunaTaskClientCreateTask:
                 "name": "Rate Limited Task",
                 "area_id": "area-001",
                 "goal_id": "goal-001",
-                "status": "later",
-                "priority": 0,
                 "motivation": "unknown",
             },
         )

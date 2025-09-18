@@ -158,10 +158,10 @@ The server provides the following tools:
 - **Stdio Transport**: Communicates over standard input/output streams
 
 ## Tools Available
-- `create_task`: Creates a new task in LunaTask with the specified parameters. Returns the newly assigned task ID
-- `update_task`: Updates an existing task in LunaTask with the specified parameters. Returns the updated task data. **You can update just one field** (e.g., only status) without affecting other fields.
-- `delete_task`: Deletes an existing task from LunaTask permanently. Returns the deleted task ID. **Deleted tasks cannot be recovered**: use with caution as this action is irreversible
-- `track_habit`: Track an activity for a specific habit id on a given date. Returns: `{ "ok": true, "message": "Successfully tracked habit <id> on <date>" }` on success
+- `create_task`: Creates a new task. Requires `name` and the target `area_id`. Optional fields include text content (`note`), planning data (`status`, `scheduled_on`, `estimate`, `progress`), prioritisation (`priority`, `motivation`, `eisenhower`), goal context (`goal_id`) and external source metadata (`source`, `source_id`). Returns `{ "success": true, "task_id": "..." }` with the new identifier.
+- `update_task`: Updates an existing task by ID. Supports partial updates—only the fields you pass (same set as create, minus the required `name`) are mutated. Returns `{ "success": true, "task": {...} }` with the full serialized task payload.
+- `delete_task`: Permanently deletes a task from LunaTask. Returns `{ "success": true, "task_id": "..." }`. **Deleted tasks cannot be recovered**, so invoke with caution.
+- `track_habit`: Logs habit activity for a specific habit ID and ISO date. Returns `{ "ok": true, "message": "Successfully tracked habit <id> on <date>" }` when the API confirms the event.
 
 ## Resources Available
 The server also has the following resources:
@@ -207,7 +207,7 @@ In the future these could be expanded to include:
 ## Integration with other tools
 
 ### Claude Code
-You give acess to Claude code via:
+You give access to Claude Code via:
 ```bash
 claude mcp add lunatask-mcp -- uvx --from git+https://github.com/tensorfreitas/lunatask-mcp --config-file /your/path/to/lunatask_mcp_config.toml
 ```

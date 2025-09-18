@@ -49,7 +49,12 @@ class TestLunaTaskClientGetTask:
                 "scheduled_on": "2025-08-25",
                 "created_at": "2025-08-20T10:00:00Z",
                 "updated_at": "2025-08-20T11:00:00Z",
-                "source": {"type": "manual", "value": "user_created"},
+                "sources": [
+                    {
+                        "source": "manual",
+                        "source_id": "user_created",
+                    }
+                ],
             }
         }
 
@@ -69,9 +74,8 @@ class TestLunaTaskClientGetTask:
         assert result.priority == expected_priority
         assert result.scheduled_on is not None
         assert result.scheduled_on.isoformat() == "2025-08-25"
-        assert result.source is not None
-        assert result.source.type == "manual"
-        assert result.source.value == "user_created"
+        assert result.source == "manual"
+        assert result.source_id == "user_created"
         mock_request.assert_called_once_with("GET", "tasks/task-123")
 
     @pytest.mark.asyncio
@@ -96,7 +100,7 @@ class TestLunaTaskClientGetTask:
                 "created_at": "2025-08-20T10:00:00Z",
                 "updated_at": "2025-08-20T10:00:00Z",
                 "scheduled_on": None,
-                "source": None,
+                "sources": [],
             }
         }
 
@@ -115,6 +119,7 @@ class TestLunaTaskClientGetTask:
         assert result.priority == 0
         assert result.scheduled_on is None
         assert result.source is None
+        assert result.source_id is None
         mock_request.assert_called_once_with("GET", "tasks/task-minimal")
 
     @pytest.mark.asyncio

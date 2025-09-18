@@ -34,6 +34,8 @@ async def create_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
     progress: int | str | None = None,
     goal_id: str | None = None,
     scheduled_on: str | None = None,
+    source: str | None = None,
+    source_id: str | None = None,
 ) -> dict[str, Any]:
     """Create a new task in LunaTask.
 
@@ -53,6 +55,8 @@ async def create_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
         progress: Optional task completion percentage (accepts int or numeric string)
         goal_id: Optional goal ID the task belongs to
         scheduled_on: Optional scheduled date in YYYY-MM-DD format
+        source: Optional external system label for the task origin
+        source_id: Optional external record identifier in the source system
 
     Returns:
         dict[str, Any]: Response containing task creation result with task_id
@@ -180,6 +184,8 @@ async def create_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
             progress=coerced_progress,
             goal_id=goal_id,
             scheduled_on=parsed_scheduled_on,
+            source=source,
+            source_id=source_id,
         )
 
         # Use LunaTask client to create the task

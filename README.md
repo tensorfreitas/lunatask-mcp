@@ -209,7 +209,7 @@ In the future these could be expanded to include:
 ### Claude Code
 You give access to Claude Code via:
 ```bash
-claude mcp add lunatask-mcp -- uvx --from git+https://github.com/tensorfreitas/lunatask-mcp --config-file /your/path/to/lunatask_mcp_config.toml
+claude mcp add lunatask-mcp -- uvx --from git+https://github.com/tensorfreitas/lunatask-mcp lunatask-mcp --config-file /your/path/to/lunatask_mcp_config.toml
 ```
 
 ### Claude Desktop or LM Studio
@@ -218,7 +218,7 @@ claude mcp add lunatask-mcp -- uvx --from git+https://github.com/tensorfreitas/l
     "mcpServers": {
         "lunatask-mcp": {
             "command": "uvx",
-            "args": ["--from", "git+https://github.com/tensorfreitas/lunatask-mcp", "--config-file", "/your/path/to/lunatask_mcp_config.toml"]
+            "args": ["--from", "git+https://github.com/tensorfreitas/lunatask-mcp", "lunatask-mcp", "--config-file", "/your/path/to/lunatask_mcp_config.toml"]
         }
     }
 }
@@ -230,7 +230,7 @@ Unlike Claude Code, in Codex you add an MCP server globally and not per project.
 ```toml
 [mcp_servers.lunatask-mcp]
 command = "uvx"
-args = ["--from", "git+https://github.com/tensorfreitas/lunatask-mcp", "--config-file", "/your/path/to/lunatask_mcp_config.toml"]
+args = ["--from", "git+https://github.com/tensorfreitas/lunatask-mcp", "lunatask-mcp", "--config-file", "/your/path/to/lunatask_mcp_config.toml"]
 ```
 
 ## To Be Implemented

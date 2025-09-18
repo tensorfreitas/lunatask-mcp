@@ -35,6 +35,9 @@ async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
     scheduled_on: str | None = None,
     motivation: str | None = None,
     eisenhower: int | str | None = None,
+    estimate: int | str | None = None,
+    progress: int | str | None = None,
+    goal_id: str | None = None,
 ) -> dict[str, Any]:
     """Update an existing task in LunaTask.
 
@@ -52,6 +55,9 @@ async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
         scheduled_on: Updated scheduled date in YYYY-MM-DD format (optional)
         motivation: Updated task motivation (must, should, want, unknown) (optional)
         eisenhower: Updated eisenhower matrix quadrant (0-4) (optional)
+        estimate: Updated estimated duration in minutes (optional)
+        progress: Updated task completion percentage (optional)
+        goal_id: Updated goal ID the task belongs to (optional)
 
     Returns:
         dict[str, Any]: Response containing task update result with updated task data
@@ -77,7 +83,19 @@ async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
         return result
 
     # Validate that at least one field is provided for update
-    update_fields = [name, note, area_id, status, priority, scheduled_on, motivation, eisenhower]
+    update_fields = [
+        name,
+        note,
+        area_id,
+        status,
+        priority,
+        scheduled_on,
+        motivation,
+        eisenhower,
+        estimate,
+        progress,
+        goal_id,
+    ]
     if all(field is None for field in update_fields):
         error_msg = "At least one field must be provided for update"
         result = {
@@ -143,6 +161,44 @@ async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
                 logger.warning("Invalid eisenhower type for task %s: %r", id, eisenhower)
                 return result
 
+    # Coerce string estimate values to integers when possible for client UX
+    coerced_estimate: int | None = None
+    if estimate is not None:
+        if isinstance(estimate, int):
+            coerced_estimate = estimate
+        else:
+            try:
+                coerced_estimate = int(estimate)
+            except (TypeError, ValueError):
+                error_msg = "Invalid estimate: must be an integer (minutes)"
+                result = {
+                    "success": False,
+                    "error": "validation_error",
+                    "message": f"Validation failed for estimate: {error_msg}",
+                }
+                await ctx.error(error_msg)
+                logger.warning("Invalid estimate type for task %s: %r", id, estimate)
+                return result
+
+    # Coerce string progress values to integers when possible for client UX
+    coerced_progress: int | None = None
+    if progress is not None:
+        if isinstance(progress, int):
+            coerced_progress = progress
+        else:
+            try:
+                coerced_progress = int(progress)
+            except (TypeError, ValueError):
+                error_msg = "Invalid progress: must be an integer (percentage)"
+                result = {
+                    "success": False,
+                    "error": "validation_error",
+                    "message": f"Validation failed for progress: {error_msg}",
+                }
+                await ctx.error(error_msg)
+                logger.warning("Invalid progress type for task %s: %r", id, progress)
+                return result
+
     await ctx.info(f"Updating task {id}")
 
     try:
@@ -178,6 +234,12 @@ async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
             update_kwargs["motivation"] = task_motivation
         if coerced_eisenhower is not None:
             update_kwargs["eisenhower"] = coerced_eisenhower
+        if coerced_estimate is not None:
+            update_kwargs["estimate"] = coerced_estimate
+        if coerced_progress is not None:
+            update_kwargs["progress"] = coerced_progress
+        if goal_id is not None:
+            update_kwargs["goal_id"] = goal_id
 
         task_update = TaskUpdate(**update_kwargs)
 
@@ -281,6 +343,10 @@ async def update_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
                     msg = "Must be between -2 and 2"
                 elif field == "status":
                     msg = "Must be one of: later, next, started, waiting, completed"
+                elif field == "estimate":
+                    msg = "Must be a positive integer (minutes)"
+                elif field == "progress":
+                    msg = "Must be an integer between 0 and 100 (percentage)"
                 error_details.append(f"{field}: {msg}")
 
             error_msg = f"Validation failed for {', '.join(error_details)}"

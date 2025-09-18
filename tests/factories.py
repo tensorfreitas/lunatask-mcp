@@ -5,9 +5,19 @@ objects for use in tests. These functions help reduce duplication in test setup
 while keeping the construction explicit and readable.
 """
 
+from collections.abc import Sequence
 from datetime import UTC, date, datetime
+from typing import LiteralString, cast
+
+from pydantic import ValidationError
+from pydantic_core import InitErrorDetails, PydanticCustomError
 
 from lunatask_mcp.api.models import Source, TaskResponse
+
+VALID_ESTIMATE_MINUTES = 45
+VALID_PROGRESS_PERCENT = 80
+VALID_GOAL_ID = "goal-123"
+VALID_SCHEDULED_ON = date(2025, 9, 1)
 
 
 def create_source(source_type: str = "manual", value: str | None = "user_created") -> Source:
@@ -86,3 +96,32 @@ def create_task_response(  # noqa: PLR0913  # Factory functions need many parame
         progress=progress,
         completed_at=completed_at,
     )
+
+
+def build_validation_error(
+    model_name: str,
+    validation_entries: Sequence[tuple[str, str, object]],
+) -> ValidationError:
+    """Create a Pydantic ValidationError with provided field messages.
+
+    Args:
+        model_name: Name of the model associated with the validation error.
+        validation_entries: Iterable of tuples describing field validation errors
+            as (field_name, message, invalid_value).
+
+    Returns:
+        ValidationError: Validation error instance containing all provided entries.
+    """
+
+    error_details: list[InitErrorDetails] = []
+    for field_name, message, invalid_value in validation_entries:
+        literal_message: LiteralString = cast(LiteralString, message)
+        error_details.append(
+            {
+                "type": PydanticCustomError("value_error", literal_message),
+                "loc": (field_name,),
+                "input": invalid_value,
+            }
+        )
+
+    return ValidationError.from_exception_data(model_name, error_details)

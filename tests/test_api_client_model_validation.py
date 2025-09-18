@@ -15,6 +15,7 @@ from lunatask_mcp.api.models import (
     MIN_PRIORITY,
     TaskCreate,
     TaskMotivation,
+    TaskResponse,
     TaskStatus,
     TaskUpdate,
 )
@@ -118,6 +119,22 @@ class TestTaskModelValidationAndDefaults:
         assert task_minimal.motivation is None  # default is None
         assert task_minimal.eisenhower is None  # no default
 
+    def test_task_create_accepts_source_attributes(self) -> None:
+        """TaskCreate should accept optional source and source_id fields."""
+        task = TaskCreate(
+            name="Source Task",
+            area_id="area-xyz",
+            source="github",
+            source_id="issue-123",
+        )
+
+        assert task.source == "github"
+        assert task.source_id == "issue-123"
+
+        task_no_source = TaskCreate(name="No Source Task", area_id="area-xyz")
+        assert task_no_source.source is None
+        assert task_no_source.source_id is None
+
     def test_task_update_status_enum_validation(self) -> None:
         """Test TaskUpdate validates status enum values (AC: 1)."""
         # Valid values should pass
@@ -198,6 +215,16 @@ class TestTaskModelValidationAndDefaults:
         assert task_empty.motivation is None
         assert task_empty.eisenhower is None
 
+    def test_task_update_rejects_source_attributes(self) -> None:
+        """TaskUpdate should reject unsupported source metadata fields."""
+        with pytest.raises(ValidationError):
+            TaskUpdate(
+                id="task-1",
+                area_id="area-xyz",
+                source="github",  # type: ignore[arg-type] # Intentional invalid field for validation
+                source_id="issue-123",  # type: ignore[arg-type] # Intentional invalid field for validation
+            )
+
     def test_task_response_strict_handling_invalid_upstream(self) -> None:
         """TaskResponse should reject upstream values outside enum/range (strict)."""
         with pytest.raises(ValidationError):
@@ -211,3 +238,35 @@ class TestTaskModelValidationAndDefaults:
                 area_id="area-xyz",
                 priority=0,
             )
+
+    def test_task_response_exposes_source_fields(self) -> None:
+        """TaskResponse should surface source and source_id attributes."""
+        task = create_task_response(task_id="task-source", source="github", source_id="123")
+
+        assert task.source == "github"
+        assert task.source_id == "123"
+
+    def test_task_response_parses_sources_array(self) -> None:
+        """TaskResponse should parse sources array payloads from API."""
+        raw_payload = {
+            "id": "task-sourced",
+            "area_id": "area-xyz",
+            "status": "next",
+            "priority": 1,
+            "motivation": "should",
+            "eisenhower": 1,
+            "created_at": "2025-08-26T10:00:00Z",
+            "updated_at": "2025-08-26T10:05:00Z",
+            "sources": [
+                {"source": "github", "source_id": "123"},
+                {"source": "notion", "source_id": "alpha"},
+            ],
+        }
+
+        task = TaskResponse(**raw_payload)
+
+        expected_sources_count = 2
+        assert len(task.sources) == expected_sources_count
+        assert task.sources[0].source == "github"
+        assert task.source == "github"
+        assert task.source_id == "123"

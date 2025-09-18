@@ -75,6 +75,12 @@ class TaskTools:
         priority: int | str = 0,
         motivation: str = "unknown",
         eisenhower: int | str | None = None,
+        estimate: int | str | None = None,
+        progress: int | str | None = None,
+        goal_id: str | None = None,
+        scheduled_on: str | None = None,
+        source: str | None = None,
+        source_id: str | None = None,
     ) -> dict[str, Any]:
         """Create a new task in LunaTask."""
         return await create_task_tool_fn(
@@ -87,6 +93,12 @@ class TaskTools:
             priority,
             motivation,
             eisenhower,
+            estimate,
+            progress,
+            goal_id,
+            scheduled_on,
+            source,
+            source_id,
         )
 
     # TODO: Refactor update_task_tool with`TypedDict` to avoid too many arguments
@@ -102,6 +114,9 @@ class TaskTools:
         scheduled_on: str | None = None,
         motivation: str | None = None,
         eisenhower: int | str | None = None,
+        estimate: int | str | None = None,
+        progress: int | str | None = None,
+        goal_id: str | None = None,
     ) -> dict[str, Any]:
         """Update an existing task in LunaTask."""
         return await update_task_tool_fn(
@@ -116,6 +131,9 @@ class TaskTools:
             scheduled_on,
             motivation,
             eisenhower,
+            estimate,
+            progress,
+            goal_id,
         )
 
     async def delete_task_tool(self, ctx: ServerContext, id: str) -> dict[str, Any]:  # noqa: A002
@@ -176,6 +194,12 @@ class TaskTools:
             priority: int | str = 0,
             motivation: str = "unknown",
             eisenhower: int | str | None = None,
+            estimate: int | str | None = None,
+            progress: int | str | None = None,
+            goal_id: str | None = None,
+            scheduled_on: str | None = None,
+            source: str | None = None,
+            source_id: str | None = None,
         ) -> dict[str, Any]:
             """Create a new task in LunaTask."""
             return await create_task_tool_fn(
@@ -188,6 +212,12 @@ class TaskTools:
                 priority,
                 motivation,
                 eisenhower,
+                estimate,
+                progress,
+                goal_id,
+                scheduled_on,
+                source,
+                source_id,
             )
 
         # TODO: Refactor _update_task_tool with`TypedDict` to avoid too many arguments
@@ -202,6 +232,9 @@ class TaskTools:
             scheduled_on: str | None = None,
             motivation: str | None = None,
             eisenhower: int | str | None = None,
+            estimate: int | str | None = None,
+            progress: int | str | None = None,
+            goal_id: str | None = None,
         ) -> dict[str, Any]:
             """Update an existing task in LunaTask."""
             return await update_task_tool_fn(
@@ -216,6 +249,9 @@ class TaskTools:
                 scheduled_on,
                 motivation,
                 eisenhower,
+                estimate,
+                progress,
+                goal_id,
             )
 
         async def _delete_task_tool(ctx: ServerContext, id: str) -> dict[str, Any]:  # noqa: A002

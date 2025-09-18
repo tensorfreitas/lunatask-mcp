@@ -118,7 +118,7 @@ class TestLunaTaskClientUpdateTask:
                 "name": "Updated Task Name",
                 "status": "started",
                 "priority": 2,
-                "scheduled_on": scheduled_on,
+                "scheduled_on": scheduled_on.isoformat(),
             },
         )
 
@@ -326,7 +326,12 @@ class TestLunaTaskClientUpdateTask:
                 "priority": TEST_PRIORITY_HIGH,
                 "created_at": "2025-08-21T10:00:00Z",
                 "updated_at": "2025-08-21T12:00:00Z",
-                "source": {"type": "api", "value": "mcp-update"},
+                "sources": [
+                    {
+                        "source": "api",
+                        "source_id": "mcp-update",
+                    }
+                ],
             }
         }
 
@@ -342,9 +347,8 @@ class TestLunaTaskClientUpdateTask:
         assert result.id == "parse-test-task"
         assert result.area_id == "new-area"
         assert result.priority == TEST_PRIORITY_HIGH
-        assert result.source is not None
-        assert result.source.type == "api"
-        assert result.source.value == "mcp-update"
+        assert result.source == "api"
+        assert result.source_id == "mcp-update"
 
     @pytest.mark.asyncio
     async def test_update_task_parsing_error(self, mocker: MockerFixture) -> None:

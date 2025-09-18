@@ -23,7 +23,7 @@ from lunatask_mcp.api.exceptions import (
 )
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.tools.tasks import TaskTools
-from tests.factories import create_source, create_task_response
+from tests.factories import create_task_response
 
 
 class TestSingleTaskResource:
@@ -74,7 +74,8 @@ class TestSingleTaskResource:
             priority=2,
             scheduled_on=date(2025, 8, 25),
             area_id="area-456",
-            source=create_source("manual", "user_created"),
+            source="manual",
+            source_id="user_created",
         )
 
         # Mock the client's get_task method
@@ -98,8 +99,8 @@ class TestSingleTaskResource:
         assert task_data["created_at"] == "2025-08-20T10:00:00+00:00"
         assert task_data["updated_at"] == "2025-08-20T10:30:00+00:00"
         assert task_data["area_id"] == "area-456"
-        assert task_data["source"]["type"] == "manual"
-        assert task_data["source"]["value"] == "user_created"
+        assert task_data["source"] == "manual"
+        assert task_data["source_id"] == "user_created"
 
         # Verify metadata
         metadata = result["metadata"]
@@ -146,6 +147,7 @@ class TestSingleTaskResource:
         assert task_data["scheduled_on"] is None
         assert task_data["area_id"] == "default-area"
         assert task_data["source"] is None
+        assert task_data["source_id"] is None
 
     @pytest.mark.asyncio
     async def test_get_task_resource_not_found_error(self, mocker: MockerFixture) -> None:

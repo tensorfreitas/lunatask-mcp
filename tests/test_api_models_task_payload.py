@@ -14,6 +14,7 @@ from lunatask_mcp.api.models import (
     MAX_PRIORITY,
     MIN_EISENHOWER,
     MIN_PRIORITY,
+    TaskCreate,
     TaskMotivation,
     TaskPayload,
     TaskStatus,
@@ -37,9 +38,10 @@ def test_task_payload_optional_fields_default_none() -> None:
     assert payload.motivation is None
     assert payload.eisenhower is None
     assert payload.scheduled_on is None
-    assert payload.source is None
     assert payload.name is None
     assert payload.note is None
+    assert not hasattr(payload, "source")
+    assert not hasattr(payload, "source_id")
 
 
 def test_task_payload_serializes_enum_values() -> None:
@@ -73,3 +75,10 @@ def test_task_payload_eisenhower_bounds(eisenhower: int) -> None:
 def test_task_payload_status_rejects_invalid_string() -> None:
     with pytest.raises(ValidationError):
         TaskPayload(status="not-a-valid-status")  # type: ignore[arg-type]
+
+
+def test_task_create_includes_source_fields() -> None:
+    task = TaskCreate(name="Source Test", area_id="area-123", source="github", source_id="42")
+
+    assert task.source == "github"
+    assert task.source_id == "42"

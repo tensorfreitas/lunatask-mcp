@@ -5,6 +5,7 @@ requests to the LunaTask API with proper error handling and security.
 """
 
 import asyncio
+import json
 import logging
 import types
 from datetime import date
@@ -427,7 +428,8 @@ class LunaTaskClient:
             LunaTaskAPIError: Other API errors
         """
         # Convert TaskCreate model to JSON data
-        json_data = task_data.model_dump(exclude_none=True)
+        # Use model_dump_json to properly serialize date objects, then parse back to dict
+        json_data = json.loads(task_data.model_dump_json(exclude_none=True))
 
         # Make authenticated request to POST /v1/tasks endpoint
         response_data = await self.make_request("POST", "tasks", data=json_data)
@@ -470,7 +472,8 @@ class LunaTaskClient:
             LunaTaskAPIError: Other API errors
         """
         # Convert TaskUpdate model to JSON data, excluding None values for partial update
-        json_data = update.model_dump(exclude_none=True)
+        # Use model_dump_json to properly serialize date objects, then parse back to dict
+        json_data = json.loads(update.model_dump_json(exclude_none=True))
 
         # Make authenticated request to PATCH /v1/tasks/{task_id} endpoint
         response_data = await self.make_request("PATCH", f"tasks/{task_id}", data=json_data)

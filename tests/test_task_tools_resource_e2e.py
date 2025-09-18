@@ -19,7 +19,7 @@ from lunatask_mcp.api.exceptions import (
 )
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.tools.tasks import TaskTools
-from tests.factories import create_source, create_task_response
+from tests.factories import create_task_response
 
 
 class TestEndToEndResourceValidation:
@@ -101,7 +101,8 @@ class TestEndToEndResourceValidation:
             priority=2,
             scheduled_on=date(2025, 8, 28),
             area_id="work-area-789",
-            source=create_source("integration", "github_issue"),
+            source="integration",
+            source_id="github_issue",
         )
 
         # Mock the complete client flow
@@ -125,8 +126,8 @@ class TestEndToEndResourceValidation:
         assert task_data["priority"] == expected_priority
         assert task_data["scheduled_on"] == "2025-08-28"
         assert task_data["area_id"] == "work-area-789"
-        assert task_data["source"]["type"] == "integration"
-        assert task_data["source"]["value"] == "github_issue"
+        assert task_data["source"] == "integration"
+        assert task_data["source_id"] == "github_issue"
 
         # Validate metadata structure
         metadata = result["metadata"]
@@ -343,7 +344,8 @@ class TestEndToEndResourceValidation:
             priority=1,
             scheduled_on=date(2025, 8, 30),
             area_id="secure-area",
-            source=create_source("secure", "encrypted_source"),
+            source="secure",
+            source_id="encrypted_source",
         )
 
         mocker.patch.object(client, "get_task", return_value=encrypted_task)

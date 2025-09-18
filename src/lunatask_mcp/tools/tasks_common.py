@@ -30,12 +30,8 @@ def serialize_task_response(task: TaskResponse) -> dict[str, Any]:
         "priority": task.priority,
         "created_at": task.created_at.isoformat(),
         "updated_at": task.updated_at.isoformat(),
-        "source": {
-            "type": task.source.type,
-            "value": task.source.value,
-        }
-        if task.source
-        else None,
+        "source": task.source,
+        "source_id": task.source_id,
         "goal_id": task.goal_id,
         "estimate": task.estimate,
         "motivation": task.motivation,

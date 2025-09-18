@@ -103,6 +103,8 @@ class TestCreateTaskTool:
             area_id="area-123",
             status="started",
             priority=1,
+            source="github",
+            source_id="123",
         )
 
         # Verify the result
@@ -119,6 +121,8 @@ class TestCreateTaskTool:
         assert call_args.area_id == "area-123"
         assert call_args.status == "started"
         assert call_args.priority == 1
+        assert call_args.source == "github"
+        assert call_args.source_id == "123"
 
     @pytest.mark.asyncio
     async def test_create_task_tool_validation_error_422(self, mocker: MockerFixture) -> None:

@@ -22,7 +22,7 @@ from lunatask_mcp.api.exceptions import (
 )
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.tools.tasks import TaskTools
-from tests.factories import create_source, create_task_response
+from tests.factories import create_task_response
 
 
 class TestTaskResourceRetrieval:
@@ -52,7 +52,8 @@ class TestTaskResourceRetrieval:
             priority=1,
             scheduled_on=date(2025, 8, 25),
             area_id="area-1",
-            source=create_source("manual", "user_created"),
+            source="manual",
+            source_id="user_created",
         )
 
         # Mock the client's get_tasks method
@@ -76,8 +77,8 @@ class TestTaskResourceRetrieval:
         assert task_data["created_at"] == "2025-08-20T10:00:00+00:00"
         assert task_data["updated_at"] == "2025-08-20T10:30:00+00:00"
         assert task_data["area_id"] == "area-1"
-        assert task_data["source"]["type"] == "manual"
-        assert task_data["source"]["value"] == "user_created"
+        assert task_data["source"] == "manual"
+        assert task_data["source_id"] == "user_created"
 
         # Verify metadata
         metadata = result["metadata"]
@@ -211,6 +212,7 @@ class TestTaskResourceRetrieval:
         # area_id is required and defaults to "default-area" in the factory
         assert task_data["area_id"] == "default-area"
         assert task_data["source"] is None
+        assert task_data["source_id"] is None
 
     @pytest.mark.asyncio
     async def test_get_tasks_resource_metadata_defaults_without_session_id(

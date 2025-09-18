@@ -6,10 +6,14 @@ and `StrEnum` for string enums to generate clearer schemas and consistent
 validation errors.
 """
 
+from __future__ import annotations
+
+from collections.abc import Mapping, MutableMapping, Sequence
 from datetime import date, datetime
 from enum import StrEnum
+from typing import cast
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field, model_validator
 from pydantic.config import ConfigDict
 
 
@@ -39,13 +43,6 @@ MIN_EISENHOWER = 0
 MAX_EISENHOWER = 4
 
 
-class Source(BaseModel):
-    """Source information for task origin."""
-
-    type: str = Field(..., description="Type of source (e.g., 'email', 'web', 'manual')")
-    value: str | None = Field(None, description="Source value or identifier")
-
-
 class TaskPayload(BaseModel):
     """Shared request payload fields for task create/update.
 
@@ -58,8 +55,8 @@ class TaskPayload(BaseModel):
         - Outbound serialization uses enum string values (`use_enum_values=True`).
     """
 
-    # Ensure outbound JSON uses enum string values
-    model_config = ConfigDict(use_enum_values=True)
+    # Ensure outbound JSON uses enum string values and reject unsupported fields
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
 
     # Shared relational/context fields
     goal_id: str | None = Field(
@@ -93,12 +90,30 @@ class TaskPayload(BaseModel):
     scheduled_on: date | None = Field(
         default=None, description="Date when task is scheduled (YYYY-MM-DD format, date-only)"
     )
-    source: Source | None = Field(default=None, description="Task source information")
     # Optional encrypted content fields
     name: str | None = Field(default=None, description="Task name (gets encrypted client-side)")
     note: str | None = Field(
         default=None, description="Task note in Markdown (encrypted client-side)"
     )
+
+
+class TaskSource(BaseModel):
+    """Source metadata entry associated with a task."""
+
+    source: str | None = Field(
+        default=None,
+        description="Identifier of the system where the task originated (e.g., 'github')",
+    )
+    source_id: str | None = Field(
+        default=None,
+        description="Identifier of the task within the external system",
+    )
+
+
+def _empty_task_sources() -> list[TaskSource]:
+    """Return an empty list typed for TaskSource default factory."""
+
+    return []
 
 
 class TaskResponse(BaseModel):
@@ -132,7 +147,85 @@ class TaskResponse(BaseModel):
         0, ge=MIN_EISENHOWER, le=MAX_EISENHOWER, description="Eisenhower matrix quadrant"
     )
     scheduled_on: date | None = Field(None, description="Date when task is scheduled")
-    source: Source | None = Field(None, description="Task source information")
+    sources: list[TaskSource] = Field(
+        default_factory=_empty_task_sources,
+        description="Collection of source metadata entries associated with the task",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_sources(cls, data: object) -> object:
+        """Normalize legacy source fields into the sources array format."""
+
+        if not isinstance(data, MutableMapping):
+            return data
+
+        mapping_data = cast(MutableMapping[str, object], data)
+        normalized: dict[str, object] = dict(mapping_data)
+
+        if "sources" in normalized:
+            normalized["sources"] = cls._normalize_sources_payload(normalized.get("sources"))
+            normalized.pop("source", None)
+            normalized.pop("source_id", None)
+            return normalized
+
+        source_value = cast(str | None, normalized.pop("source", None))
+        source_id_value = cast(str | None, normalized.pop("source_id", None))
+
+        if source_value is None and source_id_value is None:
+            normalized["sources"] = []
+            return normalized
+
+        normalized["sources"] = [
+            {
+                "source": source_value,
+                "source_id": source_id_value,
+            }
+        ]
+        return normalized
+
+    @staticmethod
+    def _normalize_sources_payload(raw_sources: object) -> list[dict[str, str | None]]:
+        """Convert arbitrary sources payloads into normalized dictionaries."""
+
+        if isinstance(raw_sources, Mapping):
+            mapping_entry = cast(Mapping[str, object], raw_sources)
+            return [
+                {
+                    "source": cast(str | None, mapping_entry.get("source")),
+                    "source_id": cast(str | None, mapping_entry.get("source_id")),
+                }
+            ]
+
+        if isinstance(raw_sources, Sequence) and not isinstance(raw_sources, str | bytes):
+            entries = cast(Sequence[Mapping[str, object]], raw_sources)
+            return [
+                {
+                    "source": cast(str | None, entry.get("source")),
+                    "source_id": cast(str | None, entry.get("source_id")),
+                }
+                for entry in entries
+            ]
+
+        return []
+
+    @computed_field(return_type=str | None)
+    @property
+    def source(self) -> str | None:
+        """Primary source identifier for backwards compatibility."""
+
+        if not self.sources:
+            return None
+        return self.sources[0].source
+
+    @computed_field(return_type=str | None)
+    @property
+    def source_id(self) -> str | None:
+        """Primary source identifier from the first source entry."""
+
+        if not self.sources:
+            return None
+        return self.sources[0].source_id
 
     def __init__(self, **data: object) -> None:
         """Pydantic-compatible initializer with permissive typing for tools/tests."""
@@ -151,6 +244,16 @@ class TaskCreate(TaskPayload):
     model_config = ConfigDict(use_enum_values=True)
 
     area_id: str = Field(description="Area ID the task belongs to")
+    source: str | None = Field(
+        default=None,
+        description=(
+            "Identification of external system where the task originated (e.g., 'github')."
+        ),
+    )
+    source_id: str | None = Field(
+        default=None,
+        description="Identifier of the record in the external system (e.g., issue ID)",
+    )
 
     def __init__(self, **data: object) -> None:
         """Pydantic-compatible initializer with permissive typing for tools/tests."""

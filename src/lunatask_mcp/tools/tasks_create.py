@@ -1,6 +1,7 @@
 """Task creation tool handler for LunaTask MCP integration."""
 
 import logging
+from datetime import date
 from typing import Any
 
 from fastmcp import Context
@@ -29,6 +30,12 @@ async def create_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
     priority: int | str = 0,
     motivation: str = "unknown",
     eisenhower: int | str | None = None,
+    estimate: int | str | None = None,
+    progress: int | str | None = None,
+    goal_id: str | None = None,
+    scheduled_on: str | None = None,
+    source: str | None = None,
+    source_id: str | None = None,
 ) -> dict[str, Any]:
     """Create a new task in LunaTask.
 
@@ -44,6 +51,12 @@ async def create_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
         priority: Optional task priority level (accepts int or numeric string)
         motivation: Optional task motivation (must, should, want, unknown)
         eisenhower: Optional eisenhower matrix quadrant (0-4; accepts int or numeric string)
+        estimate: Optional estimated duration in minutes (accepts int or numeric string)
+        progress: Optional task completion percentage (accepts int or numeric string)
+        goal_id: Optional goal ID the task belongs to
+        scheduled_on: Optional scheduled date in YYYY-MM-DD format
+        source: Optional external system label for the task origin
+        source_id: Optional external record identifier in the source system
 
     Returns:
         dict[str, Any]: Response containing task creation result with task_id
@@ -95,6 +108,60 @@ async def create_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
                 logger.warning("Invalid eisenhower type for create_task: %r", eisenhower)
                 return result
 
+    # Coerce string estimate values to integers when possible for client UX
+    coerced_estimate: int | None = None
+    if estimate is not None:
+        if isinstance(estimate, int):
+            coerced_estimate = estimate
+        else:
+            try:
+                coerced_estimate = int(estimate)
+            except (TypeError, ValueError):
+                error_msg = "Invalid estimate: must be an integer (minutes)"
+                result = {
+                    "success": False,
+                    "error": "validation_error",
+                    "message": f"Validation failed for estimate: {error_msg}",
+                }
+                await ctx.error(error_msg)
+                logger.warning("Invalid estimate type for create_task: %r", estimate)
+                return result
+
+    # Coerce string progress values to integers when possible for client UX
+    coerced_progress: int | None = None
+    if progress is not None:
+        if isinstance(progress, int):
+            coerced_progress = progress
+        else:
+            try:
+                coerced_progress = int(progress)
+            except (TypeError, ValueError):
+                error_msg = "Invalid progress: must be an integer (percentage)"
+                result = {
+                    "success": False,
+                    "error": "validation_error",
+                    "message": f"Validation failed for progress: {error_msg}",
+                }
+                await ctx.error(error_msg)
+                logger.warning("Invalid progress type for create_task: %r", progress)
+                return result
+
+    # Parse and validate scheduled_on if provided
+    parsed_scheduled_on = None
+    if scheduled_on is not None:
+        try:
+            parsed_scheduled_on = date.fromisoformat(scheduled_on)
+        except (ValueError, TypeError) as e:
+            error_msg = f"Invalid scheduled_on format. Expected YYYY-MM-DD format: {e}"
+            result = {
+                "success": False,
+                "error": "validation_error",
+                "message": error_msg,
+            }
+            await ctx.error(error_msg)
+            logger.warning("Invalid scheduled_on format for create_task: %s", scheduled_on)
+            return result
+
     try:
         # Create TaskCreate object from parameters
         # Cast string parameters to proper Literal types
@@ -113,6 +180,12 @@ async def create_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
             priority=coerced_priority,
             motivation=task_motivation,  # type: ignore[arg-type]
             eisenhower=coerced_eisenhower,
+            estimate=coerced_estimate,
+            progress=coerced_progress,
+            goal_id=goal_id,
+            scheduled_on=parsed_scheduled_on,
+            source=source,
+            source_id=source_id,
         )
 
         # Use LunaTask client to create the task
@@ -214,6 +287,12 @@ async def create_task_tool(  # noqa: PLR0913, PLR0911, PLR0915, PLR0912, C901
                     msg = "Must be between -2 and 2"
                 elif field == "status":
                     msg = "Must be one of: later, next, started, waiting, completed"
+                elif field == "estimate":
+                    msg = "Must be a positive integer (minutes)"
+                elif field == "progress":
+                    msg = "Must be an integer between 0 and 100 (percentage)"
+                elif field == "scheduled_on":
+                    msg = "Must be in YYYY-MM-DD format"
                 error_details.append(f"{field}: {msg}")
 
             error_msg = f"Validation failed for {', '.join(error_details)}"

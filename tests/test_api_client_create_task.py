@@ -305,7 +305,12 @@ class TestLunaTaskClientCreateTask:
                 "eisenhower": 0,
                 "created_at": "2023-01-01T10:00:00Z",
                 "updated_at": "2023-01-01T10:00:00Z",
-                "source": {"type": "api", "value": "mcp-client"},
+                "sources": [
+                    {
+                        "source": "api",
+                        "source_id": "mcp-client",
+                    }
+                ],
             }
         }
 
@@ -322,9 +327,8 @@ class TestLunaTaskClientCreateTask:
         assert result.goal_id == "goal-001"
         assert result.status == TaskStatus.STARTED
         assert result.priority == TEST_PRIORITY_HIGH
-        assert result.source is not None
-        assert result.source.type == "api"
-        assert result.source.value == "mcp-client"
+        assert result.source == "api"
+        assert result.source_id == "mcp-client"
 
     @pytest.mark.asyncio
     async def test_create_task_rate_limiter_integration(self, mocker: MockerFixture) -> None:
@@ -350,6 +354,7 @@ class TestLunaTaskClientCreateTask:
                 "eisenhower": 0,
                 "created_at": "2023-01-01T10:00:00Z",
                 "updated_at": "2023-01-01T10:00:00Z",
+                "sources": [],
             }
         }
 

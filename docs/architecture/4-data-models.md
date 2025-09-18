@@ -33,15 +33,22 @@ MAX_EISENHOWER = 4
 
 These models are based on the [Tasks API Documentation](https://lunatask.app/api/tasks-api/show).
 
-### `Source` (Nested Response Model)
+### `TaskSource` (Nested Response Model)
 
 ```python
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
-class Source(BaseModel):
-    """Source information for task origin."""
-    type: str = Field(..., description="Type of source (e.g., 'email', 'web', 'manual')")
-    value: str | None = Field(None, description="Source value or identifier")
+class TaskSource(BaseModel):
+    """Source metadata entry associated with a task."""
+
+    source: str | None = Field(
+        default=None,
+        description="System where the task originated (e.g., 'github', 'email')",
+    )
+    source_id: str | None = Field(
+        default=None,
+        description="Identifier of the task in the external system",
+    )
 ```
 
 ### `TaskResponse` (Response Model)
@@ -55,27 +62,40 @@ from datetime import date, datetime
 class TaskResponse(BaseModel):
     """Response model for LunaTask task data.
 
-    This model represents a task as returned by the LunaTask API in wrapped format.
-    API returns tasks in: {"tasks": [TaskResponse, ...]}
-    Note: Encrypted fields (name, note) are not included due to E2E encryption.
+    The API returns tasks in a wrapped format: {"tasks": [TaskResponse, ...]}.
+    Encrypted fields (name, note) remain absent due to LunaTask's E2E encryption.
     """
 
     id: str = Field(description="The ID of the task (UUID)")
-    area_id: str = Field(..., description="The ID of the area the task belongs in")
-    status: TaskStatus = Field(description="Task status")
+    area_id: str = Field(..., description="Area identifier")
+    status: TaskStatus = Field(default=TaskStatus.LATER, description="Task status")
     priority: int = Field(..., ge=-2, le=2, description="Current priority")
-    scheduled_on: date | None = Field(None, description="Date when task is scheduled")
-    created_at: datetime = Field(description="Task creation timestamp")
-    updated_at: datetime = Field(description="Task last update timestamp")
-    source: Source | None = Field(None, description="Task source information")
-
-    goal_id: str | None = Field(None, description="The ID of the goal the task belongs in")
+    scheduled_on: date | None = Field(None, description="Scheduled date (YYYY-MM-DD)")
+    created_at: datetime = Field(description="Created timestamp")
+    updated_at: datetime = Field(description="Last update timestamp")
+    goal_id: str | None = Field(None, description="Goal identifier, if present")
     estimate: int | None = Field(None, description="Estimated duration in minutes")
-    motivation: TaskMotivation = Field(default=TaskMotivation.UNKNOWN, description="Task motivation")
+    motivation: TaskMotivation = Field(
+        default=TaskMotivation.UNKNOWN, description="Motivation classification"
+    )
     eisenhower: int = Field(0, ge=0, le=4, description="Eisenhower matrix quadrant")
-    previous_status: TaskStatus | None = Field(default=None, description="Previous task status")
-    progress: int | None = Field(None, description="Task completion percentage")
-    completed_at: datetime | None = Field(None, description="Task completion timestamp")
+    previous_status: TaskStatus | None = Field(default=None, description="Previous status")
+    progress: int | None = Field(None, description="Completion percentage")
+    completed_at: datetime | None = Field(None, description="Completion timestamp")
+    sources: list[TaskSource] = Field(
+        default_factory=list,
+        description="Collection of source metadata objects",
+    )
+
+    @computed_field
+    def source(self) -> str | None:  # pragma: no cover - documented behaviour
+        """Primary source accessor retained for backwards compatibility."""
+        return self.sources[0].source if self.sources else None
+
+    @computed_field
+    def source_id(self) -> str | None:  # pragma: no cover - documented behaviour
+        """Primary source ID accessor retained for backwards compatibility."""
+        return self.sources[0].source_id if self.sources else None
 ```
 
 **Example API Response:**
@@ -112,56 +132,63 @@ from datetime import date, datetime
 from enum import StrEnum
 
 class TaskPayload(BaseModel):
-    """Shared request payload fields for task create/update.
+    """Shared request payload fields for task create/update operations.
 
-    This base model centralizes field declarations and validation constraints
-    common to both TaskCreate and TaskUpdate. Fields that need defaults
-    for creation are overridden in TaskCreate with proper non-None defaults.
+    The shared payload keeps most attributes optional so that `TaskUpdate`
+    can rely on Pydantic's `exclude_none` semantics to preserve PATCH behaviour.
+    `TaskCreate` tightens defaults where necessary.
     """
 
-    # Note: area_id is defined in subclasses (TaskCreate, TaskUpdate)
-    goal_id: str | None = Field(default=None, description="Goal ID (optional)")
-    status: TaskStatus = Field(default=TaskStatus.LATER, description="Task status")
-    estimate: int | None = Field(default=None, description="Estimated duration in minutes")
-    priority: int = Field(default=0, ge=-2, le=2, description="Priority level [-2, 2]")
-    progress: int | None = Field(default=None, description="Task completion percentage")
-    motivation: TaskMotivation | None = Field(default=None, description="Motivation level")
-    eisenhower: int | None = Field(default=None, ge=0, le=4, description="Eisenhower quadrant [0, 4]")
-    scheduled_on: date | None = Field(default=None, description="Scheduled date (YYYY-MM-DD)")
-    source: Source | None = Field(default=None, description="Task source information")
-    # Encrypted content fields
+    goal_id: str | None = Field(default=None, description="Optional goal identifier")
+    status: TaskStatus | None = Field(default=None, description="Task status")
+    estimate: int | None = Field(default=None, description="Estimated duration (minutes)")
+    priority: int | None = Field(
+        default=None, ge=-2, le=2, description="Priority value [-2, 2]"
+    )
+    progress: int | None = Field(default=None, description="Progress percentage")
+    motivation: TaskMotivation | None = Field(
+        default=None, description="Motivation classification"
+    )
+    eisenhower: int | None = Field(
+        default=None, ge=0, le=4, description="Eisenhower quadrant [0, 4]"
+    )
+    scheduled_on: date | None = Field(
+        default=None, description="Scheduled date (YYYY-MM-DD)"
+    )
     name: str | None = Field(default=None, description="Task name (encrypted client-side)")
-    note: str | None = Field(default=None, description="Task note (encrypted client-side)")
+    note: str | None = Field(
+        default=None, description="Task note in Markdown (encrypted client-side)"
+    )
 ```
 
 ### `TaskCreate` (Request Model)
 
 ```python
 class TaskCreate(TaskPayload):
-    """Request model for creating new tasks in LunaTask.
-
-    Inherits shared fields and validation from TaskPayload and applies
-    create-time defaults and requirements.
-    """
+    """Request model for creating new tasks in LunaTask."""
 
     area_id: str = Field(description="Area ID the task belongs to")
-    # All other fields inherited from TaskPayload with their defaults
-    # Defaults: status="later", priority=0, motivation=None
+    source: str | None = Field(
+        default=None,
+        description="External system label (stored as first entry in sources)",
+    )
+    source_id: str | None = Field(
+        default=None,
+        description="External system identifier (stored as first entry in sources)",
+    )
 ```
 
 ### `TaskUpdate` (Request Model)
 
 ```python
 class TaskUpdate(TaskPayload):
-    """Partial update payload for existing tasks.
+    """Partial update payload for existing tasks."""
 
-    Inherits from TaskPayload to maintain field validation constraints.
-    All fields are optional to support PATCH semantics. Outbound serialization
-    uses model_dump(exclude_none=True) to send only changed fields.
-    """
-    id: str = Field(description="The ID of the task (UUID)")
-    area_id: str | None = Field(default=None, description="Area ID the task belongs to")
-    # All other fields inherited from TaskPayload as optional
+    id: str = Field(description="Task identifier (UUID)")
+    area_id: str | None = Field(default=None, description="Updated area ID")
+    priority: int | None = Field(
+        default=None, ge=-2, le=2, description="Priority value [-2, 2]"
+    )
 ```
 
 ## Habit Models

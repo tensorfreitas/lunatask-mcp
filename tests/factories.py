@@ -1,26 +1,23 @@
 """Factory functions for creating test data objects.
 
-This module contains small builder functions for creating TaskResponse and Source
-objects for use in tests. These functions help reduce duplication in test setup
-while keeping the construction explicit and readable.
+This module contains small builder functions for creating TaskResponse objects
+for use in tests. These functions help reduce duplication in test setup while
+keeping the construction explicit and readable.
 """
 
+from collections.abc import Sequence
 from datetime import UTC, date, datetime
+from typing import LiteralString, cast
 
-from lunatask_mcp.api.models import Source, TaskResponse
+from pydantic import ValidationError
+from pydantic_core import InitErrorDetails, PydanticCustomError
 
+from lunatask_mcp.api.models import TaskResponse
 
-def create_source(source_type: str = "manual", value: str | None = "user_created") -> Source:
-    """Create a Source object with default or provided values.
-
-    Args:
-        source_type: The source type (default: "manual")
-        value: The source value (default: "user_created")
-
-    Returns:
-        A Source object with the specified values
-    """
-    return Source(type=source_type, value=value)
+VALID_ESTIMATE_MINUTES = 45
+VALID_PROGRESS_PERCENT = 80
+VALID_GOAL_ID = "goal-123"
+VALID_SCHEDULED_ON = date(2025, 9, 1)
 
 
 # TODO: Refactor create_task response with `TypedDict` to avoid too many arguments
@@ -32,7 +29,9 @@ def create_task_response(  # noqa: PLR0913  # Factory functions need many parame
     priority: int = 0,
     scheduled_on: date | None = None,
     area_id: str = "default-area",
-    source: Source | None = None,
+    sources: Sequence[dict[str, str | None]] | None = None,
+    source: str | None = None,
+    source_id: str | None = None,
     goal_id: str | None = None,
     estimate: int | None = None,
     motivation: str = "unknown",
@@ -51,7 +50,9 @@ def create_task_response(  # noqa: PLR0913  # Factory functions need many parame
         priority: Task priority (default: 0)
         scheduled_on: Date when task is scheduled
         area_id: Area ID (default: "default-area")
-        source: Source object
+        sources: Iterable of source dictionaries from API (overrides source/source_id)
+        source: Task source label (e.g., "github")
+        source_id: Task source identifier (e.g., external record ID)
         goal_id: Goal ID
         estimate: Estimated duration in minutes
         motivation: Task motivation level (default: "unknown")
@@ -69,6 +70,24 @@ def create_task_response(  # noqa: PLR0913  # Factory functions need many parame
     if updated_at is None:
         updated_at = datetime(2025, 8, 20, 10, 30, 0, tzinfo=UTC)
 
+    if sources is None:
+        sources_payload: list[dict[str, str | None]] = []
+        if source is not None or source_id is not None:
+            sources_payload.append(
+                {
+                    "source": source,
+                    "source_id": source_id,
+                }
+            )
+    else:
+        sources_payload = [
+            {
+                "source": payload.get("source"),
+                "source_id": payload.get("source_id"),
+            }
+            for payload in sources
+        ]
+
     return TaskResponse(
         id=task_id,
         status=status,
@@ -77,7 +96,7 @@ def create_task_response(  # noqa: PLR0913  # Factory functions need many parame
         priority=priority,
         scheduled_on=scheduled_on,
         area_id=area_id,
-        source=source,
+        sources=sources_payload,
         goal_id=goal_id,
         estimate=estimate,
         motivation=motivation,
@@ -86,3 +105,32 @@ def create_task_response(  # noqa: PLR0913  # Factory functions need many parame
         progress=progress,
         completed_at=completed_at,
     )
+
+
+def build_validation_error(
+    model_name: str,
+    validation_entries: Sequence[tuple[str, str, object]],
+) -> ValidationError:
+    """Create a Pydantic ValidationError with provided field messages.
+
+    Args:
+        model_name: Name of the model associated with the validation error.
+        validation_entries: Iterable of tuples describing field validation errors
+            as (field_name, message, invalid_value).
+
+    Returns:
+        ValidationError: Validation error instance containing all provided entries.
+    """
+
+    error_details: list[InitErrorDetails] = []
+    for field_name, message, invalid_value in validation_entries:
+        literal_message: LiteralString = cast(LiteralString, message)
+        error_details.append(
+            {
+                "type": PydanticCustomError("value_error", literal_message),
+                "loc": (field_name,),
+                "input": invalid_value,
+            }
+        )
+
+    return ValidationError.from_exception_data(model_name, error_details)

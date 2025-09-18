@@ -44,7 +44,12 @@ class TestLunaTaskClientGetTasks:
                     "scheduled_on": "2025-08-20",
                     "created_at": "2025-08-19T10:00:00Z",
                     "updated_at": "2025-08-19T10:00:00Z",
-                    "source": {"type": "manual", "value": "user_created"},
+                    "sources": [
+                        {
+                            "source": "manual",
+                            "source_id": "user_created",
+                        }
+                    ],
                 },
                 {
                     "id": "task-2",
@@ -56,7 +61,7 @@ class TestLunaTaskClientGetTasks:
                     "scheduled_on": None,
                     "created_at": "2025-08-18T10:00:00Z",
                     "updated_at": "2025-08-19T09:00:00Z",
-                    "source": None,
+                    "sources": [],
                 },
             ]
         }
@@ -122,6 +127,7 @@ class TestLunaTaskClientGetTasks:
                     "created_at": "2025-08-19T10:00:00Z",
                     "updated_at": "2025-08-19T10:00:00Z",
                     # Note: 'name' and 'note' fields intentionally missing
+                    "sources": [],
                 }
             ]
         }
@@ -226,6 +232,12 @@ class TestLunaTaskClientGetTasks:
                     "progress": 25,
                     "scheduled_on": "2025-08-20",
                     "completed_at": "2025-08-19T15:30:00Z",
+                    "sources": [
+                        {
+                            "source": "manual",
+                            "source_id": "user_created",
+                        }
+                    ],
                 }
             ]
         }

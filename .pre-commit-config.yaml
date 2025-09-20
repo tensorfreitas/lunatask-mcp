@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.8
+    rev: v0.13.1
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
@@ -8,7 +8,7 @@ repos:
       - id: ruff-format
         files: ^(src|tests)/
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.403
+    rev: v1.1.405
     hooks:
       - id: pyright
         files: ^(src|tests)/

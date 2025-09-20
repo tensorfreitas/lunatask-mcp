@@ -10,11 +10,9 @@ from pytest_mock import MockerFixture
 from lunatask_mcp.api.client import LunaTaskClient
 from lunatask_mcp.config import ServerConfig
 from tests.test_api_client_common import (
-    CONNECT_TIMEOUT,
     CUSTOM_API_URL,
     DEFAULT_API_URL,
     POOL_TIMEOUT,
-    READ_TIMEOUT,
     SECRET_TOKEN,
     SECRET_TOKEN_789,
     TEST_BEARER_TOKEN,
@@ -113,10 +111,32 @@ class TestLunaTaskClientHTTPSetup:
         http_client = get_http_client(client)
 
         # Check timeout configuration
-        assert http_client.timeout.connect == CONNECT_TIMEOUT
-        assert http_client.timeout.read == READ_TIMEOUT
+        assert http_client.timeout.connect == config.timeout_connect
+        assert http_client.timeout.read == config.timeout_read
         assert http_client.timeout.write == WRITE_TIMEOUT
         assert http_client.timeout.pool == POOL_TIMEOUT
+
+    @pytest.mark.asyncio
+    async def test_http_client_applies_custom_config(self) -> None:
+        """HTTP client honors configured timeouts and User-Agent header."""
+        custom_connect_timeout = 7.5
+        custom_read_timeout = 42.0
+        custom_user_agent = "custom-agent/2.1"
+
+        config = ServerConfig(
+            lunatask_bearer_token=VALID_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+            timeout_connect=custom_connect_timeout,
+            timeout_read=custom_read_timeout,
+            http_user_agent=custom_user_agent,
+        )
+        client = LunaTaskClient(config)
+
+        http_client = get_http_client(client)
+
+        assert http_client.timeout.connect == custom_connect_timeout
+        assert http_client.timeout.read == custom_read_timeout
+        assert http_client.headers.get("user-agent") == custom_user_agent
 
     @pytest.mark.asyncio
     async def test_follow_redirects_enabled(self) -> None:
@@ -203,6 +223,53 @@ class TestLunaTaskClientHTTPSetup:
 
         assert redacted_headers["Authorization"] == "Bearer ***redacted***"
         assert redacted_headers["Content-Type"] == "application/json"
+
+
+class TestLunaTaskClientRetryBehavior:
+    """Test retry and backoff behavior configured via ServerConfig."""
+
+    @pytest.mark.asyncio
+    async def test_make_request_retries_with_configured_backoff(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Client retries transient errors using exponential backoff."""
+        config = ServerConfig(
+            lunatask_bearer_token=VALID_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+            http_retries=2,
+            http_backoff_start_seconds=0.1,
+        )
+        client = LunaTaskClient(config)
+
+        mocker.patch.object(client._rate_limiter, "acquire", new=mocker.AsyncMock())
+
+        http_client = get_http_client(client)
+        request = httpx.Request("GET", "https://api.lunatask.app/v1/tasks")
+        success_response = httpx.Response(status_code=200, json={"message": "ok"}, request=request)
+
+        request_mock = mocker.AsyncMock(
+            side_effect=[
+                httpx.TimeoutException("timeout"),
+                httpx.NetworkError("network"),
+                success_response,
+            ]
+        )
+        mocker.patch.object(http_client, "request", request_mock)
+
+        sleep_mock = mocker.patch(
+            "lunatask_mcp.api.client.asyncio.sleep",
+            new=mocker.AsyncMock(),
+        )
+
+        result = await client.make_request("GET", "tasks")
+
+        assert result == {"message": "ok"}
+        expected_attempts = config.http_retries + 1
+        assert request_mock.await_count == expected_attempts
+        assert sleep_mock.await_args_list == [
+            mocker.call(0.1),
+            mocker.call(0.2),
+        ]
 
 
 class TestLunaTaskClientConnectivity:

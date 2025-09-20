@@ -1,6 +1,6 @@
 # LunaTask MCP Server
 
-LunaTask MCP is an unnoficial Model Context Protocol server that provides a standardized bridge between AI models and the LunaTask API. It's designed as a lightweight, asynchronous Python application using the FastMCP framework, running as a local subprocess to enable AI tools to interact with LunaTask data.
+LunaTask MCP is an unofficial Model Context Protocol server that provides a standardized bridge between AI models and the LunaTask API. It's designed as a lightweight, asynchronous Python application using the FastMCP framework, running as a local subprocess to enable AI tools to interact with LunaTask data.
 
 ## Important Notes
 
@@ -53,7 +53,7 @@ The LunaTask MCP server supports flexible configuration through TOML files and c
 cp config.example.toml ~/path/to/your/lunatask_mcp_config.toml
 ```
 
-2. Edit `config.toml` and add your LunaTask API bearer token:
+2. Edit the copied configuration file and add your LunaTask API bearer token:
 ```toml
 lunatask_bearer_token = "your_lunatask_bearer_token_here"
 ```
@@ -63,7 +63,7 @@ lunatask_bearer_token = "your_lunatask_bearer_token_here"
 uv run lunatask-mcp --config-file /path/to/your/config.toml
 ```
 
-Note: To create an acess token open Lunatask app, open application settings, head to "Access tokens" section, and create a new access token. Then, click "Copy to clipboard", and paste it in the `lunatask_bearer_token` field in the config file.
+Note: To create an access token open LunaTask app, open application settings, head to "Access tokens" section, and create a new access token. Then, click "Copy to clipboard", and paste it in the `lunatask_bearer_token` field in the config file.
 
 ### Configuration Methods
 
@@ -195,7 +195,7 @@ You can filter globally and by `area_id`. The filters work as follows:
   - Tasks without scheduled date but with motivation as "must"
   - Tasks without scheduled date but with eisenhower as 1 (urgent and important)
 
-The reason behind these filters is that if you try to gather all the tasks from the Lunastask API you will easily fill up your LLM context if you have a lot of tasks. 
+The reason behind these filters is that if you try to gather all the tasks from the LunaTask API you will easily fill up your LLM context if you have a lot of tasks. 
 In the future these could be expanded to include:
 - filters by `goal_id`
 - filters for all priority types
@@ -234,7 +234,7 @@ args = ["--from", "git+https://github.com/tensorfreitas/lunatask-mcp", "--config
 ```
 
 ## To Be Implemented
-1. Implementation of MCp Server-Sent Events (SSE) for HTTP-based clients
+1. Implementation of MCP Server-Sent Events (SSE) for HTTP-based clients
 2. Extra Task Resource Filters
 - [ ] resource filters by `goal_id`
 - [ ] filters for all priority types

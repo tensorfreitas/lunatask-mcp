@@ -12,7 +12,7 @@ from typing import LiteralString, cast
 from pydantic import ValidationError
 from pydantic_core import InitErrorDetails, PydanticCustomError
 
-from lunatask_mcp.api.models import TaskResponse
+from lunatask_mcp.api.models import NoteResponse, TaskResponse
 
 VALID_ESTIMATE_MINUTES = 45
 VALID_PROGRESS_PERCENT = 80
@@ -104,6 +104,45 @@ def create_task_response(  # noqa: PLR0913  # Factory functions need many parame
         previous_status=previous_status,
         progress=progress,
         completed_at=completed_at,
+    )
+
+
+def create_note_response(  # noqa: PLR0913
+    note_id: str = "note-1",
+    notebook_id: str | None = "notebook-123",
+    date_on: date | None = VALID_SCHEDULED_ON,
+    sources: Sequence[dict[str, str | None]] | None = None,
+    source: str | None = None,
+    source_id: str | None = None,
+    created_at: datetime | None = None,
+    updated_at: datetime | None = None,
+    deleted_at: datetime | None = None,
+) -> NoteResponse:
+    """Create a NoteResponse object with default or provided values."""
+
+    if created_at is None:
+        created_at = datetime(2025, 9, 10, 10, 39, 25, tzinfo=UTC)
+    if updated_at is None:
+        updated_at = datetime(2025, 9, 10, 10, 39, 25, tzinfo=UTC)
+
+    if sources is None:
+        sources_payload: list[dict[str, str | None]] = []
+        if source is not None or source_id is not None:
+            sources_payload.append({"source": source, "source_id": source_id})
+    else:
+        sources_payload = [
+            {"source": payload.get("source"), "source_id": payload.get("source_id")}
+            for payload in sources
+        ]
+
+    return NoteResponse(
+        id=note_id,
+        notebook_id=notebook_id,
+        date_on=date_on,
+        sources=sources_payload,
+        created_at=created_at,
+        updated_at=updated_at,
+        deleted_at=deleted_at,
     )
 
 

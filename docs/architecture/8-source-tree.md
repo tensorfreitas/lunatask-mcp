@@ -10,7 +10,7 @@ lunatask-mcp/
 │       ├── api/
 │       │   ├── __init__.py
 │       │   ├── client.py              # LunaTaskClient + request orchestration
-│       │   └── models.py              # Pydantic enums/models with TaskSource support
+│       │   └── models.py              # Pydantic enums/models with LunataskSource support
 │       ├── config.py                  # ServerConfig settings + validation
 │       ├── main.py                    # CoreServer bootstrap & cli parsing
 │       ├── rate_limiter.py            # TokenBucketLimiter used by client

@@ -5,11 +5,11 @@ LunaTask MCP is an unofficial Model Context Protocol server that provides a stan
 ## Important Notes
 
 ### End-to-End Encryption
-LunaTask uses end-to-end encryption for sensitive task data. As a result:
-- Task `name` and `note` fields are **not included** in API responses
+LunaTask uses end-to-end encryption for sensitive task and note data. As a result:
+- Task `name`/`note` fields and note `content` are **not included** in API responses
 - Only non-sensitive metadata and structural information is available
 - This is a security feature of LunaTask and cannot be bypassed
-- The `name` and `note` fields **can be included** in create requests
+- The `name`, `note`, and `content` fields **can be included** in create requests
 - LunaTask automatically encrypts these fields client-side before storage
 - Once created, these fields will not be visible in GET responses due to E2E encryption
 - This is normal LunaTask behavior and ensures data privacy
@@ -167,6 +167,11 @@ coverage. Clients such as Claude Desktop, Claude Code, Cline, Continue, Roo Code
 
 ## Tools Available
 - `create_task`: Creates a new task. Requires `name` and the target `area_id`. Optional fields include text content (`note`), planning data (`status`, `scheduled_on`, `estimate`, `progress`), prioritisation (`priority`, `motivation`, `eisenhower`), goal context (`goal_id`) and external source metadata (`source`, `source_id`). Returns `{ "success": true, "task_id": "..." }` with the new identifier.
+- `create_note`: Creates a new note. Accepts `notebook_id`, `name`, optional `content`, `date_on`,
+  and `source`/`source_id` metadata to guarantee idempotency. Returns
+  `{ "success": true, "note_id": "..." }` when created, or
+  `{ "success": true, "duplicate": true, "message": "Note already exists for this source/source_id" }`
+  when the LunaTask API responds with `204 No Content` for duplicates.
 - `update_task`: Updates an existing task by ID. Supports partial updates—only the fields you pass (same set as create, minus the required `name`) are mutated. Returns `{ "success": true, "task": {...} }` with the full serialized task payload.
 - `delete_task`: Permanently deletes a task from LunaTask. Returns `{ "success": true, "task_id": "..." }`. **Deleted tasks cannot be recovered**, so invoke with caution.
 - `track_habit`: Logs habit activity for a specific habit ID and ISO date. Returns `{ "ok": true, "message": "Successfully tracked habit <id> on <date>" }` when the API confirms the event.
@@ -263,7 +268,7 @@ Track progress in [issue #14](https://github.com/tensorfreitas/lunatask-mcp/issu
 - [ ] filters for specific dates
 - [ ] filters for completed tasks in a range of dates
 3. Extra tools
-- [ ] Implement [`create_note` tool](https://lunatask.app/api/notes-api/create)
+- [x] Implement [`create_note` tool](https://lunatask.app/api/notes-api/create)
 - [ ] Implement [`create_entry_journal` tool](https://lunatask.app/api/journal-api/create)
 - [ ] Implement [`create_person` tool](https://lunatask.app/api/people-api/create)
 - [ ] Implement [`delete_person` tool](https://lunatask.app/api/people-api/delete)

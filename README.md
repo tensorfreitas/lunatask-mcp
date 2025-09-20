@@ -162,6 +162,14 @@ The server provides the following tools:
 - **MCP Protocol Version**: Supports MCP protocol version `2025-06-18`
 - **Stdio Transport**: Communicates over standard input/output streams
 
+## MCP Client Compatibility
+
+MCP resources depend on the client UI, and many popular MCP clients still surface tools only.
+As tracked in [issue #14](https://github.com/tensorfreitas/lunatask-mcp/issues/14), missing
+resource support remains the main friction when browsing LunaTask data through MCP clients.
+The [official MCP client matrix](https://modelcontextprotocol.info/docs/clients/) lists feature
+coverage. Clients such as Claude Desktop, Claude Code, Cline, Continue, Roo Code, Sourcegraph Cody, and the VS Code MCP extension expose resources today. Editors like Cursor, Windsurf, OpenSumi, and several others show tools only until they add resource support. Choose a resource-capable client when you need to inspect task lists directly.
+
 ## Tools Available
 - `create_task`: Creates a new task. Requires `name` and the target `area_id`. Optional fields include text content (`note`), planning data (`status`, `scheduled_on`, `estimate`, `progress`), prioritisation (`priority`, `motivation`, `eisenhower`), goal context (`goal_id`) and external source metadata (`source`, `source_id`). Returns `{ "success": true, "task_id": "..." }` with the new identifier.
 - `update_task`: Updates an existing task by ID. Supports partial updates—only the fields you pass (same set as create, minus the required `name`) are mutated. Returns `{ "success": true, "task": {...} }` with the full serialized task payload.
@@ -237,6 +245,16 @@ Unlike Claude Code, in Codex you add an MCP server globally and not per project.
 command = "uvx"
 args = ["--from", "git+https://github.com/tensorfreitas/lunatask-mcp", "lunatask-mcp", "--config-file", "/your/path/to/lunatask_mcp_config.toml"]
 ```
+
+### Known Issues
+
+As discussed in [MCP Client Compatibility](#mcp-client-compatibility), some MCP clients do not yet implement the full MCP resource surface. The following clients currently connect but only display tools:
+- Codex
+- Gemini CLI
+- LM Studio
+- Qwen CLI
+
+Track progress in [issue #14](https://github.com/tensorfreitas/lunatask-mcp/issues/14). Tools stay available in these clients while resource views are pending.
 
 ## To Be Implemented
 1. Implementation of MCP Server-Sent Events (SSE) for HTTP-based clients

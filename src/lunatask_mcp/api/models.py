@@ -1,9 +1,9 @@
 """Data models for LunaTask API requests and responses.
 
 This module defines Pydantic models and enums used to parse and validate
-LunaTask API data. Request models use field constraints for numeric bounds
-and `StrEnum` for string enums to generate clearer schemas and consistent
-validation errors.
+LunaTask API data for tasks and notes. Request models use field constraints
+for numeric bounds and `StrEnum` for string enums to generate clearer schemas
+and consistent validation errors.
 """
 
 from __future__ import annotations
@@ -97,59 +97,35 @@ class TaskPayload(BaseModel):
     )
 
 
-class TaskSource(BaseModel):
-    """Source metadata entry associated with a task."""
+class LunataskSource(BaseModel):
+    """Source metadata entry associated with Lunatask."""
 
     source: str | None = Field(
         default=None,
-        description="Identifier of the system where the task originated (e.g., 'github')",
+        description="Identifier of the system where the task/note originated (e.g., 'github')",
     )
     source_id: str | None = Field(
         default=None,
-        description="Identifier of the task within the external system",
+        description="Identifier of the task/note within the external system",
     )
 
 
-def _empty_task_sources() -> list[TaskSource]:
-    """Return an empty list typed for TaskSource default factory."""
+def _empty_task_sources() -> list[LunataskSource]:
+    """Return an empty list typed for LunataskSource default factory."""
 
     return []
 
 
-class TaskResponse(BaseModel):
-    """Response model for LunaTask task data.
+class BaseSourceResponse(BaseModel):
+    """Base class for responses that include source normalization logic.
 
-    This model represents a task as returned by the LunaTask API in wrapped format.
-    API returns tasks in: {"tasks": [TaskResponse, ...]}
-    Note: Encrypted fields (name, note) are not included due to E2E encryption.
+    Provides shared source handling for TaskResponse and NoteResponse,
+    including legacy source field normalization and computed properties.
     """
 
-    # Ensure outbound JSON uses enum string values
-    model_config = ConfigDict(use_enum_values=True)
-
-    id: str = Field(description="The ID of the task (UUID)")
-    previous_status: TaskStatus | None = Field(default=None, description="Previous task status")
-    completed_at: datetime | None = Field(None, description="Task completion timestamp")
-    created_at: datetime = Field(description="Task creation timestamp")
-    updated_at: datetime = Field(description="Task last update timestamp")
-
-    # Fields that overlap with payloads but may have different validation (e.g., non-nullable)
-    area_id: str = Field(..., description="The ID of the area the task belongs in")
-    goal_id: str | None = Field(None, description="The ID of the goal the task belongs in")
-    status: TaskStatus = Field(default=TaskStatus.LATER, description="Task status")
-    estimate: int | None = Field(None, description="Estimated duration in minutes")
-    priority: int = Field(..., ge=MIN_PRIORITY, le=MAX_PRIORITY, description="Current priority")
-    progress: int | None = Field(None, description="Task completion percentage")
-    motivation: TaskMotivation = Field(
-        default=TaskMotivation.UNKNOWN, description="Task motivation"
-    )
-    eisenhower: int = Field(
-        0, ge=MIN_EISENHOWER, le=MAX_EISENHOWER, description="Eisenhower matrix quadrant"
-    )
-    scheduled_on: date | None = Field(None, description="Date when task is scheduled")
-    sources: list[TaskSource] = Field(
+    sources: list[LunataskSource] = Field(
         default_factory=_empty_task_sources,
-        description="Collection of source metadata entries associated with the task",
+        description="Collection of source metadata entries",
     )
 
     @model_validator(mode="before")
@@ -227,6 +203,39 @@ class TaskResponse(BaseModel):
             return None
         return self.sources[0].source_id
 
+
+class TaskResponse(BaseSourceResponse):
+    """Response model for LunaTask task data.
+
+    This model represents a task as returned by the LunaTask API in wrapped format.
+    API returns tasks in: {"tasks": [TaskResponse, ...]}
+    Note: Encrypted fields (name, note) are not included due to E2E encryption.
+    """
+
+    # Ensure outbound JSON uses enum string values
+    model_config = ConfigDict(use_enum_values=True)
+
+    id: str = Field(description="The ID of the task (UUID)")
+    previous_status: TaskStatus | None = Field(default=None, description="Previous task status")
+    completed_at: datetime | None = Field(None, description="Task completion timestamp")
+    created_at: datetime = Field(description="Task creation timestamp")
+    updated_at: datetime = Field(description="Task last update timestamp")
+
+    # Fields that overlap with payloads but may have different validation (e.g., non-nullable)
+    area_id: str = Field(..., description="The ID of the area the task belongs in")
+    goal_id: str | None = Field(None, description="The ID of the goal the task belongs in")
+    status: TaskStatus = Field(default=TaskStatus.LATER, description="Task status")
+    estimate: int | None = Field(None, description="Estimated duration in minutes")
+    priority: int = Field(..., ge=MIN_PRIORITY, le=MAX_PRIORITY, description="Current priority")
+    progress: int | None = Field(None, description="Task completion percentage")
+    motivation: TaskMotivation = Field(
+        default=TaskMotivation.UNKNOWN, description="Task motivation"
+    )
+    eisenhower: int = Field(
+        0, ge=MIN_EISENHOWER, le=MAX_EISENHOWER, description="Eisenhower matrix quadrant"
+    )
+    scheduled_on: date | None = Field(None, description="Date when task is scheduled")
+
     def __init__(self, **data: object) -> None:
         """Pydantic-compatible initializer with permissive typing for tools/tests."""
         super().__init__(**data)  # type: ignore[arg-type]
@@ -293,4 +302,63 @@ class TaskUpdate(TaskPayload):
 
     def __init__(self, **data: object) -> None:
         """Pydantic-compatible initializer with permissive typing for tools/tests."""
+        super().__init__(**data)  # type: ignore[arg-type]
+
+
+class NoteResponse(BaseSourceResponse):
+    """Response model for LunaTask note data.
+
+    The LunaTask API returns created notes wrapped inside `{ "note": {...} }`.
+    Note content is encrypted client-side and therefore omitted from responses.
+    """
+
+    model_config = ConfigDict(use_enum_values=True)
+
+    id: str = Field(description="Unique identifier of the note (UUID)")
+    notebook_id: str | None = Field(default=None, description="Notebook identifier for the note")
+    date_on: date | None = Field(default=None, description="Associated date for the note")
+    created_at: datetime = Field(description="Timestamp when the note was created")
+    updated_at: datetime = Field(description="Timestamp when the note was last updated")
+    deleted_at: datetime | None = Field(
+        default=None, description="Deletion timestamp if soft-deleted"
+    )
+
+    def __init__(self, **data: object) -> None:
+        """Pydantic-compatible initializer with permissive typing for tools/tests."""
+
+        super().__init__(**data)  # type: ignore[arg-type]
+
+
+class NoteCreate(BaseModel):
+    """Request model for creating new notes in LunaTask.
+
+    Fields align with the LunaTask notes API. Optional relational metadata
+    (`source`, `source_id`) enables idempotent note creation when paired with
+    `notebook_id`.
+    """
+
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
+
+    notebook_id: str | None = Field(
+        default=None,
+        description="Notebook ID where the note should be created",
+    )
+    name: str | None = Field(default=None, description="Name of the note")
+    content: str | None = Field(default=None, description="Markdown content of the note")
+    date_on: date | None = Field(
+        default=None,
+        description="Date assigned to the note (ISO-8601 date)",
+    )
+    source: str | None = Field(
+        default=None,
+        description="Identifier of the external system where the note originated",
+    )
+    source_id: str | None = Field(
+        default=None,
+        description="Identifier of the note within the external system",
+    )
+
+    def __init__(self, **data: object) -> None:
+        """Pydantic-compatible initializer with permissive typing for tools/tests."""
+
         super().__init__(**data)  # type: ignore[arg-type]

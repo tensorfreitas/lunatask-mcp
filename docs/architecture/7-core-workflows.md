@@ -21,3 +21,31 @@ sequenceDiagram
 ```
 
 ---
+
+## Create Note Workflow
+
+```mermaid
+sequenceDiagram
+    participant ClientApp as Client App (IDE)
+    participant CoreServer as MCP Server (stdio)
+    participant NotesTools as NotesTools Component
+    participant LunaTaskClient as LunaTaskClient
+    participant LunaTaskAPI as LunaTask API
+
+    ClientApp->>+CoreServer: Sends MCP `create_note` request via stdio
+    CoreServer->>+NotesTools: Forwards request to `create_note` tool
+    NotesTools->>+LunaTaskClient: Calls `create_note` with validated payload
+    LunaTaskClient->>+LunaTaskAPI: Makes authenticated POST /v1/notes request
+    alt Duplicate detected (204 No Content)
+        LunaTaskAPI-->>-LunaTaskClient: Returns empty body
+        LunaTaskClient-->>-NotesTools: Returns `None`
+        NotesTools-->>-CoreServer: Formats duplicate success response
+    else Note created
+        LunaTaskAPI-->>-LunaTaskClient: Returns wrapped note payload
+        LunaTaskClient-->>-NotesTools: Returns `NoteResponse`
+        NotesTools-->>-CoreServer: Formats success response with note_id
+    end
+    CoreServer-->>-ClientApp: Sends MCP response via stdio
+```
+
+---

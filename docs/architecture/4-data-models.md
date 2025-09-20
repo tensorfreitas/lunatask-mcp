@@ -33,12 +33,12 @@ MAX_EISENHOWER = 4
 
 These models are based on the [Tasks API Documentation](https://lunatask.app/api/tasks-api/show).
 
-### `TaskSource` (Nested Response Model)
+### `LunataskSource` (Nested Response Model)
 
 ```python
 from pydantic import BaseModel, Field, computed_field
 
-class TaskSource(BaseModel):
+class LunataskSource(BaseModel):
     """Source metadata entry associated with a task."""
 
     source: str | None = Field(
@@ -82,7 +82,7 @@ class TaskResponse(BaseModel):
     previous_status: TaskStatus | None = Field(default=None, description="Previous status")
     progress: int | None = Field(None, description="Completion percentage")
     completed_at: datetime | None = Field(None, description="Completion timestamp")
-    sources: list[TaskSource] = Field(
+    sources: list[LunataskSource] = Field(
         default_factory=list,
         description="Collection of source metadata objects",
     )
@@ -188,6 +188,65 @@ class TaskUpdate(TaskPayload):
     area_id: str | None = Field(default=None, description="Updated area ID")
     priority: int | None = Field(
         default=None, ge=-2, le=2, description="Priority value [-2, 2]"
+    )
+```
+
+## Note Models
+
+The notes workflow mirrors tasks but operates on the [Notes API](https://lunatask.app/api/notes-api/create).
+We reuse `LunataskSource` for note source metadata to keep a single normalized type.
+
+### `NoteResponse` (Response Model)
+
+```python
+from datetime import date, datetime
+from pydantic import BaseModel, Field, computed_field
+
+
+class NoteResponse(BaseModel):
+    """Response model for LunaTask notes."""
+
+    id: str = Field(description="Unique note identifier (UUID)")
+    notebook_id: str | None = Field(default=None, description="Notebook identifier")
+    date_on: date | None = Field(default=None, description="Associated date for the note")
+    sources: list[LunataskSource] = Field(
+        default_factory=list,
+        description="Collection of source metadata entries",
+    )
+    created_at: datetime = Field(description="Creation timestamp")
+    updated_at: datetime = Field(description="Last update timestamp")
+    deleted_at: datetime | None = Field(default=None, description="Soft-deletion timestamp")
+
+    @computed_field
+    def source(self) -> str | None:
+        """Primary source accessor retained for backwards compatibility."""
+
+        return self.sources[0].source if self.sources else None
+
+    @computed_field
+    def source_id(self) -> str | None:
+        """Primary source ID accessor retained for backwards compatibility."""
+
+        return self.sources[0].source_id if self.sources else None
+```
+
+### `NoteCreate` (Request Model)
+
+```python
+from datetime import date
+from pydantic import BaseModel, Field
+
+
+class NoteCreate(BaseModel):
+    """Request payload for creating LunaTask notes."""
+
+    notebook_id: str | None = Field(default=None, description="Notebook identifier")
+    name: str | None = Field(default=None, description="Note title")
+    content: str | None = Field(default=None, description="Markdown body")
+    date_on: date | None = Field(default=None, description="ISO-8601 date associated with the note")
+    source: str | None = Field(default=None, description="External system origin")
+    source_id: str | None = Field(
+        default=None, description="External identifier used for idempotent creates"
     )
 ```
 

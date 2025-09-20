@@ -7,6 +7,7 @@ This project has one critical external dependency: the LunaTask API. All core fu
 *   **Purpose**: To provide programmatic access to a user's LunaTask data for creating, retrieving, updating, and deleting entities like tasks and habits.
 *   **Documentation**:
     *   **Tasks API**: [https://lunatask.app/api/tasks-api/entity](https://lunatask.app/api/tasks-api/entity)
+    *   **Notes API**: [https://lunatask.app/api/notes-api/create](https://lunatask.app/api/notes-api/create)
     *   **Habits API**: [https://lunatask.app/api/habits-api/track-activity](https://lunatask.app/api/habits-api/track-activity)
 *   **Base URL**: `https://api.lunatask.app/v1/`
 *   **Authentication**: Bearer Token sent in the `Authorization` header.
@@ -79,10 +80,28 @@ This project has one critical external dependency: the LunaTask API. All core fu
    - **Error Handling**: Habit not found (404), validation errors (422), auth errors (401)
    - **Rate Limiting**: Applied via `TokenBucketLimiter` in `make_request`
 
+### Notes API
+
+#### Implemented Endpoints
+
+1. **POST /v1/notes** - Create Note
+   - **Purpose**: Create a note with optional metadata and duplicate detection
+   - **Implementation**: `LunaTaskClient.create_note(note: NoteCreate)` method
+   - **MCP Tool**: `create_note` tool (handler in `tools/notes.py`)
+   - **Request Model**: `NoteCreate` with optional `notebook_id`, `name`, `content`, `date_on`, `source`, `source_id`
+   - **Response Model**: `NoteResponse` when the API returns a new note payload
+   - **Duplicate Handling**: The LunaTask API returns `204 No Content` when a note with the same
+     `notebook_id`/`source`/`source_id` already exists. The client surfaces this as `None` so the
+     MCP tool can return `{ "duplicate": true }` without erroring.
+   - **Error Handling**: Validation errors (422), subscription limits (402), auth errors (401),
+     rate limiting (429), transient errors (timeout/network), and server errors (5xx/503) mapped to
+     structured tool responses.
+
 ### Response Format Notes
 
 All implemented endpoints respect LunaTask's E2E encryption constraints:
 - Sensitive fields (`name`, `note`) are absent from all responses
+- Sensitive fields (`name`, `note`, note `content`) are absent from all responses
 - Only structural and metadata fields are available
 - Error responses are properly translated to MCP error format
 - Rate limiting is applied to all requests via `TokenBucketLimiter`

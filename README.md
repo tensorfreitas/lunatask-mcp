@@ -119,10 +119,15 @@ rate_limit_rpm = 60
 rate_limit_burst = 10
 
 # Optional: HTTP client tuning
+# Number of additional retry attempts for transient failures (default: 2)
 http_retries = 2
+# Initial retry backoff delay in seconds; doubles with each retry (default: 0.25)
 http_backoff_start_seconds = 0.25
+# Custom User-Agent header advertised to the LunaTask API
 http_user_agent = "lunatask-mcp/0.1.0"
+# Timeout in seconds for establishing the TLS connection
 timeout_connect = 5.0
+# Timeout in seconds for reading the response body
 timeout_read = 30.0
 ```
 

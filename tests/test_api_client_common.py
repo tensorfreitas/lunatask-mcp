@@ -31,7 +31,7 @@ CUSTOM_API_URL = HttpUrl("https://custom.lunatask.app/v2/")
 
 # HTTP timeout constants
 CONNECT_TIMEOUT = 5.0
-READ_TIMEOUT = 10.0
+READ_TIMEOUT = 30.0
 WRITE_TIMEOUT = 10.0
 POOL_TIMEOUT = 10.0
 

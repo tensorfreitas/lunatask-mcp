@@ -44,6 +44,22 @@ port = 8080
 # - CRITICAL: Critical error messages for severe failures
 log_level = "INFO"
 
+# HTTP Client Fine-Tuning
+# Controls retry behavior and timeout settings for LunaTask API calls.
+# http_retries: Number of additional retry attempts triggered on timeouts or
+#               transient network/server errors (default: 2)
+# http_backoff_start_seconds: Initial delay applied before the first retry.
+#                             The delay doubles with each subsequent retry
+#                             (default: 0.25)
+# http_user_agent: Custom User-Agent string sent with every API request
+# timeout_connect: Maximum time to establish the TLS connection (default: 5.0)
+# timeout_read: Maximum time to wait for the response body (default: 30.0)
+http_retries = 2
+http_backoff_start_seconds = 0.25
+http_user_agent = "lunatask-mcp/0.1.0"
+timeout_connect = 5.0
+timeout_read = 30.0
+
 # ==============================================================================
 # CONFIGURATION FILE BEHAVIOR
 # ==============================================================================

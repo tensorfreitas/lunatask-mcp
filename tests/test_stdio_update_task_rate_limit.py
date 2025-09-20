@@ -29,9 +29,13 @@ class TestStdioUpdateTaskRateLimiting:
 
         test_config_content = """
 lunatask_bearer_token = "test_rate_limit_token"
-lunatask_base_url = "https://httpbin.org/"
+lunatask_base_url = "https://127.0.0.1:65535/"
 port = 8080
 log_level = "DEBUG"
+http_retries = 0
+http_backoff_start_seconds = 0.1
+timeout_connect = 1.0
+timeout_read = 5.0
 """
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:

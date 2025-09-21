@@ -10,9 +10,9 @@ from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
 
 # Constants for rate limiting tests
-# The client enforces ~0.12s stabilization delay on mutating requests
-# (POST/PATCH/DELETE). Use a slightly lower threshold to account for
-# scheduling variance while still catching missing rate limiting.
+# Configure a 120ms stabilization delay via http_min_mutation_interval_seconds.
+# Use a slightly lower threshold to account for scheduling variance while still
+# catching missing rate limiting when the delay is enabled.
 MIN_REQUEST_TIME = 0.11
 MAX_TIMING_VARIANCE = 10.0
 
@@ -34,6 +34,7 @@ port = 8080
 log_level = "DEBUG"
 http_retries = 0
 http_backoff_start_seconds = 0.1
+http_min_mutation_interval_seconds = 0.12
 timeout_connect = 1.0
 timeout_read = 5.0
 """

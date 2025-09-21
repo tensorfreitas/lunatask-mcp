@@ -12,7 +12,7 @@ from typing import LiteralString, cast
 from pydantic import ValidationError
 from pydantic_core import InitErrorDetails, PydanticCustomError
 
-from lunatask_mcp.api.models import NoteResponse, TaskResponse
+from lunatask_mcp.api.models import JournalEntryResponse, NoteResponse, TaskResponse
 
 VALID_ESTIMATE_MINUTES = 45
 VALID_PROGRESS_PERCENT = 80
@@ -144,6 +144,37 @@ def create_note_response(  # noqa: PLR0913
         updated_at=updated_at,
         deleted_at=deleted_at,
     )
+
+
+def create_journal_entry_response(  # noqa: PLR0913
+    entry_id: str = "journal-entry-1",
+    date_on: date = date(2025, 9, 20),
+    name: str | None = None,
+    content: str | None = None,
+    created_at: datetime | None = None,
+    updated_at: datetime | None = None,
+) -> JournalEntryResponse:
+    """Create a JournalEntryResponse object with default or provided values."""
+
+    if created_at is None:
+        created_at = datetime(2025, 9, 20, 7, 30, tzinfo=UTC)
+    if updated_at is None:
+        updated_at = datetime(2025, 9, 20, 7, 35, tzinfo=UTC)
+
+    payload = {
+        "id": entry_id,
+        "date_on": date_on,
+        "created_at": created_at,
+        "updated_at": updated_at,
+    }
+
+    # The API omits name/content fields in responses; include only when provided for tests.
+    if name is not None:
+        payload["name"] = name
+    if content is not None:
+        payload["content"] = content
+
+    return JournalEntryResponse(**payload)
 
 
 def build_validation_error(

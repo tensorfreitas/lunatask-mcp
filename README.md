@@ -118,6 +118,8 @@ rate_limit_burst = 10
 http_retries = 2
 # Initial retry backoff delay in seconds; doubles with each retry (default: 0.25)
 http_backoff_start_seconds = 0.25
+# Minimum delay before mutating requests (POST/PATCH/DELETE); set to 0.0 to disable (default: 0.0)
+http_min_mutation_interval_seconds = 0.0
 # Custom User-Agent header advertised to the LunaTask API
 http_user_agent = "lunatask-mcp/0.1.0"
 # Timeout in seconds for establishing the TLS connection
@@ -153,7 +155,8 @@ The server validates all configuration on startup and fails fast with clear erro
 The server provides the following tools:
 - **Ping Tool**: A health-check tool that responds with "pong" when called
 - **MCP Resources (read-only)**: Discovery + single task, plus area/global list aliases
-- **MCP Tools (write)**: Create, update, delete tasks; track habit activity
+- **MCP Tools (write)**: Create, update, delete tasks; create notes; create journal entries; track habit
+  activity
 - **MCP Protocol Version**: Supports MCP protocol version `2025-06-18`
 - **Stdio Transport**: Communicates over standard input/output streams
 
@@ -172,6 +175,10 @@ coverage. Clients such as Claude Desktop, Claude Code, Cline, Continue, Roo Code
   `{ "success": true, "note_id": "..." }` when created, or
   `{ "success": true, "duplicate": true, "message": "Note already exists for this source/source_id" }`
   when the LunaTask API responds with `204 No Content` for duplicates.
+- `create_journal_entry`: Creates a journal entry for a specific date. Requires `date_on` in
+  `YYYY-MM-DD` format and supports optional `name` and `content` (Markdown). Returns
+  `{ "success": true, "journal_entry_id": "..." }` when LunaTask returns a wrapped
+  `journal_entry`. Responses never include `name` or `content` because of end-to-end encryption.
 - `update_task`: Updates an existing task by ID. Supports partial updates—only the fields you pass (same set as create, minus the required `name`) are mutated. Returns `{ "success": true, "task": {...} }` with the full serialized task payload.
 - `delete_task`: Permanently deletes a task from LunaTask. Returns `{ "success": true, "task_id": "..." }`. **Deleted tasks cannot be recovered**, so invoke with caution.
 - `track_habit`: Logs habit activity for a specific habit ID and ISO date. Returns `{ "ok": true, "message": "Successfully tracked habit <id> on <date>" }` when the API confirms the event.
@@ -269,7 +276,7 @@ Track progress in [issue #14](https://github.com/tensorfreitas/lunatask-mcp/issu
 - [ ] filters for completed tasks in a range of dates
 3. Extra tools
 - [x] Implement [`create_note` tool](https://lunatask.app/api/notes-api/create)
-- [ ] Implement [`create_entry_journal` tool](https://lunatask.app/api/journal-api/create)
+- [x] Implement [`create_journal_entry` tool](https://lunatask.app/api/journal-api/create)
 - [ ] Implement [`create_person` tool](https://lunatask.app/api/people-api/create)
 - [ ] Implement [`delete_person` tool](https://lunatask.app/api/people-api/delete)
 - [ ] Implement [`create_person_timeline_note` tool](https://lunatask.app/api/person-timeline-notes-api/create)

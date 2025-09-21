@@ -198,6 +198,18 @@ class TestCoreServerLunaTaskIntegration:
         mock_app_run.assert_called_once_with(transport="stdio")
 
 
+def test_core_server_registers_journal_tool(default_config: ServerConfig) -> None:
+    """CoreServer should register the create_journal_entry tool with FastMCP."""
+
+    server = CoreServer(default_config)
+
+    tool_manager = server.app._tool_manager  # type: ignore[attr-defined]
+    registered_tools = tool_manager._tools.values()  # type: ignore[attr-defined]
+    tool_names = {tool.name for tool in registered_tools}
+
+    assert "create_journal_entry" in tool_names
+
+
 class TestCoreServerTaskToolsIntegration:
     """Test CoreServer integration with TaskTools."""
 

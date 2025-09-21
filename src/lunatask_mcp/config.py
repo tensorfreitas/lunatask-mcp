@@ -76,6 +76,17 @@ class ServerConfig(BaseModel):
         description="HTTP client backoff start time in seconds",
     )
 
+    http_min_mutation_interval_seconds: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=5.0,
+        description=(
+            "Minimum delay between mutating HTTP requests (POST/PATCH/DELETE) in seconds. "
+            "Leave at 0.0 to rely solely on the token bucket rate limiter; increase when "
+            "coordinating with external throttling constraints."
+        ),
+    )
+
     http_user_agent: str = Field(
         default="lunatask-mcp/0.1.0",
         description="HTTP client User-Agent header",

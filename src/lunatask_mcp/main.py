@@ -31,6 +31,7 @@ from fastmcp import Context, FastMCP
 from lunatask_mcp.api.client import LunaTaskClient
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.tools.habits import HabitTools
+from lunatask_mcp.tools.journal import JournalTools
 from lunatask_mcp.tools.notes import NotesTools
 from lunatask_mcp.tools.tasks import TaskTools
 
@@ -95,6 +96,7 @@ class CoreServer:
         # Initialize HabitTools
         HabitTools(self.app, lunatask_client)
         NotesTools(self.app, lunatask_client)
+        JournalTools(self.app, lunatask_client)
 
     def _setup_signal_handlers(self) -> None:
         """Set up signal handlers for graceful shutdown.
@@ -242,6 +244,7 @@ def _get_known_config_fields() -> set[str]:
         "rate_limit_burst",
         "http_retries",
         "http_backoff_start_seconds",
+        "http_min_mutation_interval_seconds",
         "http_user_agent",
         "timeout_connect",
         "timeout_read",

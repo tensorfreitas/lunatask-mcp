@@ -250,6 +250,57 @@ class NoteCreate(BaseModel):
     )
 ```
 
+# Journal Entry Models
+
+Journal entries are lightweight diary records that mirror LunaTask's end-to-end encrypted
+storage. The create endpoint accepts optional metadata, but responses only expose structural
+fields. All request parameters are validated through Pydantic models in
+`src/lunatask_mcp/api/models.py`.
+
+### `JournalEntryCreate` (Request Model)
+
+```python
+from datetime import date
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class JournalEntryCreate(BaseModel):
+    """Request payload for creating LunaTask journal entries."""
+
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
+
+    date_on: date = Field(description="Journal entry date (ISO-8601 date string)")
+    name: str | None = Field(default=None, description="Optional journal entry title")
+    content: str | None = Field(
+        default=None,
+        description="Markdown content body for the journal entry",
+    )
+```
+
+### `JournalEntryResponse` (Response Model)
+
+```python
+from datetime import date, datetime
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class JournalEntryResponse(BaseModel):
+    """Response model for LunaTask journal entry data."""
+
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
+
+    id: str = Field(description="Journal entry identifier (UUID)")
+    date_on: date = Field(description="The date the journal entry belongs to")
+    created_at: datetime = Field(description="Creation timestamp")
+    updated_at: datetime = Field(description="Last update timestamp")
+```
+
+**Response Notes**:
+- API responses omit `name` and `content` due to LunaTask's end-to-end encryption guarantees.
+- The top-level payload is wrapped: `{ "journal_entry": { ... } }`. We unwrap that response in
+  `LunaTaskClient.create_journal_entry()` before constructing `JournalEntryResponse`, keeping wrapper
+  handling consistent with the notes client workflow and out of the Pydantic model itself.
+
 ## Habit Models
 
 These models are based on the [Habits API Documentation](https://lunatask.app/api/habits-api/track-activity).

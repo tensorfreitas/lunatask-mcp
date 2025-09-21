@@ -8,6 +8,7 @@ This project has one critical external dependency: the LunaTask API. All core fu
 *   **Documentation**:
     *   **Tasks API**: [https://lunatask.app/api/tasks-api/entity](https://lunatask.app/api/tasks-api/entity)
     *   **Notes API**: [https://lunatask.app/api/notes-api/create](https://lunatask.app/api/notes-api/create)
+    *   **Journal Entries API**: [https://lunatask.app/api/journal-api/create](https://lunatask.app/api/journal-api/create)
     *   **Habits API**: [https://lunatask.app/api/habits-api/track-activity](https://lunatask.app/api/habits-api/track-activity)
 *   **Base URL**: `https://api.lunatask.app/v1/`
 *   **Authentication**: Bearer Token sent in the `Authorization` header.
@@ -97,6 +98,22 @@ This project has one critical external dependency: the LunaTask API. All core fu
      rate limiting (429), transient errors (timeout/network), and server errors (5xx/503) mapped to
      structured tool responses.
 
+### Journal Entries API
+
+#### Implemented Endpoints
+
+1. **POST /v1/journal_entries** - Create Journal Entry
+   - **Purpose**: Persist a daily journal entry for the authenticated user
+   - **Implementation**: `LunaTaskClient.create_journal_entry(entry_data: JournalEntryCreate)`
+   - **MCP Tool**: `create_journal_entry` (handler in `tools/journal.py`)
+   - **Request Model**: `JournalEntryCreate` with required `date_on` and optional `name`/`content`
+   - **Response Model**: `JournalEntryResponse` parsed from wrapped `{ "journal_entry": { ... } }`
+   - **Encryption Note**: Response omits `name` and `content` because of E2E encryption in LunaTask
+   - **Error Handling**: Mirrors note creation, mapping validation (422), auth (401), subscription
+     (402), rate limit (429), timeout/network, server (5xx), and service unavailable (503) errors to
+     structured MCP tool responses. Missing wrap keys raise
+     `LunaTaskAPIError.create_parse_error("journal_entries", ...)`.
+
 ### Response Format Notes
 
 All implemented endpoints respect LunaTask's E2E encryption constraints:
@@ -104,7 +121,9 @@ All implemented endpoints respect LunaTask's E2E encryption constraints:
 - Sensitive fields (`name`, `note`, note `content`) are absent from all responses
 - Only structural and metadata fields are available
 - Error responses are properly translated to MCP error format
-- Rate limiting is applied to all requests via `TokenBucketLimiter`
+- Rate limiting is applied to all requests via `TokenBucketLimiter`; an additional
+  `http_min_mutation_interval_seconds` configuration option can enforce a fixed
+  delay before mutating requests when the API requires extra pacing.
 
 ## Alias Resource Semantics and Deterministic Sorting
 

@@ -49,3 +49,31 @@ sequenceDiagram
 ```
 
 ---
+
+## Daily Journal Workflow
+
+```mermaid
+sequenceDiagram
+    participant ClientApp as Client App (IDE)
+    participant CoreServer as MCP Server (stdio)
+    participant JournalTools as JournalTools Component
+    participant LunaTaskClient as LunaTaskClient
+    participant LunaTaskAPI as LunaTask API
+
+    ClientApp->>+CoreServer: Sends MCP `create_journal_entry` request (date_on, name, content)
+    CoreServer->>+JournalTools: Forwards request to `create_journal_entry` tool
+    JournalTools->>JournalTools: Validates ISO-8601 `date_on` input
+    alt Invalid date format
+        JournalTools-->>-CoreServer: Returns validation_error payload
+        CoreServer-->>-ClientApp: Emits MCP error response via stdio
+    else Valid date
+        JournalTools->>+LunaTaskClient: Calls create_journal_entry with JournalEntryCreate
+        LunaTaskClient->>+LunaTaskAPI: Makes authenticated POST /v1/journal_entries request
+        LunaTaskAPI-->>-LunaTaskClient: Returns wrapped journal entry payload
+        LunaTaskClient-->>-JournalTools: Returns JournalEntryResponse
+        JournalTools-->>-CoreServer: Formats success payload with journal_entry_id
+        CoreServer-->>-ClientApp: Sends MCP success response via stdio
+    end
+```
+
+---

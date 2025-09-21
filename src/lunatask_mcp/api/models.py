@@ -362,3 +362,42 @@ class NoteCreate(BaseModel):
         """Pydantic-compatible initializer with permissive typing for tools/tests."""
 
         super().__init__(**data)  # type: ignore[arg-type]
+
+
+class JournalEntryCreate(BaseModel):
+    """Request model for creating journal entries in LunaTask."""
+
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
+
+    date_on: date = Field(description="Journal entry date (ISO-8601 date string)")
+    name: str | None = Field(default=None, description="Optional title for the journal entry")
+    content: str | None = Field(
+        default=None,
+        description="Markdown content body for the journal entry",
+    )
+
+    def __init__(self, **data: object) -> None:
+        """Pydantic-compatible initializer with permissive typing for tools/tests."""
+
+        super().__init__(**data)  # type: ignore[arg-type]
+
+
+class JournalEntryResponse(BaseModel):
+    """Response model for LunaTask journal entry data.
+
+    The LunaTask API wraps journal entry payloads in `{"journal_entry": {...}}`.
+    We intentionally unwrap that response in the client layer (matching notes
+    handling) so the model here only validates the inner payload structure.
+    """
+
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
+
+    id: str = Field(description="Unique identifier of the journal entry (UUID)")
+    date_on: date = Field(description="Date the journal entry belongs to")
+    created_at: datetime = Field(description="Timestamp when the entry was created")
+    updated_at: datetime = Field(description="Timestamp when the entry was last updated")
+
+    def __init__(self, **data: object) -> None:
+        """Pydantic-compatible initializer with permissive typing for tools/tests."""
+
+        super().__init__(**data)  # type: ignore[arg-type]

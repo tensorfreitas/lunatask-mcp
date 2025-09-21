@@ -27,7 +27,15 @@ from lunatask_mcp.api.exceptions import (
     LunaTaskTimeoutError,
     LunaTaskValidationError,
 )
-from lunatask_mcp.api.models import NoteCreate, NoteResponse, TaskCreate, TaskResponse, TaskUpdate
+from lunatask_mcp.api.models import (
+    JournalEntryCreate,
+    JournalEntryResponse,
+    NoteCreate,
+    NoteResponse,
+    TaskCreate,
+    TaskResponse,
+    TaskUpdate,
+)
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.rate_limiter import TokenBucketLimiter
 
@@ -290,7 +298,7 @@ class LunaTaskClient:
         logger.error("LunaTask API error: %s", status_code)
         raise LunaTaskAPIError("", status_code) from error
 
-    async def make_request(
+    async def make_request(  # noqa: C901
         self,
         method: str,
         endpoint: str,
@@ -330,7 +338,9 @@ class LunaTaskClient:
             await self._rate_limiter.acquire()
 
             if method_upper in {"POST", "PATCH", "DELETE"}:
-                await asyncio.sleep(0.12)
+                min_delay = self._config.http_min_mutation_interval_seconds
+                if min_delay > 0:
+                    await asyncio.sleep(min_delay)
 
             headers = self._get_auth_headers()
 
@@ -613,6 +623,52 @@ class LunaTaskClient:
         else:
             logger.debug("Successfully created note: %s", note.id)
             return note
+
+    async def create_journal_entry(self, entry_data: JournalEntryCreate) -> JournalEntryResponse:
+        """Create a new journal entry in the LunaTask API.
+
+        Args:
+            entry_data: JournalEntryCreate object containing journal entry data.
+
+        Returns:
+            JournalEntryResponse: Created journal entry returned by the API.
+
+        Raises:
+            LunaTaskValidationError: Validation error (422)
+            LunaTaskSubscriptionRequiredError: Subscription required (402)
+            LunaTaskAuthenticationError: Invalid bearer token (401)
+            LunaTaskRateLimitError: Rate limit exceeded (429)
+            LunaTaskServerError: Server error occurred (5xx)
+            LunaTaskServiceUnavailableError: Service unavailable (503)
+            LunaTaskTimeoutError: Request timeout
+            LunaTaskNetworkError: Network connectivity error
+            LunaTaskAPIError: Other API errors
+        """
+
+        json_data = json.loads(entry_data.model_dump_json(exclude_none=True))
+
+        response_data = await self.make_request("POST", "journal_entries", data=json_data)
+
+        try:
+            entry_payload = response_data["journal_entry"]
+            entry = JournalEntryResponse(**entry_payload)
+        except KeyError as error:
+            logger.exception("Failed to extract journal entry from wrapped response format")
+            entry_date = json_data.get("date_on", "unknown")
+            raise LunaTaskAPIError.create_parse_error(
+                "journal_entries",
+                date_on=entry_date,
+                detail="missing 'journal_entry' key",
+            ) from error
+        except Exception as error:
+            logger.exception("Failed to parse created journal entry response data")
+            entry_date = json_data.get("date_on", "unknown")
+            raise LunaTaskAPIError.create_parse_error(
+                "journal_entries", date_on=entry_date
+            ) from error
+        else:
+            logger.debug("Successfully created journal entry: %s", entry.id)
+            return entry
 
     async def update_task(self, task_id: str, update: TaskUpdate) -> TaskResponse:
         """Update an existing task in the LunaTask API.

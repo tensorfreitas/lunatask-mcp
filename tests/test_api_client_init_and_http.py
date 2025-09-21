@@ -271,6 +271,41 @@ class TestLunaTaskClientRetryBehavior:
             mocker.call(0.2),
         ]
 
+    @pytest.mark.asyncio
+    async def test_make_request_applies_min_mutation_interval(
+        self,
+        mocker: MockerFixture,
+    ) -> None:
+        """Client applies configured delay before mutating requests."""
+
+        config = ServerConfig(
+            lunatask_bearer_token=VALID_TOKEN,
+            lunatask_base_url=DEFAULT_API_URL,
+            http_retries=0,
+            http_min_mutation_interval_seconds=0.2,
+        )
+        client = LunaTaskClient(config)
+
+        mocker.patch.object(client._rate_limiter, "acquire", new=mocker.AsyncMock())
+
+        http_client = get_http_client(client)
+        request = httpx.Request("POST", "https://api.lunatask.app/v1/journal_entries")
+        success_response = httpx.Response(status_code=200, json={"ok": True}, request=request)
+        mocker.patch.object(
+            http_client, "request", new=mocker.AsyncMock(return_value=success_response)
+        )
+
+        sleep_mock = mocker.patch(
+            "lunatask_mcp.api.client.asyncio.sleep",
+            new=mocker.AsyncMock(),
+        )
+
+        result = await client.make_request("POST", "journal_entries", data={})
+
+        assert result == {"ok": True}
+        assert sleep_mock.await_count == 1
+        assert sleep_mock.await_args_list == [mocker.call(0.2)]
+
 
 class TestLunaTaskClientConnectivity:
     """Connectivity negative-path tests for `test_connectivity`."""

@@ -390,7 +390,9 @@ class JournalEntryResponse(BaseModel):
     handling) so the model here only validates the inner payload structure.
     """
 
-    model_config = ConfigDict(use_enum_values=True, extra="forbid")
+    # ignore extra because response returns a deleted_at that is not documented
+    # in the API docs.
+    model_config = ConfigDict(use_enum_values=True, extra="ignore")
 
     id: str = Field(description="Unique identifier of the journal entry (UUID)")
     date_on: date = Field(description="Date the journal entry belongs to")

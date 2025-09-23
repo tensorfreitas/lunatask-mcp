@@ -4,7 +4,27 @@ The application will be structured around a few key logical components, each wit
 
 ## 1. `LunaTaskClient` (Service Component)
 
-**Responsibility**: This component is solely responsible for all communication with the external LunaTask REST API. It will encapsulate the `httpx` client, handle authentication by adding the bearer token to outgoing requests, and perform basic error handling and response parsing. It will use the `pydantic` models we defined to structure its requests and parse responses.
+**Responsibility**: This component is solely responsible for all communication with the external LunaTask REST API. It encapsulates HTTP infrastructure, authentication, error handling, and response parsing while maintaining a clean separation between core HTTP concerns and feature-specific functionality.
+
+**Modular Architecture**: The client uses a composition-based design that separates concerns:
+
+- **`BaseClient`** (`client_base.py`): Core HTTP infrastructure including:
+  - `httpx` client lifecycle management
+  - Bearer token authentication and secure header handling
+  - Retry logic with exponential backoff for transient failures
+  - Centralized rate limiting and mutation delay enforcement
+  - HTTP status code mapping to custom exceptions
+  - Connectivity testing
+
+- **Feature Mixins**: Focused functionality classes that compose with the base:
+  - **`TasksClientMixin`** (`client_tasks.py`): Task CRUD operations and query parameter handling
+  - **`NotesClientMixin`** (`client_notes.py`): Note creation with 204 No Content handling
+  - **`JournalClientMixin`** (`client_journal.py`): Journal entry creation
+  - **`HabitsClientMixin`** (`client_habits.py`): Habit tracking functionality
+
+- **`BaseClientProtocol`** (`protocols.py`): Typing protocol enabling mixins to reference base client methods without circular imports, supporting strict pyright type checking
+
+- **Final Composition** (`client.py`): The `LunaTaskClient` class inherits from `BaseClient` and all mixins via multiple inheritance, providing a unified interface while keeping each file under the 500-line limit.
 
 **Key Interfaces / Methods**:
 
@@ -13,9 +33,12 @@ The application will be structured around a few key logical components, each wit
 *   `async def create_task(task_data: TaskCreate) -> TaskResponse`
 *   `async def update_task(task_id: str, task_data: TaskUpdate) -> TaskResponse`
 *   `async def delete_task(task_id: str) -> bool`
+*   `async def create_note(note_data: NoteCreate) -> NoteResponse | None`
+*   `async def create_journal_entry(entry_data: JournalEntryCreate) -> JournalEntryResponse`
 *   `async def track_habit(habit_id: str, track_date: date) -> None`
+*   `async def test_connectivity() -> bool`
 
-**Dependencies**: `httpx`, `pydantic` models.
+**Dependencies**: `httpx`, `pydantic` models, custom exceptions.
 
 ## 2. `TaskTools` (MCP Interface Component)
 

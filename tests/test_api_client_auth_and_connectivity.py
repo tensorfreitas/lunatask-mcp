@@ -7,7 +7,7 @@ import httpx
 import pytest
 from pytest_mock import MockerFixture
 
-from lunatask_mcp.api import client as api_client
+from lunatask_mcp.api import client_base as api_client_base
 from lunatask_mcp.api.client import LunaTaskClient
 from lunatask_mcp.api.exceptions import (
     LunaTaskAuthenticationError,
@@ -42,7 +42,7 @@ from tests.test_api_client_common import (
 
 def test_http_bad_gateway_constant_value() -> None:
     """Ensure BAD_GATEWAY constant matches HTTP 502."""
-    assert api_client._HTTP_BAD_GATEWAY == HTTP_BAD_GATEWAY  # pyright: ignore[reportPrivateUsage]
+    assert api_client_base._HTTP_BAD_GATEWAY == HTTP_BAD_GATEWAY  # pyright: ignore[reportPrivateUsage]
 
 
 class TestLunaTaskClientAuthenticatedRequests:

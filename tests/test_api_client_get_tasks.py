@@ -285,7 +285,7 @@ class TestLunaTaskClientGetTasks:
 
         mocker.patch.object(client, "make_request", return_value=mock_response_data)
         # Patch constructor used in client module to raise KeyError
-        mocker.patch("lunatask_mcp.api.client.TaskResponse", side_effect=KeyError("boom"))
+        mocker.patch("lunatask_mcp.api.client_tasks.TaskResponse", side_effect=KeyError("boom"))
 
         with pytest.raises(LunaTaskAPIError):
             await client.get_tasks()

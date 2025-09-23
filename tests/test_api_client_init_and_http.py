@@ -257,7 +257,7 @@ class TestLunaTaskClientRetryBehavior:
         mocker.patch.object(http_client, "request", request_mock)
 
         sleep_mock = mocker.patch(
-            "lunatask_mcp.api.client.asyncio.sleep",
+            "lunatask_mcp.api.client_base.asyncio.sleep",
             new=mocker.AsyncMock(),
         )
 
@@ -296,7 +296,7 @@ class TestLunaTaskClientRetryBehavior:
         )
 
         sleep_mock = mocker.patch(
-            "lunatask_mcp.api.client.asyncio.sleep",
+            "lunatask_mcp.api.client_base.asyncio.sleep",
             new=mocker.AsyncMock(),
         )
 

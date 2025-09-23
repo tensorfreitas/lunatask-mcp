@@ -9,7 +9,14 @@ lunatask-mcp/
 │       ├── __init__.py
 │       ├── api/
 │       │   ├── __init__.py
-│       │   ├── client.py              # LunaTaskClient + request orchestration
+│       │   ├── client.py              # LunaTaskClient composition (BaseClient + mixins)
+│       │   ├── client_base.py         # BaseClient HTTP infrastructure + auth + retries
+│       │   ├── client_tasks.py        # TasksClientMixin (CRUD operations)
+│       │   ├── client_notes.py        # NotesClientMixin (note creation)
+│       │   ├── client_journal.py      # JournalClientMixin (journal entries)
+│       │   ├── client_habits.py       # HabitsClientMixin (habit tracking)
+│       │   ├── protocols.py           # BaseClientProtocol for mixin typing
+│       │   ├── exceptions.py          # Custom exception definitions
 │       │   └── models.py              # Pydantic enums/models with LunataskSource support
 │       ├── config.py                  # ServerConfig settings + validation
 │       ├── main.py                    # CoreServer bootstrap & cli parsing

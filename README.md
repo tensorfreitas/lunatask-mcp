@@ -179,6 +179,7 @@ coverage. Clients such as Claude Desktop, Claude Code, Cline, Continue, Roo Code
   `YYYY-MM-DD` format and supports optional `name` and `content` (Markdown). Returns
   `{ "success": true, "journal_entry_id": "..." }` when LunaTask returns a wrapped
   `journal_entry`. Responses never include `name` or `content` because of end-to-end encryption.
+- `create_person`: Creates a new person/contact. Requires `first_name` and `last_name`. Optional fields include `relationship_strength` (one of `family`, `intimate-friends`, `close-friends`, `casual-friends`, `acquaintances`, `business-contacts`, or `almost-strangers`; defaults to `casual-friends`), external source metadata (`source`, `source_id`), and contact details (`email`, `birthday`, `phone`). Returns `{ "success": true, "person_id": "..." }` when created, or `{ "success": true, "duplicate": true, "message": "Person already exists for this source/source_id" }` when LunaTask responds with `204 No Content` for duplicates. Note: Custom fields for email, birthday, or phone must be defined in the LunaTask app first, otherwise returns a 422 validation error.
 - `update_task`: Updates an existing task by ID. Supports partial updates—only the fields you pass (same set as create, minus the required `name`) are mutated. Returns `{ "success": true, "task": {...} }` with the full serialized task payload.
 - `delete_task`: Permanently deletes a task from LunaTask. Returns `{ "success": true, "task_id": "..." }`. **Deleted tasks cannot be recovered**, so invoke with caution.
 - `track_habit`: Logs habit activity for a specific habit ID and ISO date. Returns `{ "ok": true, "message": "Successfully tracked habit <id> on <date>" }` when the API confirms the event.
@@ -277,7 +278,7 @@ Track progress in [issue #14](https://github.com/tensorfreitas/lunatask-mcp/issu
 3. Extra tools
 - [x] Implement [`create_note` tool](https://lunatask.app/api/notes-api/create)
 - [x] Implement [`create_journal_entry` tool](https://lunatask.app/api/journal-api/create)
-- [ ] Implement [`create_person` tool](https://lunatask.app/api/people-api/create)
+- [x] Implement [`create_person` tool](https://lunatask.app/api/people-api/create)
 - [ ] Implement [`delete_person` tool](https://lunatask.app/api/people-api/delete)
 - [ ] Implement [`create_person_timeline_note` tool](https://lunatask.app/api/person-timeline-notes-api/create)
 4. Extra Resources

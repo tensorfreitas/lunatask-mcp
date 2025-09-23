@@ -14,6 +14,13 @@ from pydantic_core import InitErrorDetails, PydanticCustomError
 
 from lunatask_mcp.api.models import JournalEntryResponse, NoteResponse, TaskResponse
 
+# People models will be available after Phase 2 implementation
+try:
+    from lunatask_mcp.api.models_people import PersonResponse
+except ImportError:
+    # Placeholder for TDD phase - will be replaced with actual import
+    PersonResponse = None  # type: ignore[misc,assignment]
+
 VALID_ESTIMATE_MINUTES = 45
 VALID_PROGRESS_PERCENT = 80
 VALID_GOAL_ID = "goal-123"
@@ -175,6 +182,77 @@ def create_journal_entry_response(  # noqa: PLR0913
         payload["content"] = content
 
     return JournalEntryResponse(**payload)
+
+
+def create_person_response(  # noqa: PLR0913
+    person_id: str = "5999b945-b2b1-48c6-aa72-b251b75b3c2e",
+    relationship_strength: str = "casual-friends",
+    source: str | None = None,
+    source_id: str | None = None,
+    created_at: datetime | None = None,
+    updated_at: datetime | None = None,
+    email: str | None = None,
+    birthday: date | None = None,
+    phone: str | None = None,
+) -> object:
+    """Create a PersonResponse object with default or provided values.
+
+    Args:
+        person_id: Person ID (default: "5999b945-b2b1-48c6-aa72-b251b75b3c2e")
+        relationship_strength: Relationship strength (default: "casual-friends")
+        source: Source system identifier (default: None)
+        source_id: Source system record ID (default: None)
+        created_at: Creation timestamp (default: 2021-01-10 10:39:25 UTC)
+        updated_at: Last update timestamp (default: 2021-01-10 10:39:25 UTC)
+        email: Person's email address (default: None)
+        birthday: Person's birthday (default: None)
+        phone: Person's phone number (default: None)
+
+    Returns:
+        PersonResponse object suitable for mocking API responses.
+    """
+    if created_at is None:
+        created_at = datetime(2021, 1, 10, 10, 39, 25, tzinfo=UTC)
+    if updated_at is None:
+        updated_at = datetime(2021, 1, 10, 10, 39, 25, tzinfo=UTC)
+
+    # Handle sources similar to other response factories
+    if source is not None or source_id is not None:
+        sources_payload = [{"source": source, "source_id": source_id}]
+    else:
+        sources_payload = []
+
+    # During TDD phase, return a mock object that behaves like PersonResponse
+    if PersonResponse is None:
+        # Return a simple object with the expected attributes for testing
+        class MockPersonResponse:
+            def __init__(self, **kwargs: object) -> None:
+                for key, value in kwargs.items():
+                    setattr(self, key, value)
+
+        return MockPersonResponse(
+            id=person_id,
+            relationship_strength=relationship_strength,
+            sources=sources_payload,
+            created_at=created_at,
+            updated_at=updated_at,
+            email=email,
+            birthday=birthday,
+            phone=phone,
+        )
+
+    # Once PersonResponse is implemented, use the real model
+    return PersonResponse(
+        id=person_id,
+        relationship_strength=relationship_strength,
+        source=source,
+        source_id=source_id,
+        created_at=created_at,
+        updated_at=updated_at,
+        email=email,
+        birthday=birthday,
+        phone=phone,
+    )
 
 
 def build_validation_error(

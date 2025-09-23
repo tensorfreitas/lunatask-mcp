@@ -16,7 +16,7 @@
 # Obtain this token from your LunaTask account settings
 # This token is used to authenticate with the LunaTask API
 # SECURITY NOTE: Keep this token secure and never commit it to version control
-lunatask_bearer_token = "eyJraWQiOiI3ODNhNjg4Yzg1ZjUxOTA0MzEyNjgwMjUwYTE3NjExZjBiN2Q3MjRjZDg4ZmI2OTQ0NWZhOTU5NGMzNDk4YjAyIiwiYWxnIjoiUlM1MTIifQ.eyJhdWQiOiJhcGkiLCJzdWIiOiI4MmE5NDE3Ny04ZWE1LTRlNTMtOTRkMy0zZWEzZDIxNmMwZjUiLCJqdGkiOiI4ZDIzOTNlYS1jZWQwLTRiODktYTZkZi02NmQxNDI2NWNkN2IifQ.tddxWidrfQTqq1QLg5pXX-R8D3tgKpsG0Z8Fxq3EQbmfNVodomjKUfzEUz390Kmba6fhkASi1pTUwyQcIZlV9VCEIUV06f7DLEjdrczGx1MAULpIdCaIRnZRQDabvCPd7-Nks1PWTJRLZZOG-FHori5VmlwPa_P3mdCtDJeSNTanyrnA9W3ZIkB6k0W2LXn_wq0KdHHoE-7mpNwOPQUlukyWdMro4CIWwAQ9dUApBfYivpoArxUawQ_933hEaomXh_Eg3IA_xTCrCNuRRT1ZmtyHkwyhV-mm1EcqFAWU-jAXrLUNaAjebGLxiMLTr-qrpRrItXLxSiZY3F5wDebkhw"
+lunatask_bearer_token = "<your_token_here>"
 
 # ==============================================================================
 # OPTIONAL SETTINGS (with defaults shown)

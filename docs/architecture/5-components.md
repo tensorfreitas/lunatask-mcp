@@ -21,6 +21,7 @@ The application will be structured around a few key logical components, each wit
   - **`NotesClientMixin`** (`client_notes.py`): Note creation with 204 No Content handling
   - **`JournalClientMixin`** (`client_journal.py`): Journal entry creation
   - **`HabitsClientMixin`** (`client_habits.py`): Habit tracking functionality
+  - **`PeopleClientMixin`** (`client_people.py`): People/contact creation with duplicate handling
 
 - **`BaseClientProtocol`** (`protocols.py`): Typing protocol enabling mixins to reference base client methods without circular imports, supporting strict pyright type checking
 
@@ -35,6 +36,7 @@ The application will be structured around a few key logical components, each wit
 *   `async def delete_task(task_id: str) -> bool`
 *   `async def create_note(note_data: NoteCreate) -> NoteResponse | None`
 *   `async def create_journal_entry(entry_data: JournalEntryCreate) -> JournalEntryResponse`
+*   `async def create_person(person_data: PersonCreate) -> PersonResponse | None`
 *   `async def track_habit(habit_id: str, track_date: date) -> None`
 *   `async def test_connectivity() -> bool`
 
@@ -90,14 +92,24 @@ This architecture aligns with the stated dependency injection and repository pat
 
 **Dependencies**: `LunaTaskClient`, `fastmcp`.
 
-## 4. `CoreServer` (Application Runner)
+## 4. `PeopleTools` (MCP Interface Component)
+
+**Responsibility**: This component exposes People/Contact functionality to clients by defining MCP **tools** for person creation and management.
+
+**Key Interfaces (as MCP Tools)**:
+
+*   **Tool**: `create_person(first_name: str, last_name: str, ...)` (Calls `LunaTaskClient.create_person`)
+
+**Dependencies**: `LunaTaskClient`, `fastmcp`.
+
+## 5. `CoreServer` (Application Runner)
 
 **Responsibility**: This is the main application entry point (`main.py`). It will be responsible for:
 *   Initializing the `FastMCP` application.
 *   Handling configuration loading (from files and command-line arguments).
 *   Setting up logging to `stderr`.
 *   Initializing the `LunaTaskClient` and making it available to the tool components (e.g., via dependency injection).
-*   Registering the `TaskTools`, `HabitTools`, and a built-in `ping` health-check tool with the FastMCP instance.
+*   Registering the `TaskTools`, `HabitTools`, `PeopleTools`, and a built-in `ping` health-check tool with the FastMCP instance.
 *   Starting the server with the `stdio` transport.
 
 **Dependencies**: All other components.

@@ -313,3 +313,77 @@ dedicated request models. The `track_habit` tool accepts:
 This approach keeps the implementation simple and follows the YAGNI principle.
 Future enhancement could introduce a `HabitTrackRequest` model if additional
 fields become necessary.
+
+## People Models
+
+People models support creating and managing contacts/relationships in LunaTask. These models are based on the [People API Documentation](https://lunatask.app/api/people-api/create).
+
+### `PersonRelationshipStrength` (Enum)
+
+```python
+from enum import StrEnum
+
+class PersonRelationshipStrength(StrEnum):
+    """Relationship strength values accepted by LunaTask person creation."""
+    FAMILY = "family"
+    INTIMATE_FRIENDS = "intimate-friends"
+    CLOSE_FRIENDS = "close-friends"
+    CASUAL_FRIENDS = "casual-friends"
+    ACQUAINTANCES = "acquaintances"
+    BUSINESS_CONTACTS = "business-contacts"
+    ALMOST_STRANGERS = "almost-strangers"
+```
+
+### `PersonCreate` (Request Model)
+
+```python
+from datetime import date
+from pydantic import BaseModel, ConfigDict, Field
+
+class PersonCreate(BaseModel):
+    """Request payload for creating LunaTask people/contacts."""
+
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
+
+    first_name: str = Field(description="Person's first name")
+    last_name: str = Field(description="Person's last name")
+    relationship_strength: PersonRelationshipStrength = Field(
+        default=PersonRelationshipStrength.CASUAL_FRIENDS,
+        description="Relationship strength classification"
+    )
+    source: str | None = Field(default=None, description="External system origin")
+    source_id: str | None = Field(
+        default=None, description="External identifier for idempotent creates"
+    )
+    email: str | None = Field(default=None, description="Person's email address")
+    birthday: date | None = Field(default=None, description="Person's birthday (ISO-8601 date)")
+    phone: str | None = Field(default=None, description="Person's phone number")
+```
+
+### `PersonResponse` (Response Model)
+
+```python
+from datetime import datetime
+from pydantic import BaseModel, ConfigDict, Field, computed_field
+
+class PersonResponse(BaseSourceResponse):
+    """Response model for LunaTask person data."""
+
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
+
+    id: str = Field(description="Person identifier (UUID)")
+    relationship_strength: PersonRelationshipStrength = Field(
+        description="Relationship strength classification"
+    )
+    created_at: datetime = Field(description="Creation timestamp")
+    updated_at: datetime = Field(description="Last update timestamp")
+    email: str | None = Field(default=None, description="Person's email address")
+    birthday: date | None = Field(default=None, description="Person's birthday")
+    phone: str | None = Field(default=None, description="Person's phone number")
+```
+
+**Response Notes**:
+- API responses are wrapped: `{ "person": { ... } }`. The client unwraps this before constructing `PersonResponse`.
+- When creating a person with existing source/source_id, the API returns `204 No Content` without creating a duplicate.
+- Custom fields (email, birthday, phone) must be defined in the LunaTask app first, otherwise the API returns a 422 validation error.
+- The response inherits from `BaseSourceResponse` to provide consistent source metadata handling with tasks and notes.

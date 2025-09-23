@@ -10,6 +10,7 @@ from lunatask_mcp.api.client_base import BaseClient
 from lunatask_mcp.api.client_habits import HabitsClientMixin
 from lunatask_mcp.api.client_journal import JournalClientMixin
 from lunatask_mcp.api.client_notes import NotesClientMixin
+from lunatask_mcp.api.client_people import PeopleClientMixin
 from lunatask_mcp.api.client_tasks import TasksClientMixin
 
 
@@ -19,6 +20,7 @@ class LunaTaskClient(
     NotesClientMixin,
     JournalClientMixin,
     HabitsClientMixin,
+    PeopleClientMixin,
 ):
     """Complete LunaTask API client with all functionality.
 

@@ -1,7 +1,6 @@
 """Tests for PeopleTools.create_person_tool()."""
 
 from datetime import date
-from unittest import mock
 
 import pytest
 from fastmcp import FastMCP
@@ -687,7 +686,14 @@ class TestPeopleToolsInitialization:
 
         PeopleTools(mcp, client)
 
-        mock_tool.assert_called_once_with(
-            name="create_person",
-            description=mock.ANY,
-        )
+        # Two tools are registered.
+        assert mock_tool.call_count == 2  # noqa: PLR2004
+
+        names = [call.kwargs["name"] for call in mock_tool.call_args_list]
+        descriptions = [call.kwargs["description"] for call in mock_tool.call_args_list]
+
+        assert "create_person" in names
+        assert "create_person_timeline_note" in names
+
+        timeline_index = names.index("create_person_timeline_note")
+        assert "Create a timeline note" in descriptions[timeline_index]

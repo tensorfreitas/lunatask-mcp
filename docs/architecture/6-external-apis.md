@@ -274,3 +274,17 @@ The `status` parameter supports both individual LunaTask statuses and a special 
 **Implementation Note:** When `status=open` is requested, the MCP server fetches all tasks from the upstream API and applies the composite filter locally, excluding only tasks with `status=completed`.
 
 ---
+
+
+### People Timeline Notes API
+
+#### Implemented Endpoints
+
+1. **POST /v1/person_timeline_notes** - Create Person Timeline Note
+   - **Purpose**: Capture timeline notes for a specific person, optionally backdated.
+   - **Implementation**: `LunaTaskClient.create_person_timeline_note(payload: PersonTimelineNoteCreate)`
+   - **MCP Tool**: `create_person_timeline_note` (handler in `tools/people.py`)
+   - **Request Model**: `PersonTimelineNoteCreate` with fields `person_id`, optional `content`, optional `date_on`.
+   - **Response Model**: `PersonTimelineNoteResponse` parsed from the wrapped response key `person_timeline_note`.
+   - **Behavior**: Omits `content` and `date_on` when `None`; defaults `date_on` server-side to current date when omitted.
+   - **Error Handling**: Raises validation, subscription, authentication, rate limit, service, timeout, network, and API parse errors via custom exceptions.

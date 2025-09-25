@@ -84,3 +84,48 @@ class PersonResponse(BaseSourceResponse):
     def __init__(self, **data: object) -> None:
         """Pydantic-compatible initializer with permissive typing for tools/tests."""
         super().__init__(**data)  # type: ignore[arg-type]
+
+
+class PersonTimelineNoteCreate(BaseModel):
+    """Request model for creating a person timeline note in LunaTask.
+
+    The LunaTask API requires a person identifier, with optional content and
+    date information. Fields set to ``None`` are excluded from the serialized
+    payload to keep requests minimal.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    person_id: str = Field(min_length=1, description="Identifier of the person the note belongs to")
+    content: str | None = Field(
+        default=None,
+        description="Markdown content of the timeline note",
+    )
+    date_on: date | None = Field(
+        default=None,
+        description="Optional ISO-8601 date string for when the note occurred",
+    )
+
+    def __init__(self, **data: object) -> None:
+        """Pydantic-compatible initializer with permissive typing for tools/tests."""
+        super().__init__(**data)  # type: ignore[arg-type]
+
+
+class PersonTimelineNoteResponse(BaseModel):
+    """Response model for person timeline note creation.
+
+    The LunaTask API wraps created notes inside ``{"person_timeline_note": {...}}``
+    payloads. This model captures the stable fields the client depends on while
+    ignoring any additional attributes sent by the API for forward compatibility.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    id: str = Field(min_length=1, description="Unique identifier for the timeline note")
+    date_on: date = Field(description="Date associated with the timeline note")
+    created_at: datetime = Field(description="Timestamp when the note was created")
+    updated_at: datetime = Field(description="Timestamp when the note was last updated")
+
+    def __init__(self, **data: object) -> None:
+        """Pydantic-compatible initializer with permissive typing for tools/tests."""
+        super().__init__(**data)  # type: ignore[arg-type]

@@ -21,7 +21,11 @@ from lunatask_mcp.api.exceptions import (
     LunaTaskTimeoutError,
     LunaTaskValidationError,
 )
-from lunatask_mcp.api.models_people import PersonCreate, PersonRelationshipStrength
+from lunatask_mcp.api.models_people import (
+    PersonCreate,
+    PersonRelationshipStrength,
+    PersonTimelineNoteCreate,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +40,120 @@ class PeopleTools:
         self.lunatask_client = lunatask_client
         self._register_tools()
 
-    async def create_person_tool(  # noqa: PLR0913, PLR0911, PLR0912, PLR0915, C901
+    async def _handle_lunatask_api_errors(  # noqa: C901, PLR0911, PLR0912
+        self, ctx: ServerContext, error: Exception, operation: str
+    ) -> dict[str, Any]:
+        """Handle common LunaTask API errors and return structured error response.
+
+        Args:
+            ctx: Server context for logging
+            error: The caught exception
+            operation: Description of the operation for error messages (e.g., "person creation")
+
+        Returns:
+            Dictionary with error response structure
+        """
+        if isinstance(error, LunaTaskValidationError):
+            if "person creation" in operation:
+                message = f"Person validation failed: {error}"
+            elif "timeline note" in operation:
+                message = f"Timeline note validation failed: {error}"
+            else:
+                message = f"Validation failed: {error}"
+            await ctx.error(message)
+            logger.warning("Validation error during %s: %s", operation, error)
+            return {
+                "success": False,
+                "error": "validation_error",
+                "message": message,
+            }
+
+        if isinstance(error, LunaTaskSubscriptionRequiredError):
+            message = f"Subscription required: {error}"
+            await ctx.error(message)
+            logger.warning("Subscription required during %s: %s", operation, error)
+            return {
+                "success": False,
+                "error": "subscription_required",
+                "message": message,
+            }
+
+        if isinstance(error, LunaTaskAuthenticationError):
+            message = f"Authentication failed: {error}"
+            await ctx.error(message)
+            logger.warning("Authentication error during %s: %s", operation, error)
+            return {
+                "success": False,
+                "error": "authentication_error",
+                "message": message,
+            }
+
+        if isinstance(error, LunaTaskRateLimitError):
+            message = f"Rate limit exceeded: {error}"
+            await ctx.error(message)
+            logger.warning("Rate limit exceeded during %s: %s", operation, error)
+            return {
+                "success": False,
+                "error": "rate_limit_error",
+                "message": message,
+            }
+
+        if isinstance(error, (LunaTaskServerError, LunaTaskServiceUnavailableError)):
+            message = f"Server error: {error}"
+            await ctx.error(message)
+            logger.warning("Server error during %s: %s", operation, error)
+            return {
+                "success": False,
+                "error": "server_error",
+                "message": message,
+            }
+
+        if isinstance(error, LunaTaskTimeoutError):
+            message = f"Request timeout: {error}"
+            await ctx.error(message)
+            logger.warning("Timeout during %s: %s", operation, error)
+            return {
+                "success": False,
+                "error": "timeout_error",
+                "message": message,
+            }
+
+        if isinstance(error, LunaTaskNetworkError):
+            message = f"Network error: {error}"
+            await ctx.error(message)
+            logger.warning("Network error during %s: %s", operation, error)
+            return {
+                "success": False,
+                "error": "network_error",
+                "message": message,
+            }
+
+        if isinstance(error, LunaTaskAPIError):
+            message = f"API error: {error}"
+            await ctx.error(message)
+            logger.warning("API error during %s: %s", operation, error)
+            return {
+                "success": False,
+                "error": "api_error",
+                "message": message,
+            }
+
+        # Handle unexpected errors
+        if "person creation" in operation:
+            message = f"Unexpected error creating person: {error}"
+        elif "timeline note" in operation:
+            message = f"Unexpected error creating timeline note: {error}"
+        else:
+            message = f"Unexpected error during {operation}: {error}"
+        await ctx.error(message)
+        logger.exception("Unexpected error during %s", operation)
+        return {
+            "success": False,
+            "error": "unexpected_error",
+            "message": message,
+        }
+
+    async def create_person_tool(  # noqa: PLR0913
         self,
         ctx: ServerContext,
         first_name: str,
@@ -101,95 +218,8 @@ class PeopleTools:
             async with self.lunatask_client as client:
                 person_response = await client.create_person(person_payload)
 
-        except LunaTaskValidationError as error:
-            message = f"Person validation failed: {error}"
-            await ctx.error(message)
-            logger.warning("Person validation error: %s", error)
-            return {
-                "success": False,
-                "error": "validation_error",
-                "message": message,
-            }
-
-        except LunaTaskSubscriptionRequiredError as error:
-            message = f"Subscription required: {error}"
-            await ctx.error(message)
-            logger.warning("Subscription required during person creation: %s", error)
-            return {
-                "success": False,
-                "error": "subscription_required",
-                "message": message,
-            }
-
-        except LunaTaskAuthenticationError as error:
-            message = f"Authentication failed: {error}"
-            await ctx.error(message)
-            logger.warning("Authentication error during person creation: %s", error)
-            return {
-                "success": False,
-                "error": "authentication_error",
-                "message": message,
-            }
-
-        except LunaTaskRateLimitError as error:
-            message = f"Rate limit exceeded: {error}"
-            await ctx.error(message)
-            logger.warning("Rate limit exceeded during person creation: %s", error)
-            return {
-                "success": False,
-                "error": "rate_limit_error",
-                "message": message,
-            }
-
-        except (LunaTaskServerError, LunaTaskServiceUnavailableError) as error:
-            message = f"Server error: {error}"
-            await ctx.error(message)
-            logger.warning("Server error during person creation: %s", error)
-            return {
-                "success": False,
-                "error": "server_error",
-                "message": message,
-            }
-
-        except LunaTaskTimeoutError as error:
-            message = f"Request timeout: {error}"
-            await ctx.error(message)
-            logger.warning("Timeout during person creation: %s", error)
-            return {
-                "success": False,
-                "error": "timeout_error",
-                "message": message,
-            }
-
-        except LunaTaskNetworkError as error:
-            message = f"Network error: {error}"
-            await ctx.error(message)
-            logger.warning("Network error during person creation: %s", error)
-            return {
-                "success": False,
-                "error": "network_error",
-                "message": message,
-            }
-
-        except LunaTaskAPIError as error:
-            message = f"API error: {error}"
-            await ctx.error(message)
-            logger.warning("API error during person creation: %s", error)
-            return {
-                "success": False,
-                "error": "api_error",
-                "message": message,
-            }
-
         except Exception as error:
-            message = f"Unexpected error creating person: {error}"
-            await ctx.error(message)
-            logger.exception("Unexpected error during person creation")
-            return {
-                "success": False,
-                "error": "unexpected_error",
-                "message": message,
-            }
+            return await self._handle_lunatask_api_errors(ctx, error, "person creation")
 
         if person_response is None:
             duplicate_message = "Person already exists for this source/source_id"
@@ -207,6 +237,72 @@ class PeopleTools:
             "success": True,
             "person_id": person_response.id,
             "message": "Person created successfully",
+        }
+
+    async def create_person_timeline_note_tool(
+        self,
+        ctx: ServerContext,
+        person_id: str,
+        content: str,
+        date_on: str | None = None,
+    ) -> dict[str, Any]:
+        """Create a timeline note for a person in LunaTask."""
+
+        await ctx.info("Creating person timeline note")
+
+        if not person_id.strip():
+            message = "person_id is required to create a timeline note"
+            await ctx.error(message)
+            logger.warning("Missing person_id for person timeline note creation")
+            return {
+                "success": False,
+                "error": "validation_error",
+                "message": message,
+            }
+
+        if content.strip() == "":
+            message = "content cannot be empty when creating a timeline note"
+            await ctx.error(message)
+            logger.warning("Empty content provided for person timeline note creation")
+            return {
+                "success": False,
+                "error": "validation_error",
+                "message": message,
+            }
+
+        parsed_date: date_class | None = None
+        if date_on is not None:
+            try:
+                parsed_date = date_class.fromisoformat(date_on)
+            except ValueError as error:
+                message = f"Invalid date_on format. Expected YYYY-MM-DD format: {error!s}"
+                await ctx.error(message)
+                logger.warning("Invalid date_on provided for person timeline note: %s", date_on)
+                return {
+                    "success": False,
+                    "error": "validation_error",
+                    "message": message,
+                }
+
+        note_payload = PersonTimelineNoteCreate(
+            person_id=person_id,
+            content=content.strip(),
+            date_on=parsed_date,
+        )
+
+        try:
+            async with self.lunatask_client as client:
+                note_response = await client.create_person_timeline_note(note_payload)
+
+        except Exception as error:
+            return await self._handle_lunatask_api_errors(ctx, error, "timeline note creation")
+
+        await ctx.info(f"Person timeline note created: {note_response.id}")
+        logger.info("Created person timeline note %s", note_response.id)
+        return {
+            "success": True,
+            "person_timeline_note_id": note_response.id,
+            "message": "Person timeline note created successfully",
         }
 
     def _register_tools(self) -> None:
@@ -245,3 +341,19 @@ class PeopleTools:
                 f"and phone. Returns person_id or duplicate status."
             ),
         )(_create_person)
+
+        async def _create_person_timeline_note(
+            ctx: ServerContext,
+            person_id: str,
+            content: str,
+            date_on: str | None = None,
+        ) -> dict[str, Any]:
+            return await self.create_person_timeline_note_tool(ctx, person_id, content, date_on)
+
+        self.mcp.tool(
+            name="create_person_timeline_note",
+            description=(
+                "Create a timeline note for a person in LunaTask. Requires person_id and content. "
+                "Optional date_on (YYYY-MM-DD) to associate the note with a specific day."
+            ),
+        )(_create_person_timeline_note)

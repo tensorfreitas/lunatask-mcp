@@ -11,6 +11,7 @@ from lunatask_mcp.api.client_habits import HabitsClientMixin
 from lunatask_mcp.api.client_journal import JournalClientMixin
 from lunatask_mcp.api.client_notes import NotesClientMixin
 from lunatask_mcp.api.client_people import PeopleClientMixin
+from lunatask_mcp.api.client_person_timeline_notes import PersonTimelineNotesClientMixin
 from lunatask_mcp.api.client_tasks import TasksClientMixin
 
 
@@ -18,6 +19,7 @@ class LunaTaskClient(
     BaseClient,
     TasksClientMixin,
     NotesClientMixin,
+    PersonTimelineNotesClientMixin,
     JournalClientMixin,
     HabitsClientMixin,
     PeopleClientMixin,

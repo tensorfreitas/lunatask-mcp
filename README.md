@@ -19,11 +19,6 @@ LunaTask uses end-to-end encryption for sensitive task data. As a result:
 - Use the All Tasks resource to discover available task IDs
 - Task IDs remain consistent across API calls
 
-#### Task Creation Limits
-- Free LunaTask plans have limits on the number of tasks that can be created
-- When limits are reached, the tool returns a `subscription_required` error
-- Consider upgrading your LunaTask plan if you need to create more tasks
-
 ##### Rate Limiting
 - The server implements rate limiting to prevent API abuse
 - If you encounter rate limit errors, wait before retrying
@@ -207,6 +202,8 @@ You can filter globally and by `area_id`. The filters work as follows:
   - Tasks without scheduled date but with highest priority (2)
   - Tasks without scheduled date but with motivation as "must"
   - Tasks without scheduled date but with eisenhower as 1 (urgent and important)
+
+Note: There is slight difference between the `now` in LunaTask and `now` here. This can create some confusion. Currently, now is seen as urgent and not scheduled. This will be solved in this future [issue](https://github.com/tensorfreitas/lunatask-mcp/issues/38).
 
 The reason behind these filters is that if you try to gather all the tasks from the LunaTask API you will easily fill up your LLM context if you have a lot of tasks. 
 In the future these could be expanded to include:

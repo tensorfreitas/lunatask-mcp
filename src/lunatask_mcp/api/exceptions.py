@@ -151,6 +151,15 @@ class LunaTaskValidationError(LunaTaskAPIError):
         """
         super().__init__(message, status_code=422)
 
+    @classmethod
+    def empty_person_id(cls) -> "LunaTaskValidationError":
+        """Create an error for empty or invalid person ID parameter.
+
+        Returns:
+            LunaTaskValidationError for empty person ID
+        """
+        return cls("Person ID cannot be empty")
+
 
 class LunaTaskRateLimitError(LunaTaskAPIError):
     """Raised when rate limit is exceeded (429 Too Many Requests)."""

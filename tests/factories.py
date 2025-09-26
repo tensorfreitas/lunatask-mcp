@@ -191,6 +191,7 @@ def create_person_response(  # noqa: PLR0913
     source_id: str | None = None,
     created_at: datetime | None = None,
     updated_at: datetime | None = None,
+    deleted_at: datetime | None = None,
     email: str | None = None,
     birthday: date | None = None,
     phone: str | None = None,
@@ -204,6 +205,7 @@ def create_person_response(  # noqa: PLR0913
         source_id: Source system record ID (default: None)
         created_at: Creation timestamp (default: 2021-01-10 10:39:25 UTC)
         updated_at: Last update timestamp (default: 2021-01-10 10:39:25 UTC)
+        deleted_at: Deletion timestamp (default: None)
         email: Person's email address (default: None)
         birthday: Person's birthday (default: None)
         phone: Person's phone number (default: None)
@@ -236,6 +238,7 @@ def create_person_response(  # noqa: PLR0913
             sources=sources_payload,
             created_at=created_at,
             updated_at=updated_at,
+            deleted_at=deleted_at,
             email=email,
             birthday=birthday,
             phone=phone,
@@ -249,6 +252,7 @@ def create_person_response(  # noqa: PLR0913
         source_id=source_id,
         created_at=created_at,
         updated_at=updated_at,
+        deleted_at=deleted_at,
         email=email,
         birthday=birthday,
         phone=phone,

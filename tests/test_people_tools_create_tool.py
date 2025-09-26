@@ -686,14 +686,15 @@ class TestPeopleToolsInitialization:
 
         PeopleTools(mcp, client)
 
-        # Two tools are registered.
-        assert mock_tool.call_count == 2  # noqa: PLR2004
+        # Three tools are registered.
+        assert mock_tool.call_count == 3  # noqa: PLR2004
 
         names = [call.kwargs["name"] for call in mock_tool.call_args_list]
         descriptions = [call.kwargs["description"] for call in mock_tool.call_args_list]
 
         assert "create_person" in names
         assert "create_person_timeline_note" in names
+        assert "delete_person" in names
 
         timeline_index = names.index("create_person_timeline_note")
         assert "Create a timeline note" in descriptions[timeline_index]

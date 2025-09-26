@@ -14,6 +14,7 @@ from lunatask_mcp.api.exceptions import (
     LunaTaskAPIError,
     LunaTaskAuthenticationError,
     LunaTaskNetworkError,
+    LunaTaskNotFoundError,
     LunaTaskRateLimitError,
     LunaTaskServerError,
     LunaTaskServiceUnavailableError,
@@ -34,13 +35,18 @@ class PeopleTools:
     """People/contact management tools providing MCP integrations for LunaTask people."""
 
     def __init__(self, mcp_instance: FastMCP, lunatask_client: LunaTaskClient) -> None:
-        """Initialize PeopleTools with FastMCP instance and LunaTask client."""
+        """Initialize PeopleTools with FastMCP instance and LunaTask client.
+
+        Args:
+            mcp_instance: FastMCP instance for registering tools
+            lunatask_client: LunaTask API client for making requests
+        """
 
         self.mcp = mcp_instance
         self.lunatask_client = lunatask_client
         self._register_tools()
 
-    async def _handle_lunatask_api_errors(  # noqa: C901, PLR0911, PLR0912
+    async def _handle_lunatask_api_errors(  # noqa: C901, PLR0911, PLR0912, PLR0915
         self, ctx: ServerContext, error: Exception, operation: str
     ) -> dict[str, Any]:
         """Handle common LunaTask API errors and return structured error response.
@@ -65,6 +71,23 @@ class PeopleTools:
             return {
                 "success": False,
                 "error": "validation_error",
+                "message": message,
+            }
+
+        if isinstance(error, LunaTaskNotFoundError):
+            if "person deletion" in operation:
+                message = f"Person not found: {error}"
+            elif "timeline note" in operation:
+                message = f"Timeline note not found: {error}"
+            elif "person creation" in operation:
+                message = f"Person not found: {error}"
+            else:
+                message = f"Resource not found: {error}"
+            await ctx.error(message)
+            logger.warning("Not found error during %s: %s", operation, error)
+            return {
+                "success": False,
+                "error": "not_found_error",
                 "message": message,
             }
 
@@ -141,6 +164,8 @@ class PeopleTools:
         # Handle unexpected errors
         if "person creation" in operation:
             message = f"Unexpected error creating person: {error}"
+        elif "person deletion" in operation:
+            message = f"Unexpected error during person deletion: {error}"
         elif "timeline note" in operation:
             message = f"Unexpected error creating timeline note: {error}"
         else:
@@ -165,7 +190,23 @@ class PeopleTools:
         birthday: str | None = None,
         phone: str | None = None,
     ) -> dict[str, Any]:
-        """Create a person in LunaTask with optional duplicate detection."""
+        """Create a person in LunaTask with optional duplicate detection.
+
+        Args:
+            ctx: Server context for logging and communication
+            first_name: Person's first name
+            last_name: Person's last name
+            relationship_strength: Optional relationship strength enum value
+            source: Optional source identifier for duplicate detection
+            source_id: Optional source-specific ID for duplicate detection
+            email: Optional email address
+            birthday: Optional birthday in YYYY-MM-DD format
+            phone: Optional phone number
+
+        Returns:
+            Dictionary with success status, person_id (if created), and message.
+            May include 'duplicate' flag if person already exists.
+        """
 
         await ctx.info("Creating new person")
 
@@ -246,7 +287,17 @@ class PeopleTools:
         content: str,
         date_on: str | None = None,
     ) -> dict[str, Any]:
-        """Create a timeline note for a person in LunaTask."""
+        """Create a timeline note for a person in LunaTask.
+
+        Args:
+            ctx: Server context for logging and communication
+            person_id: ID of the person to add the timeline note to
+            content: Content of the timeline note
+            date_on: Optional date in YYYY-MM-DD format to associate with the note
+
+        Returns:
+            Dictionary with success status, person_timeline_note_id, and message.
+        """
 
         await ctx.info("Creating person timeline note")
 
@@ -305,8 +356,61 @@ class PeopleTools:
             "message": "Person timeline note created successfully",
         }
 
+    async def delete_person_tool(
+        self,
+        ctx: ServerContext,
+        person_id: str,
+    ) -> dict[str, Any]:
+        """Delete a person in LunaTask.
+
+        Args:
+            ctx: Server context for logging and communication
+            person_id: ID of the person to delete
+
+        Returns:
+            Dictionary with success status, person_id, deleted_at timestamp, and message.
+        """
+
+        # Strip whitespace once at the beginning
+        person_id = person_id.strip()
+
+        await ctx.info(f"Deleting person {person_id}")
+
+        # Validate person ID before making API call
+        if not person_id:
+            message = "Person ID cannot be empty"
+            await ctx.error(message)
+            logger.warning("Empty person ID provided for person deletion")
+            return {
+                "success": False,
+                "error": "validation_error",
+                "message": message,
+            }
+
+        try:
+            async with self.lunatask_client as client:
+                person_response = await client.delete_person(person_id)
+
+        except Exception as error:
+            return await self._handle_lunatask_api_errors(ctx, error, "person deletion")
+
+        await ctx.info(f"Successfully deleted person {person_response.id}")
+        logger.info("Successfully deleted person %s", person_response.id)
+        return {
+            "success": True,
+            "person_id": person_response.id,
+            "deleted_at": person_response.deleted_at.isoformat()
+            if person_response.deleted_at
+            else None,
+            "message": "Person deleted successfully",
+        }
+
     def _register_tools(self) -> None:
-        """Register people-related MCP tools with the FastMCP instance."""
+        """Register people-related MCP tools with the FastMCP instance.
+
+        Registers create_person, create_person_timeline_note, and delete_person tools
+        with their respective descriptions and parameter validation.
+        """
 
         async def _create_person(  # noqa: PLR0913
             ctx: ServerContext,
@@ -357,3 +461,18 @@ class PeopleTools:
                 "Optional date_on (YYYY-MM-DD) to associate the note with a specific day."
             ),
         )(_create_person_timeline_note)
+
+        async def _delete_person(
+            ctx: ServerContext,
+            person_id: str,
+        ) -> dict[str, Any]:
+            return await self.delete_person_tool(ctx, person_id)
+
+        self.mcp.tool(
+            name="delete_person",
+            description=(
+                "Delete a person/contact in LunaTask by person_id. Requires person_id. "
+                "Returns success status with person_id and deleted_at timestamp. "
+                "Note: deletion is not idempotent - second delete will return not found error."
+            ),
+        )(_delete_person)

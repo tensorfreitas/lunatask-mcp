@@ -75,6 +75,9 @@ class PersonResponse(BaseSourceResponse):
     )
     created_at: datetime = Field(description="Timestamp when the person was created")
     updated_at: datetime = Field(description="Timestamp when the person was last updated")
+    deleted_at: datetime | None = Field(
+        default=None, description="Timestamp when the person was deleted"
+    )
 
     # Optional persisted custom fields that may be returned
     email: str | None = Field(default=None, description="Person's email address")

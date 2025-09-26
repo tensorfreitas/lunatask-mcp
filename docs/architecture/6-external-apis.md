@@ -4,9 +4,10 @@ This project has one critical external dependency: the LunaTask API. All core fu
 
 ## LunaTask API
 
-*   **Purpose**: To provide programmatic access to a user's LunaTask data for creating, retrieving, updating, and deleting entities like tasks and habits.
+*   **Purpose**: To provide programmatic access to a user's LunaTask data for creating, retrieving, updating, and deleting entities like tasks, people, notes, journal entries, and habits.
 *   **Documentation**:
     *   **Tasks API**: [https://lunatask.app/api/tasks-api/entity](https://lunatask.app/api/tasks-api/entity)
+    *   **People API**: [https://lunatask.app/api/people-api/create](https://lunatask.app/api/people-api/create), [https://lunatask.app/api/people-api/delete](https://lunatask.app/api/people-api/delete)
     *   **Notes API**: [https://lunatask.app/api/notes-api/create](https://lunatask.app/api/notes-api/create)
     *   **Journal Entries API**: [https://lunatask.app/api/journal-api/create](https://lunatask.app/api/journal-api/create)
     *   **Habits API**: [https://lunatask.app/api/habits-api/track-activity](https://lunatask.app/api/habits-api/track-activity)
@@ -288,3 +289,26 @@ The `status` parameter supports both individual LunaTask statuses and a special 
    - **Response Model**: `PersonTimelineNoteResponse` parsed from the wrapped response key `person_timeline_note`.
    - **Behavior**: Omits `content` and `date_on` when `None`; defaults `date_on` server-side to current date when omitted.
    - **Error Handling**: Raises validation, subscription, authentication, rate limit, service, timeout, network, and API parse errors via custom exceptions.
+
+### People API
+
+#### Implemented Endpoints
+
+1. **POST /v1/people** - Create Person
+   - **Purpose**: Create a new person/contact with optional relationship metadata and external source tracking
+   - **Implementation**: `LunaTaskClient.create_person(person_data: PersonCreate)` method
+   - **MCP Tool**: `create_person` tool (handler in `tools/people.py`)
+   - **Request Model**: `PersonCreate` with required `first_name`, `last_name`, and optional fields including `relationship_strength`, contact details, and source metadata
+   - **Response Model**: `PersonResponse` when the API returns a new person payload
+   - **Duplicate Handling**: The LunaTask API returns `204 No Content` when a person with the same `source`/`source_id` already exists. The client surfaces this as `None` so the MCP tool can return `{ "duplicate": true }` without erroring.
+   - **Error Handling**: Validation errors (422), subscription limits (402), auth errors (401), rate limiting (429), transient errors (timeout/network), and server errors (5xx/503) mapped to structured tool responses.
+
+2. **DELETE /v1/people/{id}** - Delete Person
+   - **Purpose**: Delete a person/contact from LunaTask by unique ID
+   - **Implementation**: `LunaTaskClient.delete_person(person_id: str)` method
+   - **MCP Tool**: `delete_person` tool (handler in `tools/people.py`)
+   - **Request**: Person ID in URL path with proper URL encoding for special characters
+   - **Response Model**: `PersonResponse` with `deleted_at` timestamp from wrapped `{ "person": { ... } }` response
+   - **Behavior**: Non-idempotent (repeated deletion returns 404 Not Found)
+   - **Error Handling**: Person not found (404), validation errors (empty ID), auth errors (401), rate limiting (429), transient errors (timeout/network), and server errors (5xx/503) mapped to structured tool responses.
+   - **Validation**: Client-side validation prevents empty or whitespace-only person IDs before making API calls

@@ -181,6 +181,7 @@ coverage. Clients such as Claude Desktop, Claude Code, Cline, Continue, Roo Code
   `journal_entry`. Responses never include `name` or `content` because of end-to-end encryption.
 - `create_person`: Creates a new person/contact. Requires `first_name` and `last_name`. Optional fields include `relationship_strength` (one of `family`, `intimate-friends`, `close-friends`, `casual-friends`, `acquaintances`, `business-contacts`, or `almost-strangers`; defaults to `casual-friends`), external source metadata (`source`, `source_id`), and contact details (`email`, `birthday`, `phone`). Returns `{ "success": true, "person_id": "..." }` when created, or `{ "success": true, "duplicate": true, "message": "Person already exists for this source/source_id" }` when LunaTask responds with `204 No Content` for duplicates. Note: Custom fields for email, birthday, or phone must be defined in the LunaTask app first, otherwise returns a 422 validation error.
 - `create_person_timeline_note`: Creates a timeline note for an existing person. Requires `person_id` and `content`, accepts an optional `date` (`YYYY-MM-DD`). When `date` is omitted the LunaTask API stores the note against the current day. Returns `{ "success": true, "person_timeline_note_id": "..." }` on success. Validation, authentication, subscription, rate limit, timeout, and network errors map to structured error payloads, and invalid ISO dates are rejected client-side before hitting the API.
+- `delete_person`: Deletes a person/contact from LunaTask. Requires `person_id`. Returns `{ "success": true, "person_id": "...", "deleted_at": "...", "message": "Person deleted successfully" }` on success. Note: deletion is not idempotent - attempting to delete the same person twice will return a not found error. Validation, authentication, rate limit, timeout, and network errors map to structured error payloads.
 - `update_task`: Updates an existing task by ID. Supports partial updates—only the fields you pass (same set as create, minus the required `name`) are mutated. Returns `{ "success": true, "task": {...} }` with the full serialized task payload.
 - `delete_task`: Permanently deletes a task from LunaTask. Returns `{ "success": true, "task_id": "..." }`. **Deleted tasks cannot be recovered**, so invoke with caution.
 - `track_habit`: Logs habit activity for a specific habit ID and ISO date. Returns `{ "ok": true, "message": "Successfully tracked habit <id> on <date>" }` when the API confirms the event.
@@ -280,7 +281,7 @@ Track progress in [issue #14](https://github.com/tensorfreitas/lunatask-mcp/issu
 - [x] Implement [`create_note` tool](https://lunatask.app/api/notes-api/create)
 - [x] Implement [`create_journal_entry` tool](https://lunatask.app/api/journal-api/create)
 - [x] Implement [`create_person` tool](https://lunatask.app/api/people-api/create)
-- [ ] Implement [`delete_person` tool](https://lunatask.app/api/people-api/delete)
+- [x] Implement [`delete_person` tool](https://lunatask.app/api/people-api/delete)
 - [x] Implement [`create_person_timeline_note` tool](https://lunatask.app/api/person-timeline-notes-api/create)
 4. Extra Resources
 - [ ] Implement [Retrieve person](https://lunatask.app/api/person-timeline-notes-api/create) resource

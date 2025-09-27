@@ -4,13 +4,13 @@ This module tests that the server correctly exposes metadata (name and version)
 and declares capabilities including the ping tool during MCP initialize.
 """
 
+from importlib.metadata import version
 from typing import TYPE_CHECKING
 
 import pytest
 from fastmcp import Client
 from mcp.types import TextContent
 
-import lunatask_mcp
 from lunatask_mcp.config import ServerConfig
 from lunatask_mcp.main import CoreServer
 
@@ -111,10 +111,11 @@ class TestProtocolMetadata:
             assert first_content.text == "pong", f"Expected 'pong', got '{first_content.text}'"
 
     def test_package_version_matches_server_version(self, default_config: ServerConfig) -> None:
-        """AC: 14 — __version__ equals FastMCP server version configured."""
+        """AC: 14 — package version equals FastMCP server version configured."""
         core_server = CoreServer(default_config)
-        # FastMCP is initialized with a version; assert it matches package __version__
-        assert getattr(core_server.app, "version", None) == lunatask_mcp.__version__, (
+        # FastMCP is initialized with a version; assert it matches package version from metadata
+        package_version = version("lunatask-mcp")
+        assert getattr(core_server.app, "version", None) == package_version, (
             f"Server version {getattr(core_server.app, 'version', None)}"
-            f" != package version {lunatask_mcp.__version__}"
+            f" != package version {package_version}"
         )

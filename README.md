@@ -121,7 +121,7 @@ http_backoff_start_seconds = 0.25
 # Minimum delay before mutating requests (POST/PATCH/DELETE); set to 0.0 to disable (default: 0.0)
 http_min_mutation_interval_seconds = 0.0
 # Custom User-Agent header advertised to the LunaTask API
-http_user_agent = "lunatask-mcp/0.1.0"
+http_user_agent = "lunatask-mcp/0.2.0"
 # Timeout in seconds for establishing the TLS connection
 timeout_connect = 5.0
 # Timeout in seconds for reading the response body
@@ -155,8 +155,7 @@ The server validates all configuration on startup and fails fast with clear erro
 The server provides the following tools:
 - **Ping Tool**: A health-check tool that responds with "pong" when called
 - **MCP Resources (read-only)**: Discovery + single task, plus area/global list aliases
-- **MCP Tools (write)**: Create, update, delete tasks; create notes; create journal entries; track habit
-  activity
+- **MCP Tools (write)**: Create, update, delete tasks; create notes; create journal entries; create, delete people; create person timeline notes; track habit activity
 - **MCP Protocol Version**: Supports MCP protocol version `2025-06-18`
 - **Stdio Transport**: Communicates over standard input/output streams
 

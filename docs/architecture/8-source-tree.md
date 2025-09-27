@@ -13,6 +13,7 @@ lunatask-mcp/
 │       │   ├── client_base.py         # BaseClient HTTP infrastructure + auth + retries
 │       │   ├── client_tasks.py        # TasksClientMixin (CRUD operations)
 │       │   ├── client_notes.py        # NotesClientMixin (note creation)
+│       │   ├── client_people.py       # PeopleClientMixin (create/delete person)
 │       │   ├── client_person_timeline_notes.py  # PersonTimelineNotesClientMixin (create)
 │       │   ├── client_journal.py      # JournalClientMixin (journal entries)
 │       │   ├── client_habits.py       # HabitsClientMixin (habit tracking)
@@ -25,12 +26,14 @@ lunatask-mcp/
 │       └── tools/
 │           ├── __init__.py
 │           ├── habits.py              # HabitTools + track_habit registration
+│           ├── journal.py             # JournalTools + create_journal_entry registration
+│           ├── notes.py               # NotesTools + create_note registration
+│           ├── people.py              # PeopleTools (create/delete person & timeline notes)
 │           ├── tasks.py               # TaskTools delegator and MCP bindings
 │           ├── tasks_common.py        # Shared serialization helpers
 │           ├── tasks_create.py        # create_task handler (coercion & validation)
 │           ├── tasks_update.py        # update_task handler (partial updates)
 │           ├── tasks_delete.py        # delete_task handler
-│           ├── people.py             # PeopleTools (create person & timeline notes)
 │           └── tasks_resources.py     # Discovery, list, alias & single task resources
 ├── tests/
 │   ├── conftest.py, factories.py      # Function-scoped fixtures and builders

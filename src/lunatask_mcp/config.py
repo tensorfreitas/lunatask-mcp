@@ -4,6 +4,7 @@ This module provides the ServerConfig Pydantic model for managing server
 configuration from files, command-line arguments, and defaults.
 """
 
+from importlib.metadata import version
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator
@@ -88,7 +89,7 @@ class ServerConfig(BaseModel):
     )
 
     http_user_agent: str = Field(
-        default="lunatask-mcp/0.1.0",
+        default_factory=lambda: f"lunatask-mcp/{version('lunatask-mcp')}",
         description="HTTP client User-Agent header",
     )
 

@@ -167,7 +167,9 @@ class TestCoreServerLunaTaskIntegration:
         server = CoreServer(config)
 
         # Mock _test_connectivity_if_enabled and app.run to prevent actual execution
-        mock_connectivity_test = mocker.patch.object(server, "_test_connectivity_if_enabled")
+        mock_connectivity_test = mocker.patch.object(
+            server, "_test_connectivity_if_enabled", new_callable=mocker.AsyncMock
+        )
         mock_app_run = mocker.patch.object(server.app, "run")
 
         server.run()

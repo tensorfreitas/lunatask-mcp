@@ -2,10 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [0.2.0] - 2025-01-XX
+## [0.2.0] - 2025-09-27
 
 ### Added
 - **Notes Management**: New `create_note` tool for creating notes in LunaTask notebooks
@@ -34,10 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Improved maintainability and testability
   - Better separation of concerns across API endpoints
 
-### Fixed
-- **Security**: Removed accidentally tracked configuration files with sensitive data
-- **Configuration**: Replaced committed tokens with placeholder values
-
 ### Documentation
 - Updated README.md with all new tools and capabilities
 - Enhanced server capabilities section to reflect people management features
@@ -51,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All new code follows established coding standards and patterns
 - Proper error handling and logging for all new tools
 
-## [0.1.0] - 2024-XX-XX
+## [0.1.0] - 2024-09-20
 
 ### Added
 - Initial release of LunaTask MCP Server

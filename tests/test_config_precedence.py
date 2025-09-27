@@ -98,7 +98,9 @@ timeout_read = 90.0
             assert config.rate_limit_burst == 30  # Default: 10
             assert config.http_retries == 3  # Default: 2
             assert config.http_backoff_start_seconds == 0.5  # Default: 0.25
-            assert config.http_user_agent == "custom-agent/2.0"  # Default: lunatask-mcp/0.1.0
+            assert (
+                config.http_user_agent == "custom-agent/2.0"
+            )  # Default: auto-generated from package version
             assert config.timeout_connect == 15.0  # Default: 5.0
             assert config.timeout_read == 90.0  # Default: 30.0
 
@@ -131,7 +133,7 @@ lunatask_bearer_token = "test_token"
             assert config.rate_limit_burst == 10
             assert config.http_retries == 2
             assert config.http_backoff_start_seconds == 0.25
-            assert config.http_user_agent == "lunatask-mcp/0.1.0"
+            assert config.http_user_agent.startswith("lunatask-mcp/")  # Auto-generated
             assert config.timeout_connect == 5.0
             assert config.timeout_read == 30.0
 
@@ -175,7 +177,7 @@ timeout_connect = 12.0
             # Defaults (not in CLI or file)
             assert config.rate_limit_burst == 10  # Default
             assert config.http_backoff_start_seconds == 0.25  # Default
-            assert config.http_user_agent == "lunatask-mcp/0.1.0"  # Default
+            assert config.http_user_agent.startswith("lunatask-mcp/")  # Auto-generated
             assert config.timeout_read == 30.0  # Default
 
         finally:

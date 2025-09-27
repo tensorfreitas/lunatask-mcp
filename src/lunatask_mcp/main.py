@@ -23,6 +23,7 @@ import os
 import signal
 import sys
 import tomllib
+from importlib.metadata import version
 from pathlib import Path
 from typing import Any
 
@@ -83,7 +84,7 @@ class CoreServer:
         """
         return FastMCP(
             name="lunatask-mcp",
-            version="0.1.0",
+            version=version("lunatask-mcp"),
         )
 
     def _register_tools(self) -> None:

@@ -6,9 +6,10 @@ operations, designed to be composed with the base client.
 
 import json
 import logging
+import urllib.parse
 from typing import TYPE_CHECKING
 
-from lunatask_mcp.api.exceptions import LunaTaskAPIError
+from lunatask_mcp.api.exceptions import LunaTaskAPIError, LunaTaskValidationError
 from lunatask_mcp.api.models import NoteCreate, NoteResponse, NoteUpdate
 
 if TYPE_CHECKING:
@@ -110,4 +111,47 @@ class NotesClientMixin:
             ) from error
         else:
             logger.debug("Successfully updated note: %s", note.id)
+            return note
+
+    async def delete_note(self: "BaseClientProtocol", note_id: str) -> NoteResponse:
+        """Delete an existing note in the LunaTask API.
+
+        Args:
+            note_id: The unique identifier for the note to delete (UUID format).
+
+        Returns:
+            NoteResponse: Deleted note object with deleted_at timestamp.
+
+        Raises:
+            LunaTaskValidationError: When note_id is empty or whitespace-only.
+            LunaTaskNotFoundError: Note not found (404).
+            LunaTaskAuthenticationError: Invalid bearer token (401).
+            LunaTaskRateLimitError: Rate limit exceeded (429).
+            LunaTaskServerError: Server error occurred (5xx).
+            LunaTaskTimeoutError: Request timeout.
+            LunaTaskNetworkError: Network connectivity error.
+            LunaTaskAPIError: Other API errors including parse errors.
+        """
+        # Validate note_id before making request to prevent malformed URLs
+        if not note_id or not note_id.strip():
+            raise LunaTaskValidationError.empty_note_id()
+
+        # URL-encode the note_id to handle special characters safely
+        encoded_note_id = urllib.parse.quote(note_id, safe="")
+
+        response_data = await self.make_request("DELETE", f"notes/{encoded_note_id}")
+
+        try:
+            note_payload = response_data["note"]
+            note = NoteResponse(**note_payload)
+        except KeyError as error:
+            logger.exception("Failed to extract note from wrapped response format")
+            raise LunaTaskAPIError.create_parse_error(
+                "notes", note_id=f"{note_id} - missing 'note' key"
+            ) from error
+        except Exception as error:
+            logger.exception("Failed to parse deleted note response data")
+            raise LunaTaskAPIError.create_parse_error("notes", note_id=note_id) from error
+        else:
+            logger.debug("Successfully deleted note: %s", note.id)
             return note

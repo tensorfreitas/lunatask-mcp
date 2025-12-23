@@ -260,6 +260,54 @@ class NotesTools:
         except Exception as error:
             return await self._handle_lunatask_api_errors(ctx, error, "note update")
 
+    async def delete_note_tool(
+        self,
+        ctx: ServerContext,
+        note_id: str,
+    ) -> dict[str, Any]:
+        """Delete a note in LunaTask.
+
+        Args:
+            ctx: Server context for logging and communication
+            note_id: ID of the note to delete (UUID format)
+
+        Returns:
+            Dictionary with success status, note_id, deleted_at timestamp, and message.
+        """
+        # Strip whitespace once at the beginning
+        note_id = note_id.strip()
+
+        await ctx.info(f"Deleting note {note_id}")
+
+        # Validate note ID before making API call
+        if not note_id:
+            message = "Note ID cannot be empty"
+            await ctx.error(message)
+            logger.warning("Empty note ID provided for note deletion")
+            return {
+                "success": False,
+                "error": "validation_error",
+                "message": message,
+            }
+
+        try:
+            async with self.lunatask_client as client:
+                note_response = await client.delete_note(note_id)
+
+        except Exception as error:
+            return await self._handle_lunatask_api_errors(ctx, error, "note deletion")
+
+        await ctx.info(f"Successfully deleted note {note_response.id}")
+        logger.info("Successfully deleted note %s", note_response.id)
+        return {
+            "success": True,
+            "note_id": note_response.id,
+            "deleted_at": note_response.deleted_at.isoformat()
+            if note_response.deleted_at
+            else None,
+            "message": "Note deleted successfully",
+        }
+
     def _register_tools(self) -> None:
         """Register note-related MCP tools with the FastMCP instance."""
 
@@ -310,3 +358,18 @@ class NotesTools:
                 "At least one field must be provided. Returns updated note data."
             ),
         )(_update_note)
+
+        async def _delete_note(
+            ctx: ServerContext,
+            note_id: str,
+        ) -> dict[str, Any]:
+            return await self.delete_note_tool(ctx, note_id)
+
+        self.mcp.tool(
+            name="delete_note",
+            description=(
+                "Delete a note in LunaTask by note_id. Requires note_id (UUID). "
+                "Returns success status with note_id and deleted_at timestamp. "
+                "Note: deletion is not idempotent - second delete will return not found error."
+            ),
+        )(_delete_note)

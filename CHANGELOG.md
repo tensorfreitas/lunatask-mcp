@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Note Updates**: New `update_note` tool for modifying existing notes in LunaTask (#46)
+  - Supports updating `name`, `content`, `notebook_id`, and `date_on` fields
+  - Requires `note_id` (UUID format) and at least one field to update
+  - Content replacement follows end-to-end encryption semantics (full content replacement)
+  - Returns updated note data including timestamps
+  - Shared error handler pattern for consistent error responses across note tools
+
 ## [0.2.0] - 2025-09-27
 
 ### Added

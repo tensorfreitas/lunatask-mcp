@@ -9,7 +9,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from lunatask_mcp.api.exceptions import LunaTaskAPIError
-from lunatask_mcp.api.models import NoteCreate, NoteResponse
+from lunatask_mcp.api.models import NoteCreate, NoteResponse, NoteUpdate
 
 if TYPE_CHECKING:
     from lunatask_mcp.api.protocols import BaseClientProtocol
@@ -66,4 +66,48 @@ class NotesClientMixin:
             raise LunaTaskAPIError.create_parse_error("notes", note_name=note_name) from error
         else:
             logger.debug("Successfully created note: %s", note.id)
+            return note
+
+    async def update_note(
+        self: "BaseClientProtocol", note_id: str, update: NoteUpdate
+    ) -> NoteResponse:
+        """Update an existing note in the LunaTask API.
+
+        Args:
+            note_id: The unique identifier for the note to update (UUID)
+            update: NoteUpdate object containing fields to update
+
+        Returns:
+            NoteResponse: Updated note object from the API
+
+        Raises:
+            LunaTaskNotFoundError: Note not found (404)
+            LunaTaskValidationError: Validation error (422)
+            LunaTaskAuthenticationError: Invalid bearer token (401)
+            LunaTaskRateLimitError: Rate limit exceeded (429)
+            LunaTaskServerError: Server error occurred (5xx)
+            LunaTaskServiceUnavailableError: Service unavailable (503)
+            LunaTaskTimeoutError: Request timeout
+            LunaTaskNetworkError: Network connectivity error
+            LunaTaskAPIError: Other API errors
+        """
+        json_data = json.loads(update.model_dump_json(exclude_none=True))
+
+        response_data = await self.make_request("PUT", f"notes/{note_id}", data=json_data)
+
+        try:
+            note_payload = response_data["note"]
+            note = NoteResponse(**note_payload)
+        except KeyError as error:
+            logger.exception("Failed to extract note from wrapped response format")
+            raise LunaTaskAPIError.create_parse_error(
+                f"notes/{note_id}", note_id=f"{note_id} - missing 'note' key"
+            ) from error
+        except Exception as error:
+            logger.exception("Failed to parse updated note response data")
+            raise LunaTaskAPIError.create_parse_error(
+                f"notes/{note_id}", note_id=note_id
+            ) from error
+        else:
+            logger.debug("Successfully updated note: %s", note.id)
             return note

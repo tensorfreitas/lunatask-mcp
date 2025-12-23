@@ -308,6 +308,90 @@ class NotesTools:
             "message": "Note deleted successfully",
         }
 
+    async def update_note_tool(  # noqa: PLR0913
+        self,
+        ctx: ServerContext,
+        note_id: str,
+        name: str | None = None,
+        content: str | None = None,
+        notebook_id: str | None = None,
+        date_on: str | None = None,
+    ) -> dict[str, Any]:
+        """Update an existing note in LunaTask.
+
+        Args:
+            ctx: MCP context for logging and communication
+            note_id: Note ID to update (required, UUID format)
+            name: Updated note name/title (optional)
+            content: Updated note content - replaces entire content (optional)
+            notebook_id: Updated notebook ID to move note (optional)
+            date_on: Updated note date in YYYY-MM-DD format (optional)
+
+        Returns:
+            dict[str, Any]: Response with note update result
+        """
+        # Validate required note ID
+        if not note_id or not note_id.strip():
+            error_msg = "Note ID cannot be empty"
+            await ctx.error(error_msg)
+            logger.warning("Empty note_id provided for update")
+            return {"success": False, "error": "validation_error", "message": error_msg}
+
+        # Validate at least one field provided
+        update_fields = [name, content, notebook_id, date_on]
+        if all(field is None for field in update_fields):
+            error_msg = "At least one field must be provided for update"
+            await ctx.error(error_msg)
+            logger.warning("No fields provided for note update: %s", note_id)
+            return {"success": False, "error": "validation_error", "message": error_msg}
+
+        # Parse and validate date_on if provided
+        parsed_date: date_class | None = None
+        if date_on is not None:
+            try:
+                parsed_date = date_class.fromisoformat(date_on)
+            except ValueError as error:
+                error_msg = f"Invalid date_on format. Expected YYYY-MM-DD: {error!s}"
+                await ctx.error(error_msg)
+                logger.warning("Invalid date_on for note %s: %s", note_id, date_on)
+                return {"success": False, "error": "validation_error", "message": error_msg}
+
+        await ctx.info(f"Updating note {note_id}")
+
+        try:
+            # Build kwargs for PATCH semantics
+            update_kwargs: dict[str, Any] = {"id": note_id}
+            if name is not None:
+                update_kwargs["name"] = name
+            if content is not None:
+                update_kwargs["content"] = content
+            if notebook_id is not None:
+                update_kwargs["notebook_id"] = notebook_id
+            if parsed_date is not None:
+                update_kwargs["date_on"] = parsed_date
+
+            note_update = NoteUpdate(**update_kwargs)
+
+            async with self.lunatask_client as client:
+                updated_note = await client.update_note(note_id, note_update)
+
+            await ctx.info(f"Successfully updated note {note_id}")
+            logger.info("Successfully updated note %s", note_id)
+            return {
+                "success": True,
+                "note_id": note_id,
+                "message": "Note updated successfully",
+                "note": {
+                    "id": updated_note.id,
+                    "notebook_id": updated_note.notebook_id,
+                    "date_on": updated_note.date_on.isoformat() if updated_note.date_on else None,
+                    "created_at": updated_note.created_at.isoformat(),
+                    "updated_at": updated_note.updated_at.isoformat(),
+                },
+            }
+        except Exception as error:
+            return await self._handle_lunatask_api_errors(ctx, error, "note update")
+
     def _register_tools(self) -> None:
         """Register note-related MCP tools with the FastMCP instance."""
 

@@ -99,6 +99,27 @@ This project has one critical external dependency: the LunaTask API. All core fu
      rate limiting (429), transient errors (timeout/network), and server errors (5xx/503) mapped to
      structured tool responses.
 
+2. **PUT /v1/notes/{id}** - Update Note
+   - **Purpose**: Update an existing note with partial field updates
+   - **Implementation**: `LunaTaskClient.update_note(note_id: str, update: NoteUpdate)` method
+   - **MCP Tool**: `update_note` tool (handler in `tools/notes.py`)
+   - **Request Model**: `NoteUpdate` with required `id` and optional fields (`name`, `content`, `notebook_id`, `date_on`)
+   - **Response Model**: `NoteResponse` object with updated note data (wrapped in `{"note": {...}}`)
+   - **Features**: Supports partial updates (only provided fields are modified); at least one field must be provided
+   - **Content Handling**: The `content` field replaces the entire content due to end-to-end encryption constraints
+   - **Date Validation**: If `date_on` is provided, must be in YYYY-MM-DD format and parseable as ISO-8601
+   - **Error Handling**: Note not found (404), validation errors (422 for invalid fields, client-side for empty update or invalid date), auth errors (401), rate limiting (429), transient errors (timeout/network), and server errors (5xx/503) mapped to structured tool responses.
+
+3. **DELETE /v1/notes/{id}** - Delete Note
+   - **Purpose**: Delete a note by ID
+   - **Implementation**: `LunaTaskClient.delete_note(note_id: str)` method
+   - **MCP Tool**: `delete_note` tool (handler in `tools/notes.py`)
+   - **Request**: Note ID in URL path with proper URL encoding
+   - **Response Model**: `NoteResponse` with `deleted_at` timestamp from wrapped `{"note": {...}}` response
+   - **Behavior**: Non-idempotent (repeated deletion returns 404 Not Found)
+   - **Client Validation**: Prevents empty or whitespace-only note IDs before making API calls
+   - **Error Handling**: Note not found (404), validation errors (empty ID), auth errors (401), rate limiting (429), transient errors (timeout/network), and server errors (5xx/503) mapped to structured tool responses.
+
 ### Journal Entries API
 
 #### Implemented Endpoints

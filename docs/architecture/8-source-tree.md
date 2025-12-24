@@ -27,7 +27,7 @@ lunatask-mcp/
 │           ├── __init__.py
 │           ├── habits.py              # HabitTools + track_habit registration
 │           ├── journal.py             # JournalTools + create_journal_entry registration
-│           ├── notes.py               # NotesTools + create_note registration
+│           ├── notes.py               # NotesTools + create/update/delete note registration
 │           ├── people.py              # PeopleTools (create/delete person & timeline notes)
 │           ├── tasks.py               # TaskTools delegator and MCP bindings
 │           ├── tasks_common.py        # Shared serialization helpers

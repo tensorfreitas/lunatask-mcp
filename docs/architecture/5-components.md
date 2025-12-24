@@ -18,7 +18,7 @@ The application will be structured around a few key logical components, each wit
 
 - **Feature Mixins**: Focused functionality classes that compose with the base:
   - **`TasksClientMixin`** (`client_tasks.py`): Task CRUD operations and query parameter handling
-  - **`NotesClientMixin`** (`client_notes.py`): Note creation with 204 No Content handling
+  - **`NotesClientMixin`** (`client_notes.py`): Note CRUD operations (create/update/delete) with 204 No Content handling
   - **`JournalClientMixin`** (`client_journal.py`): Journal entry creation
   - **`HabitsClientMixin`** (`client_habits.py`): Habit tracking functionality
   - **`PeopleClientMixin`** (`client_people.py`): People/contact creation and deletion with duplicate handling
@@ -35,6 +35,8 @@ The application will be structured around a few key logical components, each wit
 *   `async def update_task(task_id: str, task_data: TaskUpdate) -> TaskResponse`
 *   `async def delete_task(task_id: str) -> bool`
 *   `async def create_note(note_data: NoteCreate) -> NoteResponse | None`
+*   `async def update_note(note_id: str, update: NoteUpdate) -> NoteResponse`
+*   `async def delete_note(note_id: str) -> NoteResponse`
 *   `async def create_journal_entry(entry_data: JournalEntryCreate) -> JournalEntryResponse`
 *   `async def create_person(person_data: PersonCreate) -> PersonResponse | None`
 *   `async def delete_person(person_id: str) -> PersonResponse`

@@ -121,7 +121,7 @@ http_backoff_start_seconds = 0.25
 # Minimum delay before mutating requests (POST/PATCH/DELETE); set to 0.0 to disable (default: 0.0)
 http_min_mutation_interval_seconds = 0.0
 # Custom User-Agent header advertised to the LunaTask API
-http_user_agent = "lunatask-mcp/0.2.0"
+http_user_agent = "lunatask-mcp/0.2.1"
 # Timeout in seconds for establishing the TLS connection
 timeout_connect = 5.0
 # Timeout in seconds for reading the response body

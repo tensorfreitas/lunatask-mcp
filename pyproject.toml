@@ -1,6 +1,6 @@
 [project]
 name = "lunatask-mcp"
-version = "0.2.0"
+version = "0.2.1"
 description = "An unofficial MCP server providing a standardized bridge between AI models and the LunaTask API"
 license = {file = "LICENSE"}
 readme = "README.md"

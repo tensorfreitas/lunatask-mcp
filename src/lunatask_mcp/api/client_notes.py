@@ -9,6 +9,8 @@ import logging
 import urllib.parse
 from typing import TYPE_CHECKING
 
+from pydantic import ValidationError
+
 from lunatask_mcp.api.exceptions import LunaTaskAPIError, LunaTaskValidationError
 from lunatask_mcp.api.models import NoteCreate, NoteResponse, NoteUpdate
 
@@ -62,7 +64,7 @@ class NotesClientMixin:
             raise LunaTaskAPIError.create_parse_error(
                 "notes", note_name=f"{note_name} - missing 'note' key"
             ) from error
-        except Exception as error:
+        except (TypeError, ValidationError) as error:
             logger.exception("Failed to parse created note response data")
             note_name = json_data.get("name", "unknown")
             raise LunaTaskAPIError.create_parse_error("notes", note_name=note_name) from error
@@ -106,7 +108,7 @@ class NotesClientMixin:
             raise LunaTaskAPIError.create_parse_error(
                 f"notes/{note_id}", note_id=f"{note_id} - missing 'note' key"
             ) from error
-        except Exception as error:
+        except (TypeError, ValidationError) as error:
             logger.exception("Failed to parse updated note response data")
             raise LunaTaskAPIError.create_parse_error(
                 f"notes/{note_id}", note_id=note_id
@@ -154,7 +156,7 @@ class NotesClientMixin:
             raise LunaTaskAPIError.create_parse_error(
                 "notes", note_id=f"{note_id} - missing 'note' key"
             ) from error
-        except Exception as error:
+        except (TypeError, ValidationError) as error:
             logger.exception("Failed to parse deleted note response data")
             raise LunaTaskAPIError.create_parse_error("notes", note_id=note_id) from error
         else:

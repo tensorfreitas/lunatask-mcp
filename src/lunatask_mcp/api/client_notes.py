@@ -1,7 +1,7 @@
 """Notes functionality mixin for LunaTask API client.
 
-This module provides the NotesClientMixin class that handles note creation
-operations, designed to be composed with the base client.
+This module provides the NotesClientMixin class that handles note creation,
+update, and deletion operations, designed to be composed with the base client.
 """
 
 import json
@@ -28,8 +28,9 @@ class NotesClientMixin:
             note_data: NoteCreate object containing note data to create.
 
         Returns:
-            NoteResponse | None: Created note object from the API, or None when
-            the API returns 204 No Content due to an idempotent duplicate.
+            NoteResponse | None: Created note object from wrapped API response
+            format {"note": {...}}, or None when the API returns 204 No Content
+            due to an idempotent duplicate.
 
         Raises:
             LunaTaskValidationError: Validation error (422)
@@ -79,7 +80,8 @@ class NotesClientMixin:
             update: NoteUpdate object containing fields to update
 
         Returns:
-            NoteResponse: Updated note object from the API
+            NoteResponse: Updated note object from wrapped API response
+            format {"note": {...}}
 
         Raises:
             LunaTaskNotFoundError: Note not found (404)
@@ -118,9 +120,12 @@ class NotesClientMixin:
 
         Args:
             note_id: The unique identifier for the note to delete (UUID format).
+                    Must not be empty or whitespace-only. Will be URL-encoded
+                    before making the request.
 
         Returns:
-            NoteResponse: Deleted note object with deleted_at timestamp.
+            NoteResponse: Deleted note object from wrapped API response
+            format {"note": {...}}, with deleted_at timestamp populated.
 
         Raises:
             LunaTaskValidationError: When note_id is empty or whitespace-only.

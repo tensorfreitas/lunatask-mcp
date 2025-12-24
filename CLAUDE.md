@@ -101,6 +101,7 @@ src/lunatask_mcp/           # Main package
     ├── tasks_create.py     # create_task MCP tool
     ├── tasks_update.py     # update_task MCP tool
     ├── tasks_delete.py     # delete_task MCP tool
+    ├── notes.py            # NotesTools + create/update/delete note registration
     └── habits.py           # Habit tracking tools
 tests/                      # Test files (flat structure, split by concern)
 docs/                       # Architecture and PRD documentation

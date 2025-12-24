@@ -174,6 +174,8 @@ coverage. Clients such as Claude Desktop, Claude Code, Cline, Continue, Roo Code
   `{ "success": true, "note_id": "..." }` when created, or
   `{ "success": true, "duplicate": true, "message": "Note already exists for this source/source_id" }`
   when the LunaTask API responds with `204 No Content` for duplicates.
+- `update_note`: Updates an existing note by ID. Requires `note_id` and at least one optional field to update: `name`, `content`, `notebook_id`, or `date_on` (YYYY-MM-DD format). Supports partial updates—only provided fields are modified. Note that `content` replaces the entire content due to end-to-end encryption. Returns `{ "success": true, "note_id": "...", "message": "Note updated successfully", "note": {...} }` on success. Validation, not found, authentication, rate limit, timeout, and network errors map to structured error payloads.
+- `delete_note`: Permanently deletes a note from LunaTask. Requires `note_id`. Returns `{ "success": true, "note_id": "...", "deleted_at": "...", "message": "Note deleted successfully" }` on success. Note: deletion is not idempotent - attempting to delete the same note twice will return a not found error. Validation, authentication, rate limit, timeout, and network errors map to structured error payloads.
 - `create_journal_entry`: Creates a journal entry for a specific date. Requires `date_on` in
   `YYYY-MM-DD` format and supports optional `name` and `content` (Markdown). Returns
   `{ "success": true, "journal_entry_id": "..." }` when LunaTask returns a wrapped

@@ -160,6 +160,15 @@ class LunaTaskValidationError(LunaTaskAPIError):
         """
         return cls("Person ID cannot be empty")
 
+    @classmethod
+    def empty_note_id(cls) -> "LunaTaskValidationError":
+        """Create an error for empty or invalid note ID parameter.
+
+        Returns:
+            LunaTaskValidationError for empty note ID
+        """
+        return cls("Note ID cannot be empty")
+
 
 class LunaTaskRateLimitError(LunaTaskAPIError):
     """Raised when rate limit is exceeded (429 Too Many Requests)."""

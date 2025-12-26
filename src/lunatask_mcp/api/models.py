@@ -364,6 +364,39 @@ class NoteCreate(BaseModel):
         super().__init__(**data)  # type: ignore[arg-type]
 
 
+class NoteUpdate(BaseModel):
+    """Request model for updating existing notes in LunaTask.
+
+    Follows PATCH semantics where only provided fields are updated.
+    All fields except id are optional to support partial updates.
+    """
+
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
+
+    id: str = Field(description="Note ID to update (UUID)")
+    notebook_id: str | None = Field(
+        default=None,
+        description="Notebook ID to move the note to (optional)",
+    )
+    name: str | None = Field(
+        default=None,
+        description="Updated note name/title (optional)",
+    )
+    content: str | None = Field(
+        default=None,
+        description="Updated note content - replaces entire content (optional)",
+    )
+    date_on: date | None = Field(
+        default=None,
+        description="Updated note date (ISO-8601 format, optional)",
+    )
+
+    def __init__(self, **data: object) -> None:
+        """Pydantic-compatible initializer with permissive typing."""
+
+        super().__init__(**data)  # type: ignore[arg-type]
+
+
 class JournalEntryCreate(BaseModel):
     """Request model for creating journal entries in LunaTask."""
 

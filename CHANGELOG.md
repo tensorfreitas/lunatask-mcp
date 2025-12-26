@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+## [0.2.1] - 2025-12-24
+
+### Added
+- **Note Management**: New `delete_note` and `update_note` tools for comprehensive note lifecycle management (#49, #46)
+  - `update_note`: Modify existing notes with support for updating `name`, `content`, `notebook_id`, and `date_on` fields
+  - `delete_note`: Permanently delete notes from LunaTask
+  - Requires `note_id` (UUID format) and at least one field to update for `update_note`
+  - Content replacement follows end-to-end encryption semantics (full content replacement)
+  - Returns updated note data including timestamps for `update_note`
+  - Shared error handler pattern for consistent error responses across note tools
+  - Non-idempotent deletion with proper error handling for already-deleted notes
+
 ## [0.2.0] - 2025-09-27
 
 ### Added
@@ -55,5 +69,6 @@ All notable changes to this project will be documented in this file.
 - Comprehensive configuration system
 - FastMCP-based architecture with stdio transport
 
+[0.2.1]: https://github.com/tensorfreitas/lunatask-mcp/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/tensorfreitas/lunatask-mcp/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/tensorfreitas/lunatask-mcp/releases/tag/v0.1.0

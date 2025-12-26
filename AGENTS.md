@@ -16,6 +16,9 @@ source .venv/bin/activate
 ```
 
 ### Code Quality and Testing
+
+Always follow the guidelines in [coding_guidelines](docs/architecture/11-coding-standards.md)
+
 ```bash
 # Format and lint code
 uv run ruff format
@@ -24,8 +27,14 @@ uv run ruff check --fix
 # Type checking
 uv run pyright
 
-# Run tests
+# Run all tests
 uv run pytest
+
+# Run specific test file
+uv run pytest tests/test_specific_file.py
+
+# Run tests with coverage report
+uv run pytest --cov=src/lunatask_mcp --cov-report=term-missing
 
 # Run pre-commit hooks manually
 uv run pre-commit run --all-files
@@ -33,11 +42,27 @@ uv run pre-commit run --all-files
 
 ### Running the Application
 ```bash
-# Run the MCP server
-python -m lunatask_mcp
-# or
-lunatask-mcp
+# Run the MCP server (looks for ./config.toml by default)
+uv run python -m lunatask_mcp
+# or using the installed script
+uv run lunatask-mcp
+
+# Run with custom config file
+uv run lunatask-mcp --config-file /path/to/config.toml
+
+# Run with debug logging
+uv run lunatask-mcp --log-level DEBUG
+
+# Get help on available options
+uv run lunatask-mcp --help
 ```
+
+### Configuration
+The server requires a TOML configuration file with at minimum:
+```toml
+lunatask_bearer_token = "your_lunatask_bearer_token_here"
+```
+See `config.example.toml` for a complete configuration template.
 
 ## Architecture
 
@@ -59,11 +84,27 @@ Key architectural patterns:
 
 ```
 src/lunatask_mcp/           # Main package
-├── __init__.py             # Entry point and main server logic
-tests/                      # Test files
+├── __init__.py             # Entry point and version info
+├── main.py                 # CoreServer and application entry point
+├── config.py               # Configuration loading (Pydantic models)
+├── rate_limiter.py         # Rate limiting implementation
+├── api/                    # LunaTask API client components
+│   ├── client.py           # LunaTaskClient class
+│   ├── exceptions.py       # Custom exception definitions
+│   └── models.py           # Pydantic data models
+└── tools/                  # MCP tools implementation
+    ├── tasks.py            # Main TaskTools delegator/registration
+    ├── tasks_common.py     # Shared task helpers and serialization
+    ├── tasks_resources.py  # Task list/single MCP resources
+    ├── tasks_create.py     # create_task MCP tool
+    ├── tasks_update.py     # update_task MCP tool
+    ├── tasks_delete.py     # delete_task MCP tool
+    └── habits.py           # Habit tracking tools
+tests/                      # Test files (flat structure, split by concern)
 docs/                       # Architecture and PRD documentation
-├── architecture/           # Technical architecture docs
-└── prd/                    # Product requirements
+├── architecture/           # Technical architecture docs (including 11-coding-standards.md)
+├── prd/                    # Product requirements
+└── stories/                # Development stories
 ```
 
 ## Coding Standards
@@ -93,7 +134,7 @@ docs/                       # Architecture and PRD documentation
 - Keep fixtures minimal and function-scoped in [tests/conftest.py](tests/conftest.py); avoid `autouse` unless essential.
 - Use pytest markers to separate unit vs integration/E2E (e.g., `@pytest.mark.integration`); register markers in [pytest.ini](pytest.ini) to avoid unknown-marker warnings.
 - Assertions for logging must attach to `stderr` only.
-- Coverage baseline is maintained at 87% minimum via `--cov-fail-under=87` in pytest configuration.
+- Coverage baseline is maintained at 95% minimum via `--cov-fail-under=95` in pytest configuration.
 
 ## Test Module Splitting Guidance
 When test modules grow large, **split by concern before 500 lines**:

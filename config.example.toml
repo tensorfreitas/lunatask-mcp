@@ -1,6 +1,6 @@
-# LunaTask MCP Server Configuration Example
+# Lunatask MCP Server Configuration Example
 # 
-# This file demonstrates all available configuration options for the LunaTask MCP server.
+# This file demonstrates all available configuration options for the Lunatask MCP server.
 # Copy this file to `config.toml` and customize the values as needed.
 #
 # Configuration Precedence (highest to lowest):
@@ -12,9 +12,9 @@
 # REQUIRED SETTINGS
 # ==============================================================================
 
-# LunaTask API Bearer Token (REQUIRED)
-# Obtain this token from your LunaTask account settings
-# This token is used to authenticate with the LunaTask API
+# Lunatask API Bearer Token (REQUIRED)
+# Obtain this token from your Lunatask account settings
+# This token is used to authenticate with the Lunatask API
 # SECURITY NOTE: Keep this token secure and never commit it to version control
 lunatask_bearer_token = "your_lunatask_bearer_token_here"
 
@@ -22,7 +22,7 @@ lunatask_bearer_token = "your_lunatask_bearer_token_here"
 # OPTIONAL SETTINGS (with defaults shown)
 # ==============================================================================
 
-# LunaTask API Base URL
+# Lunatask API Base URL
 # Default: "https://api.lunatask.app/v1/"
 # You typically don't need to change this unless using a different API endpoint
 lunatask_base_url = "https://api.lunatask.app/v1/"
@@ -45,7 +45,7 @@ port = 8080
 log_level = "INFO"
 
 # HTTP Client Fine-Tuning
-# Controls retry behavior and timeout settings for LunaTask API calls.
+# Controls retry behavior and timeout settings for Lunatask API calls.
 # http_retries: Number of additional retry attempts triggered on timeouts or
 #               transient network/server errors (default: 2)
 # http_backoff_start_seconds: Initial delay applied before the first retry.

@@ -1,21 +1,21 @@
-# LunaTask MCP Server
+# Lunatask MCP Server
 
-LunaTask MCP is an unofficial Model Context Protocol server that provides a standardized bridge between AI models and the LunaTask API. It's designed as a lightweight, asynchronous Python application using the FastMCP framework, running as a local subprocess to enable AI tools to interact with LunaTask data.
+Lunatask MCP is an unofficial Model Context Protocol server that provides a standardized bridge between AI models and the Lunatask API. It's designed as a lightweight, asynchronous Python application using the FastMCP framework, running as a local subprocess to enable AI tools to interact with Lunatask data.
 
 ## Important Notes
 
 ### End-to-End Encryption
-LunaTask uses end-to-end encryption for sensitive task and note data. As a result:
+Lunatask uses end-to-end encryption for sensitive task and note data. As a result:
 - Task `name`/`note` fields and note `content` are **not included** in API responses
 - Only non-sensitive metadata and structural information is available
-- This is a security feature of LunaTask and cannot be bypassed
+- This is a security feature of Lunatask and cannot be bypassed
 - The `name`, `note`, and `content` fields **can be included** in create requests
-- LunaTask automatically encrypts these fields client-side before storage
+- Lunatask automatically encrypts these fields client-side before storage
 - Once created, these fields will not be visible in GET responses due to E2E encryption
-- This is normal LunaTask behavior and ensures data privacy
+- This is normal Lunatask behavior and ensures data privacy
 
 #### Task IDs
-- Task IDs are unique identifiers assigned by LunaTask
+- Task IDs are unique identifiers assigned by Lunatask
 - Use the All Tasks resource to discover available task IDs
 - Task IDs remain consistent across API calls
 
@@ -39,7 +39,7 @@ uv run python -c "import lunatask_mcp"
 
 ## Server Configuration
 
-The LunaTask MCP server supports flexible configuration through TOML files and command-line arguments. A bearer token is required to authenticate with the LunaTask API.
+The Lunatask MCP server supports flexible configuration through TOML files and command-line arguments. A bearer token is required to authenticate with the Lunatask API.
 
 ### Quick Start
 
@@ -48,7 +48,7 @@ The LunaTask MCP server supports flexible configuration through TOML files and c
 cp config.example.toml ~/path/to/your/lunatask_mcp_config.toml
 ```
 
-2. Edit the copied configuration file and add your LunaTask API bearer token:
+2. Edit the copied configuration file and add your Lunatask API bearer token:
 ```toml
 lunatask_bearer_token = "your_lunatask_bearer_token_here"
 ```
@@ -58,7 +58,7 @@ lunatask_bearer_token = "your_lunatask_bearer_token_here"
 uv run lunatask-mcp --config-file /path/to/your/config.toml
 ```
 
-Note: To create an access token open LunaTask app, open application settings, head to "Access tokens" section, and create a new access token. Then, click "Copy to clipboard", and paste it in the `lunatask_bearer_token` field in the config file.
+Note: To create an access token open Lunatask app, open application settings, head to "Access tokens" section, and create a new access token. Then, click "Copy to clipboard", and paste it in the `lunatask_bearer_token` field in the config file.
 
 ### Configuration Methods
 
@@ -92,7 +92,7 @@ uv run lunatask-mcp --help
 Create a `config.toml` file with your settings:
 
 ```toml
-# Required: Your LunaTask API bearer token
+# Required: Your Lunatask API bearer token
 lunatask_bearer_token = "your_lunatask_bearer_token_here"
 
 # Optional: API base URL (default: https://api.lunatask.app/v1/)
@@ -120,7 +120,7 @@ http_retries = 2
 http_backoff_start_seconds = 0.25
 # Minimum delay before mutating requests (POST/PATCH/DELETE); set to 0.0 to disable (default: 0.0)
 http_min_mutation_interval_seconds = 0.0
-# Custom User-Agent header advertised to the LunaTask API
+# Custom User-Agent header advertised to the Lunatask API
 http_user_agent = "lunatask-mcp/0.2.1"
 # Timeout in seconds for establishing the TLS connection
 timeout_connect = 5.0
@@ -163,7 +163,7 @@ The server provides the following tools:
 
 MCP resources depend on the client UI, and many popular MCP clients still surface tools only.
 As tracked in [issue #14](https://github.com/tensorfreitas/lunatask-mcp/issues/14), missing
-resource support remains the main friction when browsing LunaTask data through MCP clients.
+resource support remains the main friction when browsing Lunatask data through MCP clients.
 The [official MCP client matrix](https://modelcontextprotocol.info/docs/clients/) lists feature
 coverage. Clients such as Claude Desktop, Claude Code, Cline, Continue, Roo Code, Sourcegraph Cody, and the VS Code MCP extension expose resources today. Editors like Cursor, Windsurf, OpenSumi, and several others show tools only until they add resource support. Choose a resource-capable client when you need to inspect task lists directly.
 
@@ -173,18 +173,18 @@ coverage. Clients such as Claude Desktop, Claude Code, Cline, Continue, Roo Code
   and `source`/`source_id` metadata to guarantee idempotency. Returns
   `{ "success": true, "note_id": "..." }` when created, or
   `{ "success": true, "duplicate": true, "message": "Note already exists for this source/source_id" }`
-  when the LunaTask API responds with `204 No Content` for duplicates.
+  when the Lunatask API responds with `204 No Content` for duplicates.
 - `update_note`: Updates an existing note by ID. Requires `note_id` and at least one optional field to update: `name`, `content`, `notebook_id`, or `date_on` (YYYY-MM-DD format). Supports partial updates—only provided fields are modified. Note that `content` replaces the entire content due to end-to-end encryption. Returns `{ "success": true, "note_id": "...", "message": "Note updated successfully", "note": {...} }` on success. Validation, not found, authentication, rate limit, timeout, and network errors map to structured error payloads.
-- `delete_note`: Permanently deletes a note from LunaTask. Requires `note_id`. Returns `{ "success": true, "note_id": "...", "deleted_at": "...", "message": "Note deleted successfully" }` on success. Note: deletion is not idempotent - attempting to delete the same note twice will return a not found error. Validation, authentication, rate limit, timeout, and network errors map to structured error payloads.
+- `delete_note`: Permanently deletes a note from Lunatask. Requires `note_id`. Returns `{ "success": true, "note_id": "...", "deleted_at": "...", "message": "Note deleted successfully" }` on success. Note: deletion is not idempotent - attempting to delete the same note twice will return a not found error. Validation, authentication, rate limit, timeout, and network errors map to structured error payloads.
 - `create_journal_entry`: Creates a journal entry for a specific date. Requires `date_on` in
   `YYYY-MM-DD` format and supports optional `name` and `content` (Markdown). Returns
-  `{ "success": true, "journal_entry_id": "..." }` when LunaTask returns a wrapped
+  `{ "success": true, "journal_entry_id": "..." }` when Lunatask returns a wrapped
   `journal_entry`. Responses never include `name` or `content` because of end-to-end encryption.
-- `create_person`: Creates a new person/contact. Requires `first_name` and `last_name`. Optional fields include `relationship_strength` (one of `family`, `intimate-friends`, `close-friends`, `casual-friends`, `acquaintances`, `business-contacts`, or `almost-strangers`; defaults to `casual-friends`), external source metadata (`source`, `source_id`), and contact details (`email`, `birthday`, `phone`). Returns `{ "success": true, "person_id": "..." }` when created, or `{ "success": true, "duplicate": true, "message": "Person already exists for this source/source_id" }` when LunaTask responds with `204 No Content` for duplicates. Note: Custom fields for email, birthday, or phone must be defined in the LunaTask app first, otherwise returns a 422 validation error.
-- `create_person_timeline_note`: Creates a timeline note for an existing person. Requires `person_id` and `content`, accepts an optional `date` (`YYYY-MM-DD`). When `date` is omitted the LunaTask API stores the note against the current day. Returns `{ "success": true, "person_timeline_note_id": "..." }` on success. Validation, authentication, subscription, rate limit, timeout, and network errors map to structured error payloads, and invalid ISO dates are rejected client-side before hitting the API.
-- `delete_person`: Deletes a person/contact from LunaTask. Requires `person_id`. Returns `{ "success": true, "person_id": "...", "deleted_at": "...", "message": "Person deleted successfully" }` on success. Note: deletion is not idempotent - attempting to delete the same person twice will return a not found error. Validation, authentication, rate limit, timeout, and network errors map to structured error payloads.
+- `create_person`: Creates a new person/contact. Requires `first_name` and `last_name`. Optional fields include `relationship_strength` (one of `family`, `intimate-friends`, `close-friends`, `casual-friends`, `acquaintances`, `business-contacts`, or `almost-strangers`; defaults to `casual-friends`), external source metadata (`source`, `source_id`), and contact details (`email`, `birthday`, `phone`). Returns `{ "success": true, "person_id": "..." }` when created, or `{ "success": true, "duplicate": true, "message": "Person already exists for this source/source_id" }` when Lunatask responds with `204 No Content` for duplicates. Note: Custom fields for email, birthday, or phone must be defined in the Lunatask app first, otherwise returns a 422 validation error.
+- `create_person_timeline_note`: Creates a timeline note for an existing person. Requires `person_id` and `content`, accepts an optional `date` (`YYYY-MM-DD`). When `date` is omitted the Lunatask API stores the note against the current day. Returns `{ "success": true, "person_timeline_note_id": "..." }` on success. Validation, authentication, subscription, rate limit, timeout, and network errors map to structured error payloads, and invalid ISO dates are rejected client-side before hitting the API.
+- `delete_person`: Deletes a person/contact from Lunatask. Requires `person_id`. Returns `{ "success": true, "person_id": "...", "deleted_at": "...", "message": "Person deleted successfully" }` on success. Note: deletion is not idempotent - attempting to delete the same person twice will return a not found error. Validation, authentication, rate limit, timeout, and network errors map to structured error payloads.
 - `update_task`: Updates an existing task by ID. Supports partial updates—only the fields you pass (same set as create, minus the required `name`) are mutated. Returns `{ "success": true, "task": {...} }` with the full serialized task payload.
-- `delete_task`: Permanently deletes a task from LunaTask. Returns `{ "success": true, "task_id": "..." }`. **Deleted tasks cannot be recovered**, so invoke with caution.
+- `delete_task`: Permanently deletes a task from Lunatask. Returns `{ "success": true, "task_id": "..." }`. **Deleted tasks cannot be recovered**, so invoke with caution.
 - `track_habit`: Logs habit activity for a specific habit ID and ISO date. Returns `{ "ok": true, "message": "Successfully tracked habit <id> on <date>" }` when the API confirms the event.
 
 ## Resources Available
@@ -219,9 +219,9 @@ You can filter globally and by `area_id`. The filters work as follows:
   - Tasks without scheduled date but with motivation as "must"
   - Tasks without scheduled date but with eisenhower as 1 (urgent and important)
 
-Note: There is slight difference between the `now` in LunaTask and `now` here. This can create some confusion. Currently, now is seen as urgent and not scheduled. This will be solved in this future [issue](https://github.com/tensorfreitas/lunatask-mcp/issues/38).
+Note: There is slight difference between the `now` in Lunatask and `now` here. This can create some confusion. Currently, now is seen as urgent and not scheduled. This will be solved in this future [issue](https://github.com/tensorfreitas/lunatask-mcp/issues/38).
 
-The reason behind these filters is that if you try to gather all the tasks from the LunaTask API you will easily fill up your LLM context if you have a lot of tasks. 
+The reason behind these filters is that if you try to gather all the tasks from the Lunatask API you will easily fill up your LLM context if you have a lot of tasks. 
 In the future these could be expanded to include:
 - filters by `goal_id`
 - filters for all priority types
